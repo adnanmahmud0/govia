@@ -9,6 +9,7 @@ import generateOTP from '../../../util/generateOTP';
 import { IUser } from './user.interface';
 import { User } from './user.model';
 import { debug } from '../../../shared/debug';
+import QueryBuilder from '../../builder/QueryBuilder';
 
 const createUserToDB = async (payload: Partial<IUser>): Promise<IUser> => {
   //set role
@@ -84,4 +85,84 @@ export const UserService = {
   createUserToDB,
   getUserProfileFromDB,
   updateProfileToDB,
+};
+
+const createUserByAdminToDB = async (payload: Partial<IUser>): Promise<IUser> => {
+  payload.verified = true; // Admin created users are instantly verified
+  const createUser = await User.create(payload);
+  if (!createUser) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Failed to create user');
+  }
+  return createUser;
+};
+
+const getAllUsersFromDB = async (query: Record<string, unknown>) => {
+  const userQuery = new QueryBuilder(User.find(), query)
+    .search(['name', 'email'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const result = await userQuery.modelQuery;
+  const meta = await userQuery.countTotal();
+
+  return {
+    meta,
+    data: result,
+  };
+};
+
+const getSingleUserFromDB = async (id: string): Promise<IUser | null> => {
+  const user = await User.findById(id);
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
+  }
+  return user;
+};
+
+const updateUserFromDB = async (
+  id: string,
+  payload: Partial<IUser>
+): Promise<IUser | null> => {
+  const isExistUser = await User.findById(id);
+  if (!isExistUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
+  }
+
+  //unlink file here if image updated
+  if (payload.image && isExistUser.image) {
+    unlinkFile(isExistUser.image);
+  }
+
+  const updateDoc = await User.findByIdAndUpdate(id, payload, {
+    new: true,
+  });
+
+  return updateDoc;
+};
+
+const deleteUserFromDB = async (id: string): Promise<IUser | null> => {
+  const isExistUser = await User.findById(id);
+  if (!isExistUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
+  }
+
+  if (isExistUser.image) {
+    unlinkFile(isExistUser.image);
+  }
+
+  const deletedUser = await User.findByIdAndDelete(id);
+  return deletedUser;
+};
+
+export const UserService = {
+  createUserToDB,
+  getUserProfileFromDB,
+  updateProfileToDB,
+  createUserByAdminToDB,
+  getAllUsersFromDB,
+  getSingleUserFromDB,
+  updateUserFromDB,
+  deleteUserFromDB,
 };

@@ -52,4 +52,85 @@ const updateProfile = catchAsync(
   }
 );
 
-export const UserController = { createUser, getUserProfile, updateProfile };
+const createUserByAdmin = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const { ...userData } = req.body;
+    const result = await UserService.createUserByAdminToDB(userData);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'User created successfully by admin',
+      data: result,
+    });
+  }
+);
+
+const getAllUsers = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const result = await UserService.getAllUsersFromDB(req.query);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'Users retrieved successfully',
+      data: result,
+    });
+  }
+);
+
+const getSingleUser = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const result = await UserService.getSingleUserFromDB(req.params.id);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'User retrieved successfully',
+      data: result,
+    });
+  }
+);
+
+const updateUser = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const image = getSingleFilePath(req.files as Partial<Record<string, File[]>> | undefined, 'image');
+
+    const data = {
+      image,
+      ...req.body,
+    };
+    const result = await UserService.updateUserFromDB(req.params.id, data);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'User updated successfully',
+      data: result,
+    });
+  }
+);
+
+const deleteUser = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const result = await UserService.deleteUserFromDB(req.params.id);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'User deleted successfully',
+      data: result,
+    });
+  }
+);
+
+export const UserController = {
+  createUser,
+  getUserProfile,
+  updateProfile,
+  createUserByAdmin,
+  getAllUsers,
+  getSingleUser,
+  updateUser,
+  deleteUser,
+};

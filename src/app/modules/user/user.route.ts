@@ -30,4 +30,33 @@ router
     UserController.createUser
   );
 
+router
+  .route('/')
+  .get(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), UserController.getAllUsers);
+
+router
+  .route('/create-user')
+  .post(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    validateRequest(UserValidation.createUserZodSchema),
+    UserController.createUserByAdmin
+  );
+
+router
+  .route('/:id')
+  .get(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), UserController.getSingleUser)
+  .patch(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    fileUploadHandler(),
+    (req: Request, res: Response, next: NextFunction) => {
+      if (req.body.data) {
+        req.body = UserValidation.adminUpdateUserZodSchema.parse(
+          JSON.parse(req.body.data)
+        );
+      }
+      return UserController.updateUser(req, res, next);
+    }
+  )
+  .delete(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), UserController.deleteUser);
+
 export const UserRoutes = router;

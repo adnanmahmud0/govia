@@ -9,6 +9,26 @@ export type IUser = {
   image?: string;
   status: 'active' | 'delete';
   verified: boolean;
+  subRole?: string;
+  phoneNumber?: string;
+  languagesSpoken?: string;
+  preferredAttorney?: string;
+  preferredBailBondsman?: string;
+  licensedStatesToPractice?: string;
+  barAssociationNumber?: string;
+  lawFirmName?: string;
+  officeName?: string;
+  datePassedTheBar?: string;
+  medicalLicenseNumber?: string;
+  specialization?: string;
+  companyName?: string;
+  businessAddress?: string;
+  badgeNumber?: string;
+  assignedNumber?: string;
+  departmentOrPrecinct?: string;
+  didCarNumberChange?: string;
+  newCarNumber?: string;
+  licenseNumber?: string;
   authentication?: {
     isResetPassword: boolean;
     oneTimeCode: number;

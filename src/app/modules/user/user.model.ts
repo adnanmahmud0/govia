@@ -35,14 +35,14 @@ const userSchema = new Schema<IUser, UserModal>(
     },
     status: {
       type: String,
-      enum: ['active', 'delete'],
+      enum: ['active', 'inactive', 'delete'],
       default: 'active',
     },
     verified: {
       type: Boolean,
       default: false,
     },
-    authentication: {
+      authentication: {
       type: {
         isResetPassword: {
           type: Boolean,
@@ -59,6 +59,26 @@ const userSchema = new Schema<IUser, UserModal>(
       },
       select: 0,
     },
+    subRole: { type: String },
+    phoneNumber: { type: String },
+    languagesSpoken: { type: String },
+    preferredAttorney: { type: String },
+    preferredBailBondsman: { type: String },
+    licensedStatesToPractice: { type: String },
+    barAssociationNumber: { type: String },
+    lawFirmName: { type: String },
+    officeName: { type: String },
+    datePassedTheBar: { type: String },
+    medicalLicenseNumber: { type: String },
+    specialization: { type: String },
+    companyName: { type: String },
+    businessAddress: { type: String },
+    badgeNumber: { type: String },
+    assignedNumber: { type: String },
+    departmentOrPrecinct: { type: String },
+    didCarNumberChange: { type: String },
+    newCarNumber: { type: String },
+    licenseNumber: { type: String },
   },
   { timestamps: true }
 );
