@@ -5,18 +5,21 @@ const zod_1 = require("zod");
 const createVerifyEmailZodSchema = zod_1.z.object({
     body: zod_1.z.object({
         email: zod_1.z.string({ required_error: 'Email is required' }),
+        role: zod_1.z.string({ required_error: 'Role is required' }),
         oneTimeCode: zod_1.z.number({ required_error: 'One time code is required' }),
     }),
 });
 const createLoginZodSchema = zod_1.z.object({
     body: zod_1.z.object({
         email: zod_1.z.string({ required_error: 'Email is required' }),
+        role: zod_1.z.string({ required_error: 'Role is required' }),
         password: zod_1.z.string({ required_error: 'Password is required' }),
     }),
 });
 const createForgetPasswordZodSchema = zod_1.z.object({
     body: zod_1.z.object({
         email: zod_1.z.string({ required_error: 'Email is required' }),
+        role: zod_1.z.string({ required_error: 'Role is required' }),
     }),
 });
 const createResetPasswordZodSchema = zod_1.z.object({
@@ -47,6 +50,7 @@ exports.AuthValidation = {
     createResendVerifyEmailZodSchema: zod_1.z.object({
         body: zod_1.z.object({
             email: zod_1.z.string({ required_error: 'Email is required' }),
+            role: zod_1.z.string({ required_error: 'Role is required' }),
         }),
     }),
     createRefreshTokenZodSchema: zod_1.z.object({

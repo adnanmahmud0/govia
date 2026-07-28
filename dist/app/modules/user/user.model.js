@@ -32,7 +32,6 @@ const userSchema = new mongoose_1.Schema({
     email: {
         type: String,
         required: true,
-        unique: true,
         lowercase: true,
     },
     password: {
@@ -47,7 +46,7 @@ const userSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'delete'],
+        enum: ['active', 'inactive', 'delete'],
         default: 'active',
     },
     verified: {
@@ -71,7 +70,28 @@ const userSchema = new mongoose_1.Schema({
         },
         select: 0,
     },
+    subRole: { type: String },
+    phoneNumber: { type: String },
+    languagesSpoken: { type: String },
+    preferredAttorney: { type: String },
+    preferredBailBondsman: { type: String },
+    licensedStatesToPractice: { type: String },
+    barAssociationNumber: { type: String },
+    lawFirmName: { type: String },
+    officeName: { type: String },
+    datePassedTheBar: { type: String },
+    medicalLicenseNumber: { type: String },
+    specialization: { type: String },
+    companyName: { type: String },
+    businessAddress: { type: String },
+    badgeNumber: { type: String },
+    assignedNumber: { type: String },
+    departmentOrPrecinct: { type: String },
+    didCarNumberChange: { type: String },
+    newCarNumber: { type: String },
+    licenseNumber: { type: String },
 }, { timestamps: true });
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 //exist user check
 userSchema.statics.isExistUserById = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const isExist = yield exports.User.findById(id);
@@ -79,6 +99,10 @@ userSchema.statics.isExistUserById = (id) => __awaiter(void 0, void 0, void 0, f
 });
 userSchema.statics.isExistUserByEmail = (email) => __awaiter(void 0, void 0, void 0, function* () {
     const isExist = yield exports.User.findOne({ email });
+    return isExist;
+});
+userSchema.statics.isExistUserByEmailAndRole = (email, role) => __awaiter(void 0, void 0, void 0, function* () {
+    const isExist = yield exports.User.findOne({ email, role });
     return isExist;
 });
 //is match password
@@ -89,9 +113,9 @@ userSchema.statics.isMatchPassword = (password, hashPassword) => __awaiter(void 
 userSchema.pre('save', function (next) {
     return __awaiter(this, void 0, void 0, function* () {
         //check user
-        const isExist = yield exports.User.findOne({ email: this.email });
+        const isExist = yield exports.User.findOne({ email: this.email, role: this.role });
         if (isExist) {
-            throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Email already exist!');
+            throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Email and Role combination already exists!');
         }
         //password hash
         this.password = yield bcrypt_1.default.hash(this.password, Number(config_1.default.bcrypt_salt_rounds));

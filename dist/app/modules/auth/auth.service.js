@@ -27,9 +27,9 @@ const resetToken_model_1 = require("../resetToken/resetToken.model");
 const user_model_1 = require("../user/user.model");
 //login
 const loginUserFromDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email, password } = payload;
-    (0, debug_1.debug)('auth.login.db', { email });
-    const isExistUser = yield user_model_1.User.findOne({ email }).select('+password');
+    const { email, password, role } = payload;
+    (0, debug_1.debug)('auth.login.db', { email, role });
+    const isExistUser = yield user_model_1.User.findOne({ email, role }).select('+password');
     if (!isExistUser) {
         (0, debug_1.debug)('auth.login.db.user_missing', { email });
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "User doesn't exist!");
@@ -62,8 +62,8 @@ const loginUserFromDB = (payload) => __awaiter(void 0, void 0, void 0, function*
     return { accessToken, refreshToken };
 });
 //forget password
-const forgetPasswordToDB = (email) => __awaiter(void 0, void 0, void 0, function* () {
-    const isExistUser = yield user_model_1.User.isExistUserByEmail(email);
+const forgetPasswordToDB = (email, role) => __awaiter(void 0, void 0, void 0, function* () {
+    const isExistUser = yield user_model_1.User.isExistUserByEmailAndRole(email, role);
     if (!isExistUser) {
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "User doesn't exist!");
     }
@@ -87,8 +87,8 @@ const forgetPasswordToDB = (email) => __awaiter(void 0, void 0, void 0, function
 //verify email
 const verifyEmailToDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    const { email, oneTimeCode } = payload;
-    const isExistUser = yield user_model_1.User.findOne({ email }).select('+authentication');
+    const { email, role, oneTimeCode } = payload;
+    const isExistUser = yield user_model_1.User.findOne({ email, role }).select('+authentication');
     if (!isExistUser) {
         (0, debug_1.debug)('auth.verify_email.user_missing', { email });
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "User doesn't exist!");
@@ -211,8 +211,8 @@ exports.AuthService = {
     forgetPasswordToDB,
     resetPasswordToDB,
     changePasswordToDB,
-    resendVerifyEmailToDB: (email) => __awaiter(void 0, void 0, void 0, function* () {
-        const isExistUser = yield user_model_1.User.findOne({ email });
+    resendVerifyEmailToDB: (email, role) => __awaiter(void 0, void 0, void 0, function* () {
+        const isExistUser = yield user_model_1.User.findOne({ email, role });
         if (!isExistUser) {
             throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "User doesn't exist!");
         }

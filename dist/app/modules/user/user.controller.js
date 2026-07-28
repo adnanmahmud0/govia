@@ -62,4 +62,61 @@ const updateProfile = (0, catchAsync_1.default)((req, res, _next) => __awaiter(v
         data: result,
     });
 }));
-exports.UserController = { createUser, getUserProfile, updateProfile };
+const createUserByAdmin = (0, catchAsync_1.default)((req, res, _next) => __awaiter(void 0, void 0, void 0, function* () {
+    const userData = __rest(req.body, []);
+    const result = yield user_service_1.UserService.createUserByAdminToDB(userData);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'User created successfully by admin',
+        data: result,
+    });
+}));
+const getAllUsers = (0, catchAsync_1.default)((req, res, _next) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield user_service_1.UserService.getAllUsersFromDB(req.query);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Users retrieved successfully',
+        data: result,
+    });
+}));
+const getSingleUser = (0, catchAsync_1.default)((req, res, _next) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield user_service_1.UserService.getSingleUserFromDB(req.params.id);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'User retrieved successfully',
+        data: result,
+    });
+}));
+const updateUser = (0, catchAsync_1.default)((req, res, _next) => __awaiter(void 0, void 0, void 0, function* () {
+    const image = (0, getFilePath_1.getSingleFilePath)(req.files, 'image');
+    const data = Object.assign({ image }, req.body);
+    const result = yield user_service_1.UserService.updateUserFromDB(req.params.id, data);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'User updated successfully',
+        data: result,
+    });
+}));
+const deleteUser = (0, catchAsync_1.default)((req, res, _next) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield user_service_1.UserService.deleteUserFromDB(req.params.id);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'User deleted successfully',
+        data: result,
+    });
+}));
+exports.UserController = {
+    createUser,
+    getUserProfile,
+    updateProfile,
+    createUserByAdmin,
+    getAllUsers,
+    getSingleUser,
+    updateUser,
+    deleteUser,
+};

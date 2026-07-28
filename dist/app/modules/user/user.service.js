@@ -22,9 +22,11 @@ const unlinkFile_1 = __importDefault(require("../../../shared/unlinkFile"));
 const generateOTP_1 = __importDefault(require("../../../util/generateOTP"));
 const user_model_1 = require("./user.model");
 const debug_1 = require("../../../shared/debug");
+const QueryBuilder_1 = __importDefault(require("../../builder/QueryBuilder"));
 const createUserToDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    //set role
-    payload.role = user_1.USER_ROLES.USER;
+    //set role if not provided
+    if (!payload.role)
+        payload.role = user_1.USER_ROLES.USER;
     const createUser = yield user_model_1.User.create(payload);
     if (!createUser) {
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Failed to create user');
@@ -74,8 +76,67 @@ const updateProfileToDB = (user, payload) => __awaiter(void 0, void 0, void 0, f
     });
     return updateDoc;
 });
+const createUserByAdminToDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    payload.verified = true; // Admin created users are instantly verified
+    const createUser = yield user_model_1.User.create(payload);
+    if (!createUser) {
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Failed to create user');
+    }
+    return createUser;
+});
+const getAllUsersFromDB = (query) => __awaiter(void 0, void 0, void 0, function* () {
+    const userQuery = new QueryBuilder_1.default(user_model_1.User.find(), query)
+        .search(['name', 'email'])
+        .filter()
+        .sort()
+        .paginate()
+        .fields();
+    const result = yield userQuery.modelQuery;
+    const meta = yield userQuery.getPaginationInfo();
+    return {
+        meta,
+        data: result,
+    };
+});
+const getSingleUserFromDB = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield user_model_1.User.findById(id);
+    if (!user) {
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "User doesn't exist!");
+    }
+    return user;
+});
+const updateUserFromDB = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const isExistUser = yield user_model_1.User.findById(id);
+    if (!isExistUser) {
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "User doesn't exist!");
+    }
+    //unlink file here if image updated
+    if (payload.image && isExistUser.image) {
+        (0, unlinkFile_1.default)(isExistUser.image);
+    }
+    const updateDoc = yield user_model_1.User.findByIdAndUpdate(id, payload, {
+        new: true,
+    });
+    return updateDoc;
+});
+const deleteUserFromDB = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    const isExistUser = yield user_model_1.User.findById(id);
+    if (!isExistUser) {
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "User doesn't exist!");
+    }
+    if (isExistUser.image) {
+        (0, unlinkFile_1.default)(isExistUser.image);
+    }
+    const deletedUser = yield user_model_1.User.findByIdAndDelete(id);
+    return deletedUser;
+});
 exports.UserService = {
     createUserToDB,
     getUserProfileFromDB,
     updateProfileToDB,
+    createUserByAdminToDB,
+    getAllUsersFromDB,
+    getSingleUserFromDB,
+    updateUserFromDB,
+    deleteUserFromDB,
 };

@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CommunityResourceRoutes = void 0;
+const express_1 = __importDefault(require("express"));
+const communityResource_controller_1 = require("./communityResource.controller");
+const validateRequest_1 = __importDefault(require("../../middlewares/validateRequest"));
+const communityResource_validation_1 = require("./communityResource.validation");
+const auth_1 = __importDefault(require("../../middlewares/auth"));
+const user_1 = require("../../../enums/user");
+const fileUploadHandler_1 = __importDefault(require("../../middlewares/fileUploadHandler"));
+const router = express_1.default.Router();
+router.post('/', (0, auth_1.default)(user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), (0, fileUploadHandler_1.default)(), (0, validateRequest_1.default)(communityResource_validation_1.CommunityResourceValidation.createCommunityResourceZodSchema), communityResource_controller_1.CommunityResourceController.createResource);
+router.get('/', (0, auth_1.default)(user_1.USER_ROLES.USER, user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), communityResource_controller_1.CommunityResourceController.getAllResources);
+router.get('/:id', (0, auth_1.default)(user_1.USER_ROLES.USER, user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), communityResource_controller_1.CommunityResourceController.getSingleResource);
+router.patch('/:id', (0, auth_1.default)(user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), (0, fileUploadHandler_1.default)(), (0, validateRequest_1.default)(communityResource_validation_1.CommunityResourceValidation.updateCommunityResourceZodSchema), communityResource_controller_1.CommunityResourceController.updateResource);
+router.delete('/:id', (0, auth_1.default)(user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), communityResource_controller_1.CommunityResourceController.deleteResource);
+exports.CommunityResourceRoutes = router;

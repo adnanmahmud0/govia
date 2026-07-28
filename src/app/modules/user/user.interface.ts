@@ -39,5 +39,6 @@ export type IUser = {
 export type UserModal = {
   isExistUserById(id: string): Promise<IUser | null>;
   isExistUserByEmail(email: string): Promise<IUser | null>;
+  isExistUserByEmailAndRole(email: string, role: string): Promise<IUser | null>;
   isMatchPassword(password: string, hashPassword: string): Promise<boolean>;
 } & Model<IUser>;

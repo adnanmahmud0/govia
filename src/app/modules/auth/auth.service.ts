@@ -21,9 +21,9 @@ import { User } from '../user/user.model';
 
 //login
 const loginUserFromDB = async (payload: ILoginData) => {
-  const { email, password } = payload;
-  debug('auth.login.db', { email });
-  const isExistUser = await User.findOne({ email }).select('+password');
+  const { email, password, role } = payload;
+  debug('auth.login.db', { email, role });
+  const isExistUser = await User.findOne({ email, role }).select('+password');
   if (!isExistUser) {
     debug('auth.login.db.user_missing', { email });
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
@@ -78,8 +78,8 @@ const loginUserFromDB = async (payload: ILoginData) => {
 };
 
 //forget password
-const forgetPasswordToDB = async (email: string) => {
-  const isExistUser = await User.isExistUserByEmail(email);
+const forgetPasswordToDB = async (email: string, role: string) => {
+  const isExistUser = await User.isExistUserByEmailAndRole(email, role);
   if (!isExistUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
@@ -105,8 +105,8 @@ const forgetPasswordToDB = async (email: string) => {
 
 //verify email
 const verifyEmailToDB = async (payload: IVerifyEmail) => {
-  const { email, oneTimeCode } = payload;
-  const isExistUser = await User.findOne({ email }).select('+authentication');
+  const { email, role, oneTimeCode } = payload;
+  const isExistUser = await User.findOne({ email, role }).select('+authentication');
   if (!isExistUser) {
     debug('auth.verify_email.user_missing', { email });
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
@@ -289,8 +289,8 @@ export const AuthService = {
   forgetPasswordToDB,
   resetPasswordToDB,
   changePasswordToDB,
-  resendVerifyEmailToDB: async (email: string) => {
-    const isExistUser = await User.findOne({ email });
+  resendVerifyEmailToDB: async (email: string, role: string) => {
+    const isExistUser = await User.findOne({ email, role });
     if (!isExistUser) {
       throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
     }

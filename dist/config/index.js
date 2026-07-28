@@ -33,4 +33,14 @@ exports.default = {
         email: process.env.SUPER_ADMIN_EMAIL,
         password: process.env.SUPER_ADMIN_PASSWORD,
     },
+    zoom: {
+        accountId: process.env.ZOOM_ACCOUNT_ID,
+        clientId: process.env.ZOOM_CLIENT_ID,
+        clientSecret: process.env.ZOOM_CLIENT_SECRET,
+    },
+    ai: {
+        baseUrl: process.env.AI_PROVIDER_BASE_URL || 'https://api.openai.com/v1',
+        apiKey: process.env.AI_API_KEY,
+        modelName: process.env.AI_MODEL_NAME || 'gpt-3.5-turbo',
+    },
 };

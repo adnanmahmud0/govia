@@ -6,6 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const auth_route_1 = require("../app/modules/auth/auth.route");
 const user_route_1 = require("../app/modules/user/user.route");
+const meeting_route_1 = require("../app/modules/meeting/meeting.route");
+const heroHighlight_route_1 = require("../app/modules/heroHighlight/heroHighlight.route");
+const aiAssistant_route_1 = require("../app/modules/aiAssistant/aiAssistant.route");
+const communityResource_route_1 = require("../app/modules/communityResource/communityResource.route");
 const router = express_1.default.Router();
 const apiRoutes = [
     {
@@ -15,6 +19,22 @@ const apiRoutes = [
     {
         path: '/auth',
         route: auth_route_1.AuthRoutes,
+    },
+    {
+        path: '/meeting',
+        route: meeting_route_1.MeetingRoutes,
+    },
+    {
+        path: '/heroHighlight',
+        route: heroHighlight_route_1.HeroHighlightRoutes,
+    },
+    {
+        path: '/aiAssistant',
+        route: aiAssistant_route_1.AiAssistantRoutes,
+    },
+    {
+        path: '/communityResource',
+        route: communityResource_route_1.CommunityResourceRoutes,
     },
 ];
 apiRoutes.forEach(route => router.use(route.path, route.route));

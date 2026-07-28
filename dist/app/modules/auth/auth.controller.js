@@ -75,8 +75,8 @@ const refreshToken = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
     });
 }));
 const forgetPassword = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const email = req.body.email;
-    const result = yield auth_service_1.AuthService.forgetPasswordToDB(email);
+    const { email, role } = req.body;
+    const result = yield auth_service_1.AuthService.forgetPasswordToDB(email, role);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
@@ -106,8 +106,8 @@ const changePassword = (0, catchAsync_1.default)((req, res) => __awaiter(void 0,
     });
 }));
 const resendVerifyEmail = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const email = req.body.email;
-    yield auth_service_1.AuthService.resendVerifyEmailToDB(email);
+    const { email, role } = req.body;
+    yield auth_service_1.AuthService.resendVerifyEmailToDB(email, role);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,

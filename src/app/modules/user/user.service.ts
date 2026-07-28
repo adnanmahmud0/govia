@@ -12,8 +12,8 @@ import { debug } from '../../../shared/debug';
 import QueryBuilder from '../../builder/QueryBuilder';
 
 const createUserToDB = async (payload: Partial<IUser>): Promise<IUser> => {
-  //set role
-  payload.role = USER_ROLES.USER;
+  //set role if not provided
+  if (!payload.role) payload.role = USER_ROLES.USER;
   const createUser = await User.create(payload);
   if (!createUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Failed to create user');
@@ -81,11 +81,7 @@ const updateProfileToDB = async (
   return updateDoc;
 };
 
-export const UserService = {
-  createUserToDB,
-  getUserProfileFromDB,
-  updateProfileToDB,
-};
+
 
 const createUserByAdminToDB = async (payload: Partial<IUser>): Promise<IUser> => {
   payload.verified = true; // Admin created users are instantly verified
@@ -105,7 +101,7 @@ const getAllUsersFromDB = async (query: Record<string, unknown>) => {
     .fields();
 
   const result = await userQuery.modelQuery;
-  const meta = await userQuery.countTotal();
+  const meta = await userQuery.getPaginationInfo();
 
   return {
     meta,

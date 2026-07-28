@@ -20,7 +20,6 @@ const userSchema = new Schema<IUser, UserModal>(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
     },
     password: {
@@ -83,6 +82,8 @@ const userSchema = new Schema<IUser, UserModal>(
   { timestamps: true }
 );
 
+userSchema.index({ email: 1, role: 1 }, { unique: true });
+
 //exist user check
 userSchema.statics.isExistUserById = async (id: string) => {
   const isExist = await User.findById(id);
@@ -91,6 +92,11 @@ userSchema.statics.isExistUserById = async (id: string) => {
 
 userSchema.statics.isExistUserByEmail = async (email: string) => {
   const isExist = await User.findOne({ email });
+  return isExist;
+};
+
+userSchema.statics.isExistUserByEmailAndRole = async (email: string, role: string) => {
+  const isExist = await User.findOne({ email, role });
   return isExist;
 };
 
@@ -105,9 +111,9 @@ userSchema.statics.isMatchPassword = async (
 //check user
 userSchema.pre('save', async function (next) {
   //check user
-  const isExist = await User.findOne({ email: this.email });
+  const isExist = await User.findOne({ email: this.email, role: this.role });
   if (isExist) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already exist!');
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and Role combination already exists!');
   }
 
   //password hash
