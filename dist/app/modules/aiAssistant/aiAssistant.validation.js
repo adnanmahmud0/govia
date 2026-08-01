@@ -4,6 +4,7 @@ exports.AiAssistantValidation = void 0;
 const zod_1 = require("zod");
 const generateResponseZodSchema = zod_1.z.object({
     body: zod_1.z.object({
+        chatId: zod_1.z.string().optional(),
         prompt: zod_1.z.string({
             required_error: 'Prompt is required',
         }),

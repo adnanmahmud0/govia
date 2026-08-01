@@ -10,6 +10,7 @@ const meeting_route_1 = require("../app/modules/meeting/meeting.route");
 const heroHighlight_route_1 = require("../app/modules/heroHighlight/heroHighlight.route");
 const aiAssistant_route_1 = require("../app/modules/aiAssistant/aiAssistant.route");
 const communityResource_route_1 = require("../app/modules/communityResource/communityResource.route");
+const goviaRecording_route_1 = require("../app/modules/goviaRecording/goviaRecording.route");
 const router = express_1.default.Router();
 const apiRoutes = [
     {
@@ -35,6 +36,10 @@ const apiRoutes = [
     {
         path: '/communityResource',
         route: communityResource_route_1.CommunityResourceRoutes,
+    },
+    {
+        path: '/goviaRecording',
+        route: goviaRecording_route_1.GoviaRecordingRoutes,
     },
 ];
 apiRoutes.forEach(route => router.use(route.path, route.route));

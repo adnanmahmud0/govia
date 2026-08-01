@@ -16,6 +16,8 @@ exports.MeetingService = void 0;
 const config_1 = __importDefault(require("../../../config"));
 const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const http_status_codes_1 = require("http-status-codes");
+const meeting_model_1 = require("./meeting.model");
+const mongoose_1 = require("mongoose");
 const getZoomAccessToken = () => __awaiter(void 0, void 0, void 0, function* () {
     const { accountId, clientId, clientSecret } = config_1.default.zoom;
     if (!accountId || !clientId || !clientSecret) {
@@ -46,7 +48,7 @@ const getZoomAccessToken = () => __awaiter(void 0, void 0, void 0, function* () 
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, 'Error communicating with Zoom API');
     }
 });
-const createZoomMeeting = (topic) => __awaiter(void 0, void 0, void 0, function* () {
+const createZoomMeeting = (userId, topic) => __awaiter(void 0, void 0, void 0, function* () {
     const accessToken = yield getZoomAccessToken();
     const meetingUrl = 'https://api.zoom.us/v2/users/me/meetings';
     try {
@@ -64,29 +66,101 @@ const createZoomMeeting = (topic) => __awaiter(void 0, void 0, void 0, function*
                     participant_video: true,
                     join_before_host: false,
                     mute_upon_entry: true,
+                    auto_recording: 'cloud',
                 }
             })
         });
         if (!response.ok) {
             const errorData = yield response.text();
-            console.error('Zoom meeting error:', errorData);
             throw new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, `Failed to create Zoom meeting: ${errorData}`);
         }
         const data = yield response.json();
+        // Save to DB
+        const newMeeting = yield meeting_model_1.Meeting.create({
+            userId: new mongoose_1.Types.ObjectId(userId),
+            zoomMeetingId: data.id.toString(),
+            topic,
+            joinUrl: data.join_url,
+            startUrl: data.start_url,
+            password: data.password,
+        });
         return {
+            meetingId: newMeeting._id,
+            zoom_meeting_id: data.id,
             join_url: data.join_url,
             start_url: data.start_url,
-            meeting_id: data.id,
             password: data.password
         };
     }
     catch (error) {
-        console.error('Catch error in createZoomMeeting:', error);
         if (error instanceof ApiError_1.default)
             throw error;
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, 'Error creating Zoom meeting');
     }
 });
+const getActiveMeetings = () => __awaiter(void 0, void 0, void 0, function* () {
+    const activeMeetings = yield meeting_model_1.Meeting.find({ status: 'ACTIVE' }).populate('userId', 'name email');
+    return activeMeetings;
+});
+const joinMeeting = (meetingId, attorneyId) => __awaiter(void 0, void 0, void 0, function* () {
+    const meeting = yield meeting_model_1.Meeting.findById(meetingId);
+    if (!meeting) {
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Meeting not found');
+    }
+    // Avoid duplicates
+    const objAttorneyId = new mongoose_1.Types.ObjectId(attorneyId);
+    if (!meeting.joinedAttorneys.includes(objAttorneyId)) {
+        meeting.joinedAttorneys.push(objAttorneyId);
+        yield meeting.save();
+    }
+    return { joinUrl: meeting.joinUrl };
+});
+const getMeetingRecordings = (zoomMeetingId) => __awaiter(void 0, void 0, void 0, function* () {
+    const accessToken = yield getZoomAccessToken();
+    const url = `https://api.zoom.us/v2/meetings/${zoomMeetingId}/recordings`;
+    try {
+        const response = yield fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            }
+        });
+        if (!response.ok) {
+            const errorData = yield response.text();
+            throw new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, `Failed to fetch Zoom meeting recordings: ${errorData}`);
+        }
+        const data = yield response.json();
+        return data;
+    }
+    catch (error) {
+        if (error instanceof ApiError_1.default)
+            throw error;
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, 'Error fetching Zoom meeting recordings');
+    }
+});
+const getAttorneyRecordings = (attorneyId) => __awaiter(void 0, void 0, void 0, function* () {
+    // Find all meetings this attorney joined
+    const meetings = yield meeting_model_1.Meeting.find({ joinedAttorneys: new mongoose_1.Types.ObjectId(attorneyId) });
+    const results = [];
+    for (const m of meetings) {
+        try {
+            const recordings = yield getMeetingRecordings(m.zoomMeetingId);
+            results.push({
+                meeting: m,
+                recordings
+            });
+        }
+        catch (e) {
+            // Continue even if one fails
+            results.push({ meeting: m, recordings: null, error: 'Failed to fetch recordings' });
+        }
+    }
+    return results;
+});
 exports.MeetingService = {
     createZoomMeeting,
+    getMeetingRecordings,
+    getActiveMeetings,
+    joinMeeting,
+    getAttorneyRecordings,
 };

@@ -18,8 +18,10 @@ const catchAsync_1 = __importDefault(require("../../../shared/catchAsync"));
 const sendResponse_1 = __importDefault(require("../../../shared/sendResponse"));
 const aiAssistant_service_1 = require("./aiAssistant.service");
 const generateResponse = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { prompt, history } = req.body;
-    const result = yield aiAssistant_service_1.AiAssistantService.generateResponse(prompt, history);
+    var _a;
+    const { prompt, history, chatId } = req.body;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Assuming auth middleware sets req.user
+    const result = yield aiAssistant_service_1.AiAssistantService.generateResponse(userId, prompt, chatId, history);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
@@ -27,6 +29,31 @@ const generateResponse = (0, catchAsync_1.default)((req, res) => __awaiter(void 
         data: result,
     });
 }));
+const getChatList = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const result = yield aiAssistant_service_1.AiAssistantService.getChatList(userId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Chat list retrieved successfully',
+        data: result,
+    });
+}));
+const getChatHistory = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const { id } = req.params;
+    const result = yield aiAssistant_service_1.AiAssistantService.getChatHistory(userId, id);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Chat history retrieved successfully',
+        data: result,
+    });
+}));
 exports.AiAssistantController = {
     generateResponse,
+    getChatList,
+    getChatHistory,
 };

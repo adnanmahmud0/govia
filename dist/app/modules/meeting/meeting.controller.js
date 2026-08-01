@@ -18,7 +18,9 @@ const catchAsync_1 = __importDefault(require("../../../shared/catchAsync"));
 const sendResponse_1 = __importDefault(require("../../../shared/sendResponse"));
 const meeting_service_1 = require("./meeting.service");
 const startGovia = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield meeting_service_1.MeetingService.createZoomMeeting('Govia Consultation');
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const result = yield meeting_service_1.MeetingService.createZoomMeeting(userId, 'Govia Consultation');
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
@@ -27,7 +29,9 @@ const startGovia = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
     });
 }));
 const emergencyCall = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield meeting_service_1.MeetingService.createZoomMeeting('Emergency Protocol - I feel unsafe');
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const result = yield meeting_service_1.MeetingService.createZoomMeeting(userId, 'Emergency Protocol - I feel unsafe');
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
@@ -35,7 +39,53 @@ const emergencyCall = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
         data: result,
     });
 }));
+const getRecordings = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { meetingId } = req.params;
+    const result = yield meeting_service_1.MeetingService.getMeetingRecordings(meetingId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Meeting recordings retrieved successfully',
+        data: result,
+    });
+}));
+const getActiveMeetings = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield meeting_service_1.MeetingService.getActiveMeetings();
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Active meetings retrieved successfully',
+        data: result,
+    });
+}));
+const joinMeeting = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const attorneyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const { meetingId } = req.params;
+    const result = yield meeting_service_1.MeetingService.joinMeeting(meetingId, attorneyId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Joined meeting successfully',
+        data: result,
+    });
+}));
+const getAttorneyRecordings = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const attorneyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const result = yield meeting_service_1.MeetingService.getAttorneyRecordings(attorneyId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Attorney recordings retrieved successfully',
+        data: result,
+    });
+}));
 exports.MeetingController = {
     startGovia,
     emergencyCall,
+    getRecordings,
+    getActiveMeetings,
+    joinMeeting,
+    getAttorneyRecordings,
 };

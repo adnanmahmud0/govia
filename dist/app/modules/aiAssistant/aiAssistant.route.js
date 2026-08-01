@@ -11,6 +11,10 @@ const aiAssistant_validation_1 = require("./aiAssistant.validation");
 const auth_1 = __importDefault(require("../../middlewares/auth"));
 const user_1 = require("../../../enums/user");
 const router = express_1.default.Router();
-router.post('/', (0, auth_1.default)(user_1.USER_ROLES.USER, user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), // Protect route based on your needs
-(0, validateRequest_1.default)(aiAssistant_validation_1.AiAssistantValidation.generateResponseZodSchema), aiAssistant_controller_1.AiAssistantController.generateResponse);
+// Generate a response and create/continue a chat
+router.post('/', (0, auth_1.default)(user_1.USER_ROLES.USER, user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), (0, validateRequest_1.default)(aiAssistant_validation_1.AiAssistantValidation.generateResponseZodSchema), aiAssistant_controller_1.AiAssistantController.generateResponse);
+// Get the user's chat list
+router.get('/chats', (0, auth_1.default)(user_1.USER_ROLES.USER, user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), aiAssistant_controller_1.AiAssistantController.getChatList);
+// Get a specific chat's history
+router.get('/chats/:id', (0, auth_1.default)(user_1.USER_ROLES.USER, user_1.USER_ROLES.ADMIN, user_1.USER_ROLES.SUPER_ADMIN), aiAssistant_controller_1.AiAssistantController.getChatHistory);
 exports.AiAssistantRoutes = router;
