@@ -1,0 +1,3498 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Govia API Docs",
+    "version": "1.0.0",
+    "description": "Comprehensive REST API & Real-Time Socket documentation for the Govia platform."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "API Version 1 Base Path"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT Bearer token in the format: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "LoginResponseData": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsIn..."
+          },
+          "refreshToken": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsIn..."
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "User logged in successfully"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number",
+                "example": 1
+              },
+              "limit": {
+                "type": "number",
+                "example": 10
+              },
+              "totalPage": {
+                "type": "number",
+                "example": 1
+              },
+              "total": {
+                "type": "number",
+                "example": 1
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "totalPage",
+              "total"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/LoginResponseData"
+          }
+        },
+        "required": [
+          "success",
+          "statusCode",
+          "data"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ],
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Error message description"
+          },
+          "errorMessages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "example": "email"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Email is required"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ]
+            },
+            "example": [
+              {
+                "path": "email",
+                "message": "Email is required"
+              }
+            ]
+          },
+          "stack": {
+            "type": "string",
+            "example": "Error: ...\n    at ..."
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "errorMessages"
+        ]
+      },
+      "UserResponseData": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "65ab1234567890abcdef1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Citizen"
+          },
+          "email": {
+            "type": "string",
+            "example": "john@example.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "CITIZEN"
+          },
+          "image": {
+            "type": "string",
+            "example": "https://..."
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "+1234567890"
+          },
+          "status": {
+            "type": "string",
+            "example": "active"
+          },
+          "isVerified": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "email",
+          "role"
+        ]
+      },
+      "MeetingResponseData": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "65ab1234567890abcdef1234"
+          },
+          "topic": {
+            "type": "string",
+            "example": "Case Planning & Consultation"
+          },
+          "meetingType": {
+            "type": "string",
+            "enum": [
+              "INSTANT",
+              "SCHEDULED",
+              "EMERGENCY"
+            ],
+            "example": "SCHEDULED"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ],
+            "example": "SCHEDULED"
+          },
+          "joinUrl": {
+            "type": "string",
+            "example": "https://zoom.us/j/123456789?pwd=..."
+          },
+          "startUrl": {
+            "type": "string",
+            "example": "https://zoom.us/s/123456789?..."
+          },
+          "recordingUrl": {
+            "type": "string",
+            "example": "https://zoom.us/rec/share/..."
+          },
+          "recordings": {
+            "type": "array",
+            "items": {
+              "nullable": true
+            }
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "endedAt": {
+            "type": "string"
+          },
+          "userId": {
+            "nullable": true
+          },
+          "participantId": {
+            "nullable": true
+          }
+        },
+        "required": [
+          "_id",
+          "topic",
+          "meetingType",
+          "status",
+          "joinUrl",
+          "startUrl"
+        ]
+      },
+      "MessageResponseData": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "65fe1234567890abcdef1234"
+          },
+          "conversationId": {
+            "type": "string",
+            "example": "651234567890abcdef123456"
+          },
+          "sender": {
+            "nullable": true
+          },
+          "receiver": {
+            "nullable": true
+          },
+          "text": {
+            "type": "string"
+          },
+          "messageType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "file",
+              "meeting"
+            ],
+            "example": "text"
+          },
+          "meetingId": {
+            "nullable": true
+          },
+          "attachment": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "conversationId",
+          "messageType",
+          "read",
+          "createdAt"
+        ]
+      },
+      "CommunityResource": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "65ab1234567890abcdef1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "Legal Aid Society"
+          },
+          "category": {
+            "type": "string",
+            "example": "Legal Support"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1-800-555-0199"
+          },
+          "email": {
+            "type": "string",
+            "example": "info@legalaid.org"
+          },
+          "address": {
+            "type": "string",
+            "example": "123 Justice Way, NY"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://legalaid.org"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "category"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "User Login",
+        "description": "Authenticates a user with email, role, and password, returning JWT access and refresh tokens.",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "role",
+                  "password"
+                ],
+                "description": "User login payload with role",
+                "example": {
+                  "email": "user@example.com",
+                  "role": "CITIZEN",
+                  "password": "Password123!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "summary": "Verify Email with OTP",
+        "description": "Verifies email address using the one-time code sent to the user.",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "oneTimeCode": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "email",
+                  "role",
+                  "oneTimeCode"
+                ],
+                "description": "Email OTP verification payload",
+                "example": {
+                  "email": "user@example.com",
+                  "role": "CITIZEN",
+                  "oneTimeCode": 123456
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Email verified successfully"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired OTP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forget-password": {
+      "post": {
+        "summary": "Request Password Reset OTP",
+        "description": "Sends a password recovery verification OTP to the user email.",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "role"
+                ],
+                "description": "Request password reset OTP",
+                "example": {
+                  "email": "user@example.com",
+                  "role": "CITIZEN"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Please check your email. OTP has been sent."
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Reset Password",
+        "description": "Resets user password using the token provided in the Authorization header.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newPassword": {
+                    "type": "string"
+                  },
+                  "confirmPassword": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "newPassword",
+                  "confirmPassword"
+                ],
+                "description": "Reset password payload using reset token in header",
+                "example": {
+                  "newPassword": "NewPassword123!",
+                  "confirmPassword": "NewPassword123!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Password reset successfully"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "summary": "Change Password",
+        "description": "Changes password for the currently authenticated user.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  },
+                  "confirmPassword": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "newPassword",
+                  "confirmPassword"
+                ],
+                "description": "Change password payload for authenticated user",
+                "example": {
+                  "currentPassword": "OldPassword123!",
+                  "newPassword": "NewPassword123!",
+                  "confirmPassword": "NewPassword123!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Password changed successfully"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh Access Token",
+        "description": "Uses refresh token to generate a fresh JWT access token.",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Access token refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/LoginResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/register": {
+      "post": {
+        "summary": "Register User",
+        "description": "Registers a new user account with role-specific details.",
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  },
+                  "subRole": {
+                    "type": "string"
+                  },
+                  "phoneNumber": {
+                    "type": "string"
+                  },
+                  "languagesSpoken": {
+                    "type": "string"
+                  },
+                  "preferredAttorney": {
+                    "type": "string"
+                  },
+                  "preferredBailBondsman": {
+                    "type": "string"
+                  },
+                  "licensedStatesToPractice": {
+                    "type": "string"
+                  },
+                  "barAssociationNumber": {
+                    "type": "string"
+                  },
+                  "lawFirmName": {
+                    "type": "string"
+                  },
+                  "officeName": {
+                    "type": "string"
+                  },
+                  "datePassedTheBar": {
+                    "type": "string"
+                  },
+                  "medicalLicenseNumber": {
+                    "type": "string"
+                  },
+                  "specialization": {
+                    "type": "string"
+                  },
+                  "companyName": {
+                    "type": "string"
+                  },
+                  "businessAddress": {
+                    "type": "string"
+                  },
+                  "badgeNumber": {
+                    "type": "string"
+                  },
+                  "assignedNumber": {
+                    "type": "string"
+                  },
+                  "departmentOrPrecinct": {
+                    "type": "string"
+                  },
+                  "didCarNumberChange": {
+                    "type": "string"
+                  },
+                  "newCarNumber": {
+                    "type": "string"
+                  },
+                  "licenseNumber": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "role",
+                  "email",
+                  "password"
+                ],
+                "description": "User registration payload",
+                "example": {
+                  "name": "John Citizen",
+                  "email": "john@example.com",
+                  "role": "CITIZEN",
+                  "password": "Password123!",
+                  "phoneNumber": "+1234567890"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registered successfully. OTP sent to email.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "User created successfully"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request or email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/profile": {
+      "get": {
+        "summary": "Get User Profile",
+        "description": "Retrieves current authenticated user profile details.",
+        "tags": [
+          "User"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/UserResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update User Profile",
+        "description": "Updates profile information and avatar image of the current user.",
+        "tags": [
+          "User"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/UserResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user": {
+      "get": {
+        "summary": "Get All Users (Admin)",
+        "description": "Admin endpoint to list all users with role filtering and pagination.",
+        "tags": [
+          "User"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/UserResponseData"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meeting/schedule": {
+      "post": {
+        "summary": "Schedule a Future Meeting",
+        "description": "Schedules a future Zoom meeting. Open to ALL roles. If conversationId is provided, it syncs with chat.",
+        "tags": [
+          "Meeting"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "participantId": {
+                    "type": "string"
+                  },
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "startTime": {
+                    "type": "string"
+                  },
+                  "durationMinutes": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 1440
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "agenda": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "topic",
+                  "startTime"
+                ],
+                "description": "Schedule a Zoom meeting payload",
+                "example": {
+                  "participantId": "64bcde1234567890abcdef12",
+                  "conversationId": "651234567890abcdef123456",
+                  "topic": "Case Planning & Consultation",
+                  "startTime": "2026-09-15T14:00:00.000Z",
+                  "durationMinutes": 45,
+                  "timezone": "America/New_York",
+                  "agenda": "Case discovery and next steps"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Meeting scheduled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MeetingResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Get Scheduled & Past Meetings (Schedule Page)",
+        "description": "Returns meetings where the user is host, invitee, or joined attorney with timeFilter and status filters.",
+        "tags": [
+          "Meeting"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "timeFilter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "past"
+              ]
+            },
+            "description": "Filter upcoming or past meetings"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHEDULED",
+                "ACTIVE",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meetings retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/MeetingResponseData"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meeting/start-govia": {
+      "post": {
+        "summary": "Start Instant Consultation Meeting",
+        "description": "Instantly creates an active Zoom consultation meeting. Open to all roles.",
+        "tags": [
+          "Meeting"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string"
+                  },
+                  "participantId": {
+                    "type": "string"
+                  },
+                  "conversationId": {
+                    "type": "string"
+                  }
+                },
+                "description": "Start instant Zoom consultation meeting payload",
+                "example": {
+                  "topic": "Immediate Govia Consultation",
+                  "participantId": "64bcde1234567890abcdef12",
+                  "conversationId": "651234567890abcdef123456"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Instant meeting created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MeetingResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meeting/emergency-call": {
+      "post": {
+        "summary": "Emergency Protocol Call (\"I Feel Unsafe\")",
+        "description": "Triggered by Citizens during an encounter to instantly start an emergency call and notify attorneys.",
+        "tags": [
+          "Meeting"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Emergency meeting created and broadcasted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MeetingResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meeting/{id}/end": {
+      "patch": {
+        "summary": "End Meeting & Attach Recordings",
+        "description": "Ends active meeting, sets status to COMPLETED, fetches Zoom cloud recordings, and replaces \"Join Now\" with recording playback.",
+        "tags": [
+          "Meeting"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meeting ended and recordings attached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MeetingResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meeting/{id}/sync-recording": {
+      "patch": {
+        "summary": "Refresh / Sync Cloud Recordings",
+        "description": "Synchronizes Zoom cloud recordings to MongoDB if processing finished after call conclusion.",
+        "tags": [
+          "Meeting"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recordings synchronized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MeetingResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message": {
+      "post": {
+        "summary": "Send Message",
+        "description": "Sends a text message or file attachment to a conversation.",
+        "tags": [
+          "Message"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "messageType": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "image",
+                      "file",
+                      "meeting"
+                    ]
+                  },
+                  "meetingId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "conversationId"
+                ],
+                "description": "Send chat message payload",
+                "example": {
+                  "conversationId": "651234567890abcdef123456",
+                  "text": "Hello, I have a question about my consultation.",
+                  "messageType": "text"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MessageResponseData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message/meeting": {
+      "post": {
+        "summary": "Create Meeting In Chat (\"Now\" or \"Later\")",
+        "description": "Creates an instant or scheduled Zoom meeting directly within a conversation, generating a chat card and syncing to Schedule Page.",
+        "tags": [
+          "Message"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "meetingType": {
+                    "type": "string",
+                    "enum": [
+                      "INSTANT",
+                      "SCHEDULED"
+                    ]
+                  },
+                  "startTime": {
+                    "type": "string"
+                  },
+                  "durationMinutes": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 1440
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "agenda": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "conversationId",
+                  "topic",
+                  "meetingType"
+                ],
+                "description": "Create instant or scheduled meeting from inside chat thread",
+                "example": {
+                  "conversationId": "651234567890abcdef123456",
+                  "topic": "Case Discussion",
+                  "meetingType": "SCHEDULED",
+                  "startTime": "2026-09-15T15:00:00.000Z",
+                  "durationMinutes": 30
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Meeting created and posted to chat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message/search-users": {
+      "get": {
+        "summary": "Search Users Across All Roles",
+        "description": "Searches users by name, role, email with precomputed direct conversation IDs for 1-click messaging.",
+        "tags": [
+          "Message"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchTerm",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved for messaging",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message/open-chat": {
+      "post": {
+        "summary": "Open or Create Chat Thread",
+        "description": "Click-action on search result to retrieve existing conversation or create new thread atomically.",
+        "tags": [
+          "Message"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "participantId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "participantId"
+                ],
+                "description": "Click-to-chat payload with target user ID",
+                "example": {
+                  "participantId": "64bcde1234567890abcdef12"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation retrieved or created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message/{conversationId}": {
+      "get": {
+        "summary": "Get Messages by Conversation",
+        "description": "Retrieves chronological chat history with populated meeting status and attachments.",
+        "tags": [
+          "Message"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/MessageResponseData"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message/read/{conversationId}": {
+      "patch": {
+        "summary": "Mark Messages as Read",
+        "description": "Marks unread messages in the thread as read and emits real-time read receipt.",
+        "tags": [
+          "Message"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages marked as read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversation": {
+      "get": {
+        "summary": "Get User Conversations",
+        "description": "Retrieves all conversations for the authenticated user with unread counts and last messages.",
+        "tags": [
+          "Conversation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversations retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversation/{id}": {
+      "get": {
+        "summary": "Get Single Conversation Details",
+        "description": "Retrieves conversation metadata and participant details.",
+        "tags": [
+          "Conversation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communityResource": {
+      "get": {
+        "summary": "Get All Community Resources",
+        "description": "Lists community resources with optional category filtering and search.",
+        "tags": [
+          "CommunityResource"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "searchTerm",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resources retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CommunityResource"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/communityResource/{id}": {
+      "get": {
+        "summary": "Get Single Community Resource",
+        "description": "Retrieves complete details of a specific community resource.",
+        "tags": [
+          "CommunityResource"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource details retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CommunityResource"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aiAssistant": {
+      "post": {
+        "summary": "Chat with AI Assistant",
+        "description": "Sends a prompt to Govia AI Assistant for legal guidance, encounter rights, and crisis assistance.",
+        "tags": [
+          "AiAssistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "example": "What are my rights during a traffic stop?"
+                  },
+                  "chatId": {
+                    "type": "string",
+                    "example": "65ab1234567890abcdef1234"
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aiAssistant/chats": {
+      "get": {
+        "summary": "Get AI Chat List",
+        "description": "Retrieves all previous conversation threads with the AI Assistant.",
+        "tags": [
+          "AiAssistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chats retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aiAssistant/chats/{id}": {
+      "get": {
+        "summary": "Get Chat History",
+        "description": "Retrieves full message history of a specific AI chat thread.",
+        "tags": [
+          "AiAssistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat history retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "statusCode"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/heroHighlight": {
+      "get": {
+        "summary": "Get Hero Highlights",
+        "description": "Retrieves all hero highlights and testimonials.",
+        "tags": [
+          "HeroHighlight"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hero highlights retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goviaRecording": {
+      "get": {
+        "summary": "Get Govia Recordings",
+        "description": "Retrieves user recordings and encounter evidence files.",
+        "tags": [
+          "GoviaRecording"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recordings retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ],
+                          "example": true
+                        },
+                        "statusCode": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Operation successful"
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "limit": {
+                              "type": "number",
+                              "example": 10
+                            },
+                            "totalPage": {
+                              "type": "number",
+                              "example": 1
+                            },
+                            "total": {
+                              "type": "number",
+                              "example": 1
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "limit",
+                            "totalPage",
+                            "total"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,7 +7,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000/api/v1",
+      "value": "http://localhost:1000/api/v1",
       "type": "string"
     },
     {
@@ -949,6 +949,241 @@
               "path": [
                 "meeting",
                 "emergency-call"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Schedule Meeting",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": \"TARGET_USER_ID\",\n  \"topic\": \"Scheduled Legal Consultation\",\n  \"startTime\": \"2026-09-10T14:00:00Z\",\n  \"durationMinutes\": 30,\n  \"timezone\": \"America/New_York\",\n  \"agenda\": \"Case evaluation and consultation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meeting/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meeting",
+                "schedule"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Meetings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/meeting/my-meetings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meeting",
+                "my-meetings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Meeting",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/meeting/:id/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meeting",
+                ":id",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "MEETING_ID"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversation & Messaging",
+      "item": [
+        {
+          "name": "Create or Get Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": \"TARGET_USER_ID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/conversation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Conversations (Inbox)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"CONVERSATION_ID\",\n  \"text\": \"Hello from Govia!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/message",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "message"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Messages for Conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/message/:conversationId?page=1&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "message",
+                ":conversationId"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "CONVERSATION_ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Messages as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/message/read/:conversationId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "message",
+                "read",
+                ":conversationId"
+              ],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "CONVERSATION_ID"
+                }
               ]
             }
           }
