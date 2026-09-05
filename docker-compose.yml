@@ -10,9 +10,9 @@ services:
   # ----------------------------------------------------------------------------
   # 1. MongoDB Service
   # ----------------------------------------------------------------------------
-  mongo:
-    image: mongo:7.0-alpine
-    container_name: govia-local-mongo
+  adnan-govia-mongo:
+    image: mongo:7.0
+    container_name: adnan-govia-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"

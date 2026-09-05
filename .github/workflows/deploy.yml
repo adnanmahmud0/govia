@@ -139,7 +139,7 @@ jobs:
 
           services:
             adnan-govia-mongo:
-              image: mongo:7.0-alpine
+              image: mongo:7.0
               container_name: adnan-govia-mongo
               restart: always
               environment:
@@ -273,6 +273,9 @@ jobs:
               ufw allow 8777/tcp || true
               ufw reload || true
             fi
+
+            echo '📥 Pre-pulling official MongoDB 7.0...'
+            docker pull mongo:7.0
 
             echo '📥 Pulling images from GitHub Container Registry...'
             docker compose -f docker-compose.prod.yml pull

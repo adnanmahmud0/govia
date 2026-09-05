@@ -14,7 +14,7 @@ services:
   # 1. MongoDB Service (Private & Isolated)
   # ----------------------------------------------------------------------------
   adnan-govia-mongo:
-    image: mongo:7.0-alpine
+    image: mongo:7.0
     container_name: adnan-govia-mongo
     restart: always
     environment:
