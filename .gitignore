@@ -31,11 +31,13 @@ yarn-error.log*
 uploads
 apps/api/uploads
 
-# Reference starter kit
-/fullstack-turborepo-starter-kit
-
-# Legacy standalone folder
-/Govia-admin-dashboard
-
-# Separate Flutter Mobile App repository
-/gsabino365
+# Excluded projects (Never commit or push to GitHub)
+fullstack-turborepo-starter-kit
+fullstack-turborepo-starter-kit/
+fullstack-turborepo-starter-kit/**
+Govia-admin-dashboard
+Govia-admin-dashboard/
+Govia-admin-dashboard/**
+gsabino365
+gsabino365/
+gsabino365/**

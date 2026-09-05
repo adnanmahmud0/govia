@@ -36,6 +36,7 @@ services:
   # 2. Express.js API & Real-Time Socket.IO Server
   # ----------------------------------------------------------------------------
   adnan-govia-api:
+    image: ghcr.io/adnanmahmud0/govia-api:latest
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -87,6 +88,7 @@ services:
   # 3. Next.js Admin Dashboard
   # ----------------------------------------------------------------------------
   adnan-govia-admin:
+    image: ghcr.io/adnanmahmud0/govia-admin:latest
     build:
       context: .
       dockerfile: apps/admin/Dockerfile

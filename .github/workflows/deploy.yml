@@ -1,147 +1,244 @@
-name: Govia Production Deployment (Direct Push)
+name: Build Docker Images & Deploy to Server
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
   group: production-deployment
   cancel-in-progress: false
 
-jobs:
-  check-secrets:
-    name: Check Deployment Secrets
-    runs-on: ubuntu-latest
-    outputs:
-      configured: ${{ steps.check.outputs.configured }}
-    steps:
-      - id: check
-        run: |
-          if [ -n "${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST }}" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "✅ Server connection secrets are configured."
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "⚠️ Deployment skipped: SERVER_HOST secret is not configured in GitHub repository settings."
-          fi
+permissions:
+  contents: read
+  packages: write
 
-  deploy:
-    name: Direct Push & Deploy to VPS
-    needs: check-secrets
-    if: needs.check-secrets.outputs.configured == 'true'
+jobs:
+  # ============================================================================
+  # Stage 1: Build Docker Images in GitHub and Push to GitHub Container Registry
+  # ============================================================================
+  build-and-push:
+    name: Build & Push Docker Images
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Directly copy repository files to /adnan/govia on the server
-      - name: Push Code Directly to Server via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST }}
-          username: ${{ secrets.SERVER_USER || secrets.VPS_SSH_USER }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.VPS_SSH_PASSWORD }}
-          key: ${{ secrets.SERVER_KEY || secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.SERVER_SSH_PORT || secrets.VPS_SSH_PORT || 22 }}
-          target: ${{ secrets.VPS_DEPLOY_PATH || '/adnan/govia' }}
-          source: 'apps,packages,scripts,package.json,package-lock.json,turbo.json,docker-compose.prod.yml,docker-compose.yml,.dockerignore,.env.example'
-          overwrite: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      # 2. Configure .env and trigger Docker build & restart on the server
-      - name: Execute Deployment on Remote Server
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/govia-api:latest
+            ghcr.io/${{ github.repository_owner }}/govia-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Admin Dashboard image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_HOST }}:9777/api/v1
+            NEXT_PUBLIC_SOCKET_URL=http://${{ secrets.SERVER_HOST }}:9777
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/govia-admin:latest
+            ghcr.io/${{ github.repository_owner }}/govia-admin:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # Stage 2: Deploy to Remote Server via SSH & Launch Stack
+  # ============================================================================
+  deploy:
+    name: Deploy to Server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Execute Automated Server Deployment via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST }}
-          username: ${{ secrets.SERVER_USER || secrets.VPS_SSH_USER }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.VPS_SSH_PASSWORD }}
-          key: ${{ secrets.SERVER_KEY || secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.SERVER_SSH_PORT || secrets.VPS_SSH_PORT || 22 }}
-          script_stop: true
-          envs: DEPLOY_PATH,SERVER_IP,SECRET_MONGO_PASSWORD,SECRET_JWT_SECRET,SECRET_JWT_REFRESH_SECRET,SECRET_SUPER_ADMIN_PASSWORD,SECRET_ZOOM_ACCOUNT_ID,SECRET_ZOOM_CLIENT_ID,SECRET_ZOOM_CLIENT_SECRET,SECRET_AI_API_KEY,SECRET_EMAIL_PASS
-        env:
-          DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/adnan/govia' }}
-          SERVER_IP: ${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST || '172.252.13.197' }}
-          SECRET_MONGO_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-          SECRET_JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          SECRET_JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-          SECRET_SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
-          SECRET_ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
-          SECRET_ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
-          SECRET_ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
-          SECRET_AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          SECRET_EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
-        script: |
-          set -e
-          DEPLOY_DIR="${DEPLOY_PATH/#\~/$HOME}"
-          echo "📁 Working Directory on Server: $DEPLOY_DIR"
-          cd "$DEPLOY_DIR"
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          command_timeout: 15m
+          script: |
+            set -e
+            echo "🚀 Starting Automated Server Deployment on ${{ secrets.SERVER_HOST }}..."
 
-          # 1. Ensure scripts are executable
-          chmod +x scripts/*.sh 2>/dev/null || true
+            # 1. Ensure Docker is installed on the host
+            if ! command -v docker &> /dev/null; then
+              echo "📦 Docker not detected. Installing Docker automatically..."
+              curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+              sh /tmp/get-docker.sh
+            fi
 
-          # 2. Dynamically construct production .env file using repository secrets
-          echo "🔒 Generating production .env file..."
-          cat << EOF > .env
-          NODE_ENV=production
-          PROJECT_NAME=Govia
-          ENABLE_API_DOCS=true
+            # 2. Prepare target deployment folder
+            mkdir -p /adnan/govia
+            cd /adnan/govia
 
-          PORT=5000
-          IP_ADDRESS=0.0.0.0
+            # 3. Log in to GitHub Container Registry on server to pull newly built images
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-          HOST_API_PORT=9777
-          HOST_ADMIN_PORT=8777
+            # 4. Generate production .env from repository secrets
+            echo "🔒 Writing production .env configuration..."
+            cat << 'EOF' > .env
+            NODE_ENV=production
+            PROJECT_NAME=Govia
+            ENABLE_API_DOCS=true
 
-          MONGO_INITDB_ROOT_USERNAME=goviaAdmin
-          MONGO_INITDB_ROOT_PASSWORD=${SECRET_MONGO_PASSWORD:-GoviaMongoSecurePass2026!}
-          MONGO_INITDB_DATABASE=govia-db
+            PORT=5000
+            IP_ADDRESS=0.0.0.0
 
-          DATABASE_URL=mongodb://goviaAdmin:${SECRET_MONGO_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/govia-db?authSource=admin
+            HOST_API_PORT=9777
+            HOST_ADMIN_PORT=8777
 
-          BCRYPT_SALT_ROUNDS=10
-          JWT_SECRET=${SECRET_JWT_SECRET}
-          JWT_EXPIRE_IN=1h
+            MONGO_INITDB_ROOT_USERNAME=goviaAdmin
+            MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+            MONGO_INITDB_DATABASE=govia-db
 
-          JWT_REFRESH_SECRET=${SECRET_JWT_REFRESH_SECRET}
-          JWT_REFRESH_EXPIRE_IN=7d
+            DATABASE_URL=mongodb://goviaAdmin:${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}@adnan-govia-mongo:27017/govia-db?authSource=admin
 
-          SUPER_ADMIN_EMAIL=admin@govia.com
-          SUPER_ADMIN_PASSWORD=${SECRET_SUPER_ADMIN_PASSWORD:-GoviaAdminPass2026!}
+            BCRYPT_SALT_ROUNDS=10
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRE_IN=1h
 
-          ZOOM_ACCOUNT_ID=${SECRET_ZOOM_ACCOUNT_ID}
-          ZOOM_CLIENT_ID=${SECRET_ZOOM_CLIENT_ID}
-          ZOOM_CLIENT_SECRET=${SECRET_ZOOM_CLIENT_SECRET}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            JWT_REFRESH_EXPIRE_IN=7d
 
-          AI_PROVIDER_BASE_URL=https://openrouter.ai/api/v1
-          AI_API_KEY=${SECRET_AI_API_KEY}
-          AI_MODEL_NAME=openrouter/free
+            SUPER_ADMIN_EMAIL=admin@govia.com
+            SUPER_ADMIN_PASSWORD=${{ secrets.SUPER_ADMIN_PASSWORD }}
 
-          EMAIL_FROM=adnan99mahmud@gmail.com
-          EMAIL_USER=adnan99mahmud@gmail.com
-          EMAIL_PORT=587
-          EMAIL_HOST=smtp.gmail.com
-          EMAIL_PASS=${SECRET_EMAIL_PASS}
+            ZOOM_ACCOUNT_ID=${{ secrets.ZOOM_ACCOUNT_ID }}
+            ZOOM_CLIENT_ID=${{ secrets.ZOOM_CLIENT_ID }}
+            ZOOM_CLIENT_SECRET=${{ secrets.ZOOM_CLIENT_SECRET }}
 
-          NEXT_PUBLIC_API_URL=http://${SERVER_IP}:9777/api/v1
-          NEXT_PUBLIC_SOCKET_URL=http://${SERVER_IP}:9777
-          EOF
+            AI_PROVIDER_BASE_URL=https://openrouter.ai/api/v1
+            AI_API_KEY=${{ secrets.AI_API_KEY }}
+            AI_MODEL_NAME=openrouter/free
 
-          chmod 600 .env
-          echo "✅ Production .env written securely"
+            EMAIL_FROM=adnan99mahmud@gmail.com
+            EMAIL_USER=adnan99mahmud@gmail.com
+            EMAIL_PORT=587
+            EMAIL_HOST=smtp.gmail.com
+            EMAIL_PASS=${{ secrets.EMAIL_PASS }}
 
-          # 3. Build & Launch Docker Compose containers
-          echo "🐳 Launching Docker Compose containers..."
-          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_HOST }}:9777/api/v1
+            NEXT_PUBLIC_SOCKET_URL=http://${{ secrets.SERVER_HOST }}:9777
+            EOF
+            chmod 600 .env
 
-          # 4. Wait for initialization
-          sleep 12
+            # 5. Generate production docker-compose.prod.yml
+            echo "🐳 Writing production docker-compose.prod.yml..."
+            cat << 'EOF' > docker-compose.prod.yml
+            name: govia-production
 
-          # 5. Diagnostic Health Check
-          echo "📊 Container Status:"
-          docker compose -f docker-compose.prod.yml ps
+            services:
+              adnan-govia-mongo:
+                image: mongo:7.0-alpine
+                container_name: adnan-govia-mongo
+                restart: always
+                environment:
+                  MONGO_INITDB_ROOT_USERNAME: goviaAdmin
+                  MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+                  MONGO_INITDB_DATABASE: govia-db
+                volumes:
+                  - govia_mongodb_data:/data/db
+                networks:
+                  - govia_network
+                healthcheck:
+                  test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+                  start_period: 15s
 
-          # 6. Clean dangling images
-          docker image prune -f
+              adnan-govia-api:
+                image: ghcr.io/${{ github.repository_owner }}/govia-api:latest
+                container_name: adnan-govia-api
+                restart: always
+                ports:
+                  - "9777:5000"
+                env_file:
+                  - .env
+                volumes:
+                  - govia_uploads:/app/apps/api/uploads
+                  - govia_logs:/app/apps/api/winston
+                depends_on:
+                  adnan-govia-mongo:
+                    condition: service_healthy
+                networks:
+                  - govia_network
+                healthcheck:
+                  test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/', (res) => { if (res.statusCode !== 200) process.exit(1); })"]
+                  interval: 15s
+                  timeout: 5s
+                  retries: 5
+                  start_period: 20s
 
-          echo "🎉 Direct deployment to $DEPLOY_DIR on $SERVER_IP completed successfully!"
+              adnan-govia-admin:
+                image: ghcr.io/${{ github.repository_owner }}/govia-admin:latest
+                container_name: adnan-govia-admin
+                restart: always
+                ports:
+                  - "8777:3000"
+                env_file:
+                  - .env
+                depends_on:
+                  adnan-govia-api:
+                    condition: service_started
+                networks:
+                  - govia_network
+
+            volumes:
+              govia_mongodb_data:
+                name: adnan_govia_mongodb_data
+              govia_uploads:
+                name: adnan_govia_uploads
+              govia_logs:
+                name: adnan_govia_logs
+
+            networks:
+              govia_network:
+                name: adnan_govia_network
+                driver: bridge
+            EOF
+
+            # 6. Pull latest images built by GitHub Actions
+            echo "📥 Pulling latest Docker images from GHCR..."
+            docker compose -f docker-compose.prod.yml pull
+
+            # 7. Start/restart containers
+            echo "🚀 Launching containers..."
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # 8. Clean up unused images
+            docker image prune -f
+
+            # 9. Verify container status
+            echo "📊 Container status:"
+            docker compose -f docker-compose.prod.yml ps
+
+            echo "🎉 Govia deployment successfully completed on ${{ secrets.SERVER_HOST }}!"
+            echo "👉 Frontend: http://${{ secrets.SERVER_HOST }}:8777"
+            echo "👉 Backend:  http://${{ secrets.SERVER_HOST }}:9777/api/v1/docs"
