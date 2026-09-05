@@ -19,13 +19,12 @@ jobs:
     steps:
       - id: check
         run: |
-          if [ -n "${{ secrets.VPS_SSH_HOST }}" ]; then
+          if [ -n "${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST }}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "✅ VPS_SSH_HOST secret is configured."
+            echo "✅ Server connection secrets are configured."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "⚠️ Deployment skipped: VPS_SSH_HOST secret is not configured in GitHub repository settings."
-            echo "To enable automated deployments, add VPS_SSH_HOST, VPS_SSH_USER, and VPS_SSH_PASSWORD/VPS_SSH_KEY to Settings -> Secrets and variables -> Actions."
+            echo "⚠️ Deployment skipped: SERVER_HOST secret is not configured in GitHub repository settings."
           fi
 
   deploy:
@@ -43,11 +42,11 @@ jobs:
       - name: Push Code Directly to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_SSH_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          password: ${{ secrets.VPS_SSH_PASSWORD }}
-          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          host: ${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.SERVER_USER || secrets.VPS_SSH_USER }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.VPS_SSH_PASSWORD }}
+          key: ${{ secrets.SERVER_KEY || secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || secrets.VPS_SSH_PORT || 22 }}
           target: ${{ secrets.VPS_DEPLOY_PATH || '/adnan/govia' }}
           source: 'apps,packages,scripts,package.json,package-lock.json,turbo.json,docker-compose.prod.yml,docker-compose.yml,.dockerignore,.env.example'
           overwrite: true
@@ -56,16 +55,25 @@ jobs:
       - name: Execute Deployment on Remote Server
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_SSH_HOST }}
-          username: ${{ secrets.VPS_SSH_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          password: ${{ secrets.VPS_SSH_PASSWORD }}
-          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          host: ${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.SERVER_USER || secrets.VPS_SSH_USER }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.VPS_SSH_PASSWORD }}
+          key: ${{ secrets.SERVER_KEY || secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || secrets.VPS_SSH_PORT || 22 }}
           script_stop: true
-          envs: PROD_ENV_CONTENT,DEPLOY_PATH
+          envs: DEPLOY_PATH,SERVER_IP,SECRET_MONGO_PASSWORD,SECRET_JWT_SECRET,SECRET_JWT_REFRESH_SECRET,SECRET_SUPER_ADMIN_PASSWORD,SECRET_ZOOM_ACCOUNT_ID,SECRET_ZOOM_CLIENT_ID,SECRET_ZOOM_CLIENT_SECRET,SECRET_AI_API_KEY,SECRET_EMAIL_PASS
         env:
-          PROD_ENV_CONTENT: ${{ secrets.PROD_ENV_FILE }}
           DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/adnan/govia' }}
+          SERVER_IP: ${{ secrets.SERVER_HOST || secrets.VPS_SSH_HOST || '172.252.13.197' }}
+          SECRET_MONGO_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+          SECRET_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SECRET_JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          SECRET_SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
+          SECRET_ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          SECRET_ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+          SECRET_ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          SECRET_AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          SECRET_EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
         script: |
           set -e
           DEPLOY_DIR="${DEPLOY_PATH/#\~/$HOME}"
@@ -75,17 +83,57 @@ jobs:
           # 1. Ensure scripts are executable
           chmod +x scripts/*.sh 2>/dev/null || true
 
-          # 2. Inject or update .env file from GitHub Secrets
-          if [ -n "$PROD_ENV_CONTENT" ]; then
-            printf "%s\n" "$PROD_ENV_CONTENT" > .env
-            chmod 600 .env
-            echo "🔒 Production .env updated successfully"
-          elif [ ! -f .env ]; then
-            cp .env.example .env
-            chmod 600 .env
-          fi
+          # 2. Dynamically construct production .env file using repository secrets
+          echo "🔒 Generating production .env file..."
+          cat << EOF > .env
+          NODE_ENV=production
+          PROJECT_NAME=Govia
+          ENABLE_API_DOCS=true
 
-          # 3. Build & Launch Docker containers
+          PORT=5000
+          IP_ADDRESS=0.0.0.0
+
+          HOST_API_PORT=9777
+          HOST_ADMIN_PORT=8777
+
+          MONGO_INITDB_ROOT_USERNAME=goviaAdmin
+          MONGO_INITDB_ROOT_PASSWORD=${SECRET_MONGO_PASSWORD:-GoviaMongoSecurePass2026!}
+          MONGO_INITDB_DATABASE=govia-db
+
+          DATABASE_URL=mongodb://goviaAdmin:${SECRET_MONGO_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/govia-db?authSource=admin
+
+          BCRYPT_SALT_ROUNDS=10
+          JWT_SECRET=${SECRET_JWT_SECRET}
+          JWT_EXPIRE_IN=1h
+
+          JWT_REFRESH_SECRET=${SECRET_JWT_REFRESH_SECRET}
+          JWT_REFRESH_EXPIRE_IN=7d
+
+          SUPER_ADMIN_EMAIL=admin@govia.com
+          SUPER_ADMIN_PASSWORD=${SECRET_SUPER_ADMIN_PASSWORD:-GoviaAdminPass2026!}
+
+          ZOOM_ACCOUNT_ID=${SECRET_ZOOM_ACCOUNT_ID}
+          ZOOM_CLIENT_ID=${SECRET_ZOOM_CLIENT_ID}
+          ZOOM_CLIENT_SECRET=${SECRET_ZOOM_CLIENT_SECRET}
+
+          AI_PROVIDER_BASE_URL=https://openrouter.ai/api/v1
+          AI_API_KEY=${SECRET_AI_API_KEY}
+          AI_MODEL_NAME=openrouter/free
+
+          EMAIL_FROM=adnan99mahmud@gmail.com
+          EMAIL_USER=adnan99mahmud@gmail.com
+          EMAIL_PORT=587
+          EMAIL_HOST=smtp.gmail.com
+          EMAIL_PASS=${SECRET_EMAIL_PASS}
+
+          NEXT_PUBLIC_API_URL=http://${SERVER_IP}:9777/api/v1
+          NEXT_PUBLIC_SOCKET_URL=http://${SERVER_IP}:9777
+          EOF
+
+          chmod 600 .env
+          echo "✅ Production .env written securely"
+
+          # 3. Build & Launch Docker Compose containers
           echo "🐳 Launching Docker Compose containers..."
           docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
@@ -99,4 +147,4 @@ jobs:
           # 6. Clean dangling images
           docker image prune -f
 
-          echo "🎉 Direct deployment to $DEPLOY_DIR completed successfully!"
+          echo "🎉 Direct deployment to $DEPLOY_DIR on $SERVER_IP completed successfully!"
