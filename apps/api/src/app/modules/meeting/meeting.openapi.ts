@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import {
   bearerAuth,
-  createErrorResponseSchema,
   createSuccessResponseSchema,
   registry,
 } from '../../../docs/openapi-registry';

@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist winston",
     "export:docs": "tsx src/docs/export-openapi.ts",
-    "lint": "eslint . --ext .js,.ts --cache",
-    "lint:fix": "eslint . --ext .js,.ts --fix"
+    "lint": "eslint src --ext .js,.ts --cache",
+    "lint:fix": "eslint src --ext .js,.ts --fix"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

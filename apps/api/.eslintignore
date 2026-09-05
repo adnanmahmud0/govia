@@ -1,0 +1,5 @@
+node_modules
+dist
+winston
+uploads
+*.d.ts

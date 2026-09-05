@@ -17,10 +17,12 @@ dist
 out
 build
 
-# Logs
+# Logs & Caches
 winston
 logs
 *.log
+.eslintcache
+*.eslintcache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
