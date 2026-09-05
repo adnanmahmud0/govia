@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { X, User, Mail, Shield, FileText, Save } from "lucide-react";
@@ -50,7 +50,7 @@ export default function AddUserDialog({
       });
       setErrors({});
     }
-  }, [open]);
+  }, [open, defaultValues]);
 
   const validate = (): boolean => {
     const newErrors: Partial<UserFormData> = {};

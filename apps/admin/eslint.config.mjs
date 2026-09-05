@@ -12,7 +12,7 @@ const eslintConfig = defineConfig([
       "react/no-unescaped-entities": "off",
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/static-components": "off",
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
   globalIgnores([

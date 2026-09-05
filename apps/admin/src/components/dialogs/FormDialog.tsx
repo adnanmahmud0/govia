@@ -58,10 +58,11 @@ export default function FormDialog({
 
   useEffect(() => {
     if (open) {
-      setForm(blank());
+      const initial = Object.fromEntries(fields.map((f) => [f.key, defaultValues[f.key] ?? ""]));
+      setForm(initial);
       setErrors({});
     }
-  }, [open]);
+  }, [open, defaultValues, fields]);
 
   const validate = () => {
     const next: Record<string, string> = {};

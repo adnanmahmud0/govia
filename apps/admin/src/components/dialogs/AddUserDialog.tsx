@@ -51,7 +51,7 @@ export default function AddUserDialog({
       });
       setErrors({});
     }
-  }, [open]);
+  }, [open, defaultValues]);
 
   const validate = (): boolean => {
     const newErrors: Partial<UserFormData> = {};
