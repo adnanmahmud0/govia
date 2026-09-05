@@ -1,0 +1,83 @@
+name: Govia Production Deployment (Direct Push)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Direct Push & Deploy to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Directly copy repository files to /adnan/govia on the server (No git pull needed on server)
+      - name: Push Code Directly to Server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_SSH_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          target: ${{ secrets.VPS_DEPLOY_PATH || '/adnan/govia' }}
+          source: 'apps,packages,scripts,package.json,package-lock.json,turbo.json,docker-compose.prod.yml,docker-compose.yml,.dockerignore,.env.example'
+          overwrite: true
+
+      # 2. Configure .env and trigger Docker build & restart on the server
+      - name: Execute Deployment on Remote Server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_SSH_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script_stop: true
+          envs: PROD_ENV_CONTENT,DEPLOY_PATH
+        env:
+          PROD_ENV_CONTENT: ${{ secrets.PROD_ENV_FILE }}
+          DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/adnan/govia' }}
+        script: |
+          set -e
+          DEPLOY_DIR="${DEPLOY_PATH/#\~/$HOME}"
+          echo "📁 Working Directory on Server: $DEPLOY_DIR"
+          cd "$DEPLOY_DIR"
+
+          # 1. Ensure scripts are executable
+          chmod +x scripts/*.sh 2>/dev/null || true
+
+          # 2. Inject or update .env file from GitHub Secrets
+          if [ -n "$PROD_ENV_CONTENT" ]; then
+            printf "%s\n" "$PROD_ENV_CONTENT" > .env
+            chmod 600 .env
+            echo "🔒 Production .env updated successfully"
+          elif [ ! -f .env ]; then
+            cp .env.example .env
+            chmod 600 .env
+          fi
+
+          # 3. Build & Launch Docker containers
+          echo "🐳 Launching Docker Compose containers..."
+          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+
+          # 4. Wait for initialization
+          sleep 12
+
+          # 5. Diagnostic Health Check
+          echo "📊 Container Status:"
+          docker compose -f docker-compose.prod.yml ps
+
+          # 6. Clean dangling images
+          docker image prune -f
+
+          echo "🎉 Direct deployment to $DEPLOY_DIR completed successfully!"

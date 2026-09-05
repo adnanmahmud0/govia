@@ -1,0 +1,109 @@
+# ==============================================================================
+# Govia Local Development Docker Compose (docker-compose.yml)
+# ==============================================================================
+# Used for testing full containerized stack locally.
+# ==============================================================================
+
+name: govia-local
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. MongoDB Service
+  # ----------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0-alpine
+    container_name: govia-local-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-govia-db}
+    volumes:
+      - mongo_local_data:/data/db
+    networks:
+      - govia_local_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ----------------------------------------------------------------------------
+  # 2. Express.js API & Socket.IO
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: govia-local-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      IP_ADDRESS: 0.0.0.0
+      PROJECT_NAME: Govia
+      ENABLE_API_DOCS: "true"
+      DATABASE_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}:${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}@mongo:27017/${MONGO_INITDB_DATABASE:-govia-db}?authSource=admin
+      BCRYPT_SALT_ROUNDS: 10
+      JWT_SECRET: ${JWT_SECRET:-local_dev_jwt_secret_1234567890_govia_secure}
+      JWT_EXPIRE_IN: 1d
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local_dev_jwt_refresh_secret_1234567890_govia_secure}
+      JWT_REFRESH_EXPIRE_IN: 7d
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-admin@govia.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-GoviaAdminPass2026!}
+      ZOOM_ACCOUNT_ID: ${ZOOM_ACCOUNT_ID}
+      ZOOM_CLIENT_ID: ${ZOOM_CLIENT_ID}
+      ZOOM_CLIENT_SECRET: ${ZOOM_CLIENT_SECRET}
+      AI_PROVIDER_BASE_URL: ${AI_PROVIDER_BASE_URL}
+      AI_API_KEY: ${AI_API_KEY}
+      AI_MODEL_NAME: ${AI_MODEL_NAME}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PASS: ${EMAIL_PASS}
+    volumes:
+      - ./uploads:/app/apps/api/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - govia_local_network
+
+  # ----------------------------------------------------------------------------
+  # 3. Next.js Admin Dashboard
+  # ----------------------------------------------------------------------------
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
+    container_name: govia-local-admin
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - govia_local_network
+
+volumes:
+  mongo_local_data:
+
+networks:
+  govia_local_network:
+    driver: bridge

@@ -1,0 +1,129 @@
+# ==============================================================================
+# Govia Production Multi-Container Orchestration (docker-compose.prod.yml)
+# ==============================================================================
+# Architecture:
+# - adnan-govia-mongo: Isolated internal database (Port 27017 NEVER exposed to public host)
+# - adnan-govia-api: Express & Socket.IO backend mapped to Host Port 9777 (internal 5000)
+# - adnan-govia-admin: Next.js Standalone Admin Dashboard mapped to Host Port 8777 (internal 3000)
+# ==============================================================================
+
+name: govia-production
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. MongoDB Service (Private & Isolated)
+  # ----------------------------------------------------------------------------
+  adnan-govia-mongo:
+    image: mongo:7.0-alpine
+    container_name: adnan-govia-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-govia-db}
+    volumes:
+      - govia_mongodb_data:/data/db
+    networks:
+      - govia_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ----------------------------------------------------------------------------
+  # 2. Express.js API & Real-Time Socket.IO Server
+  # ----------------------------------------------------------------------------
+  adnan-govia-api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: adnan-govia-api
+    restart: always
+    ports:
+      - "${HOST_API_PORT:-9777}:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      IP_ADDRESS: 0.0.0.0
+      PROJECT_NAME: ${PROJECT_NAME:-Govia}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+      DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}:${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/${MONGO_INITDB_DATABASE:-govia-db}?authSource=admin}
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-10}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE_IN: ${JWT_EXPIRE_IN:-1h}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRE_IN: ${JWT_REFRESH_EXPIRE_IN:-7d}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-admin@govia.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-GoviaAdminPass2026!}
+      ZOOM_ACCOUNT_ID: ${ZOOM_ACCOUNT_ID}
+      ZOOM_CLIENT_ID: ${ZOOM_CLIENT_ID}
+      ZOOM_CLIENT_SECRET: ${ZOOM_CLIENT_SECRET}
+      AI_PROVIDER_BASE_URL: ${AI_PROVIDER_BASE_URL}
+      AI_API_KEY: ${AI_API_KEY}
+      AI_MODEL_NAME: ${AI_MODEL_NAME}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PASS: ${EMAIL_PASS}
+    volumes:
+      - govia_uploads:/app/apps/api/uploads
+      - govia_logs:/app/apps/api/winston
+    depends_on:
+      adnan-govia-mongo:
+        condition: service_healthy
+    networks:
+      - govia_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/', (res) => { if (res.statusCode !== 200) process.exit(1); })"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ----------------------------------------------------------------------------
+  # 3. Next.js Admin Dashboard
+  # ----------------------------------------------------------------------------
+  adnan-govia-admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://172.252.13.197:9777/api/v1}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://172.252.13.197:9777}
+    container_name: adnan-govia-admin
+    restart: always
+    ports:
+      - "${HOST_ADMIN_PORT:-8777}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://172.252.13.197:9777/api/v1}
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://172.252.13.197:9777}
+    depends_on:
+      adnan-govia-api:
+        condition: service_started
+    networks:
+      - govia_network
+
+# ------------------------------------------------------------------------------
+# Persistent Monorepo Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  govia_mongodb_data:
+    name: adnan_govia_mongodb_data
+  govia_uploads:
+    name: adnan_govia_uploads
+  govia_logs:
+    name: adnan_govia_logs
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  govia_network:
+    name: adnan_govia_network
+    driver: bridge

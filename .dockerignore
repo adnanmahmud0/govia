@@ -1,9 +1,47 @@
+# Dependencies
+**/node_modules
 node_modules
-npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js and build outputs
+**/.next
+apps/admin/.next
+apps/api/dist
 dist
-.env
+build
+out
+.turbo
+**/.turbo
+
+# Version Control & IDE
 .git
 .gitignore
-README.md
-Dockerfile
-docker-compose.yml
+.github
+.vscode
+.idea
+
+# Environment files
+.env
+.env*.local
+!.env.example
+
+# Local storage and test artifacts
+uploads
+apps/api/uploads
+apps/api/winston
+winston
+*.log
+
+# Sub-projects / mobile app / non-container assets
+gsabino365
+Govia-admin-dashboard
+fullstack-turborepo-starter-kit
+doc
+postman
+
+# System files
+.DS_Store
+Thumbs.db
