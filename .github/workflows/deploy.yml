@@ -11,8 +11,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check-secrets:
+    name: Check Deployment Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ secrets.VPS_SSH_HOST }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "✅ VPS_SSH_HOST secret is configured."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Deployment skipped: VPS_SSH_HOST secret is not configured in GitHub repository settings."
+            echo "To enable automated deployments, add VPS_SSH_HOST, VPS_SSH_USER, and VPS_SSH_PASSWORD/VPS_SSH_KEY to Settings -> Secrets and variables -> Actions."
+          fi
+
   deploy:
     name: Direct Push & Deploy to VPS
+    needs: check-secrets
+    if: needs.check-secrets.outputs.configured == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -20,7 +39,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Directly copy repository files to /adnan/govia on the server (No git pull needed on server)
+      # 1. Directly copy repository files to /adnan/govia on the server
       - name: Push Code Directly to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
