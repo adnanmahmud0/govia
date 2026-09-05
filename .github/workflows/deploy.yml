@@ -245,15 +245,43 @@ jobs:
           # 3. Pull latest images and launch stack
           echo "🐳 Pulling latest Docker images and starting services..."
           $SSH_CMD "${TARGET_USER}@${TARGET_HOST}" "
+            set -e
             cd /adnan/govia
             chmod 600 .env
+
+            # Open firewall ports
+            if command -v ufw &>/dev/null; then
+              echo '🔓 Opening firewall ports for Govia (9777, 8777)...'
+              ufw allow 22/tcp || true
+              ufw allow 80/tcp || true
+              ufw allow 443/tcp || true
+              ufw allow 9777/tcp || true
+              ufw allow 8777/tcp || true
+              ufw reload || true
+            fi
+
             echo '📥 Pulling images from GitHub Container Registry...'
             docker compose -f docker-compose.prod.yml pull
+
             echo '🚀 Starting containers...'
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
+
+            echo '⏳ Waiting for containers to initialize (15s)...'
+            sleep 15
+
             echo '📊 Container status:'
             docker compose -f docker-compose.prod.yml ps
+
+            echo '📋 API Logs:'
+            docker compose -f docker-compose.prod.yml logs --tail 20 adnan-govia-api || true
+
+            echo '📋 Admin Dashboard Logs:'
+            docker compose -f docker-compose.prod.yml logs --tail 20 adnan-govia-admin || true
+
+            echo '🌐 Testing local response:'
+            curl -I -s --connect-timeout 5 http://127.0.0.1:9777/api/v1/docs | head -n 5 || true
+            curl -I -s --connect-timeout 5 http://127.0.0.1:8777/ | head -n 5 || true
           "
 
           echo "🎉 Govia deployment successfully completed on ${TARGET_HOST}!"
