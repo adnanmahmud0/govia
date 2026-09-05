@@ -1,6 +1,4 @@
-"use client";
-import { Input } from "@/components/ui/input";
-import { Bell, LogOut, ChevronDown, Menu } from "lucide-react";
+import { LogOut, ChevronDown, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

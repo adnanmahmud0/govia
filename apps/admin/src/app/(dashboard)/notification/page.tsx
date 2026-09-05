@@ -8,7 +8,6 @@ import {
   Info,
   ShieldAlert,
   UserPlus,
-  CreditCard,
   Phone,
   Trash2,
   Check,

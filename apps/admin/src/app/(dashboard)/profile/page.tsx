@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { User, Mail, Shield, Key, Camera, Save, Lock } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);

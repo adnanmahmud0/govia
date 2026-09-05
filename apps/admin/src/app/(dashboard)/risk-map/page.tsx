@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { TrendingUp, TrendingDown, Target, Plus, Minus, MapPin, Search } from "lucide-react";
+import { Target, Plus, Minus, MapPin } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Dynamically import maps to avoid SSR issues

@@ -2,18 +2,11 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  UserRound,
-  FileSpreadsheet,
-  BarChart3,
-  LogOut,
   ChevronLeft,
   LucideIcon,
   Shield,

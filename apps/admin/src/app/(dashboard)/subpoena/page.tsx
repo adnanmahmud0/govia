@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, FileSignature, ShieldCheck, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckCircle2, FileSignature, ShieldCheck } from "lucide-react";
 
 type SubpoenaRequest = {
   id: string;
@@ -52,8 +51,7 @@ export default function SubpoenaPage() {
   const [requests, setRequests] = useState<SubpoenaRequest[]>(initialRequests);
 
   const handleApprove = (id: string) => {
-    // Handle approval logic here
-    console.log(`Approved request ${id}`);
+    setRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
   return (

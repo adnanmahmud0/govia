@@ -1,8 +1,5 @@
 "use client";
 
-import React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 export default function FormularyPage() {
     return (
         <div className="container mx-auto py-8 px-4 space-y-8">
