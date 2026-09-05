@@ -223,13 +223,19 @@ jobs:
           TARGET_PORT="${SERVER_PORT:-22}"
           if [ -z "$TARGET_PORT" ]; then TARGET_PORT=22; fi
 
-          SSH_CMD="sshpass -p ${SERVER_PASS} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p ${TARGET_PORT}"
-          SCP_CMD="sshpass -p ${SERVER_PASS} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P ${TARGET_PORT}"
+          export SSHPASS="$SERVER_PASS"
 
-          echo "🚀 Connecting to ${TARGET_USER}@${TARGET_HOST}:${TARGET_PORT}..."
+          if [ -z "$SSHPASS" ]; then
+            echo "❌ ERROR: SERVER_PASSWORD secret is not configured or is empty in GitHub repository secrets!"
+            exit 1
+          fi
+
+          echo "🚀 Testing SSH connection to ${TARGET_USER}@${TARGET_HOST}:${TARGET_PORT}..."
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$TARGET_PORT" "${TARGET_USER}@${TARGET_HOST}" "echo '✅ SSH connection successful! Host: \$(hostname)'"
 
           # 1. Create target directory and ensure Docker is installed
-          $SSH_CMD "${TARGET_USER}@${TARGET_HOST}" "
+          echo "📦 Verifying Docker on server..."
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$TARGET_PORT" "${TARGET_USER}@${TARGET_HOST}" "
             mkdir -p /adnan/govia
             if ! command -v docker &>/dev/null; then
               echo '📦 Installing Docker...'
@@ -240,11 +246,11 @@ jobs:
 
           # 2. Upload .env and docker-compose.prod.yml
           echo "📤 Uploading production configuration to /adnan/govia..."
-          $SCP_CMD deploy-payload/.env deploy-payload/docker-compose.prod.yml "${TARGET_USER}@${TARGET_HOST}:/adnan/govia/"
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P "$TARGET_PORT" deploy-payload/.env deploy-payload/docker-compose.prod.yml "${TARGET_USER}@${TARGET_HOST}:/adnan/govia/"
 
           # 3. Pull latest images and launch stack
           echo "🐳 Pulling latest Docker images and starting services..."
-          $SSH_CMD "${TARGET_USER}@${TARGET_HOST}" "
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$TARGET_PORT" "${TARGET_USER}@${TARGET_HOST}" "
             set -e
             cd /adnan/govia
             chmod 600 .env
