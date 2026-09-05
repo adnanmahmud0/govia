@@ -74,6 +74,9 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Generate Production Configuration
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST || '172.252.13.197' }}
@@ -134,79 +137,7 @@ jobs:
           NEXT_PUBLIC_SOCKET_URL=http://${SERVER_HOST}:9777
           EOF
 
-          cat << 'EOF' > deploy-payload/docker-compose.prod.yml
-          name: govia-production
-
-          services:
-            adnan-govia-mongo:
-              image: mongo:7.0
-              container_name: adnan-govia-mongo
-              restart: always
-              environment:
-                MONGO_INITDB_ROOT_USERNAME: goviaAdmin
-                MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-                MONGO_INITDB_DATABASE: govia-db
-              volumes:
-                - govia_mongodb_data:/data/db
-              networks:
-                - govia_network
-              healthcheck:
-                test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-                interval: 10s
-                timeout: 5s
-                retries: 5
-                start_period: 15s
-
-            adnan-govia-api:
-              image: ghcr.io/adnanmahmud0/govia-api:latest
-              container_name: adnan-govia-api
-              restart: always
-              ports:
-                - "9777:5000"
-              env_file:
-                - .env
-              volumes:
-                - govia_uploads:/app/apps/api/uploads
-                - govia_logs:/app/apps/api/winston
-              depends_on:
-                adnan-govia-mongo:
-                  condition: service_healthy
-              networks:
-                - govia_network
-              healthcheck:
-                test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/', (res) => { if (res.statusCode !== 200) process.exit(1); })"]
-                interval: 15s
-                timeout: 5s
-                retries: 5
-                start_period: 20s
-
-            adnan-govia-admin:
-              image: ghcr.io/adnanmahmud0/govia-admin:latest
-              container_name: adnan-govia-admin
-              restart: always
-              ports:
-                - "8777:3000"
-              env_file:
-                - .env
-              depends_on:
-                adnan-govia-api:
-                  condition: service_started
-              networks:
-                - govia_network
-
-          volumes:
-            govia_mongodb_data:
-              name: adnan_govia_mongodb_data
-            govia_uploads:
-              name: adnan_govia_uploads
-            govia_logs:
-              name: adnan_govia_logs
-
-          networks:
-            govia_network:
-              name: adnan_govia_network
-              driver: bridge
-          EOF
+          cp docker-compose.prod.yml deploy-payload/
 
       - name: Deploy to Server via SSH
         env:
