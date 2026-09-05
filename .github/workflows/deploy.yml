@@ -131,7 +131,7 @@ jobs:
           EMAIL_USER=adnan99mahmud@gmail.com
           EMAIL_PORT=587
           EMAIL_HOST=smtp.gmail.com
-          EMAIL_PASS=${EMAIL_PASS}
+          EMAIL_PASS="${EMAIL_PASS}"
 
           NEXT_PUBLIC_API_URL=http://${SERVER_HOST}:9777/api/v1
           NEXT_PUBLIC_SOCKET_URL=http://${SERVER_HOST}:9777
