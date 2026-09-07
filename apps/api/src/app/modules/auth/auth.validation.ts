@@ -4,7 +4,7 @@ const createVerifyEmailZodSchema = z.object({
   body: z.object({
     email: z.string({ required_error: 'Email is required' }),
     role: z.string({ required_error: 'Role is required' }),
-    oneTimeCode: z.number({ required_error: 'One time code is required' }),
+    oneTimeCode: z.coerce.number({ required_error: 'One time code is required' }),
   }),
 });
 

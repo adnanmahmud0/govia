@@ -57,8 +57,11 @@ Authorization: Bearer <accessToken>
 
 ## 3. Authentication & User Profile Workflow
 
+> 📖 **Comprehensive Step-by-Step Auth Guide Available**:  
+> For complete flowcharts, OTP email verification, unverified account auto-recovery, password reset tokens, and complete copy-paste Flutter/Dart & React services, see **[APP_AUTH_INTEGRATION_GUIDE.md](file:///c:/Users/Adnan/ZProject/adnan/govia/APP_AUTH_INTEGRATION_GUIDE.md)**.
+
 ### 3.1 Sign Up / Register
-- **Endpoint**: `POST /api/v1/auth/register`
+- **Endpoint**: `POST /api/v1/user/register`
 - **Body (`multipart/form-data` or `application/json`)**:
 ```json
 {
