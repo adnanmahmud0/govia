@@ -222,10 +222,10 @@ export const seedDemoAccounts = async () => {
         { _id: existingUser._id },
         {
           $set: {
+            ...rest,
             verified: true,
             status: 'active',
             password: hashedPassword,
-            ...rest,
           },
         }
       );

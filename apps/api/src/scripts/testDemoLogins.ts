@@ -29,7 +29,7 @@ async function testLogins() {
         }),
       });
 
-      const json = await res.json();
+      const json = (await res.json()) as any;
       if (res.ok && json.success && json.data?.accessToken) {
         // Fetch profile
         const profileRes = await fetch('http://127.0.0.1:5000/api/v1/user/profile', {
@@ -37,7 +37,7 @@ async function testLogins() {
             Authorization: `Bearer ${json.data.accessToken}`,
           },
         });
-        const profileJson = await profileRes.json();
+        const profileJson = (await profileRes.json()) as any;
         const user = profileJson.data;
         console.log(`✅ [${acc.label}] Logged in & Profile OK: "${user?.name}" | Role: ${user?.role} | Phone: ${user?.phoneNumber} | ShortID: #${user?.shortHexId}`);
       } else {
