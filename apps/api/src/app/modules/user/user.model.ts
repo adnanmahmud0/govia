@@ -79,8 +79,23 @@ const userSchema = new Schema<IUser, UserModal>(
     newCarNumber: { type: String },
     licenseNumber: { type: String },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret: any) => {
+        ret.id = ret._id;
+        return ret;
+      },
+    },
+    toObject: { virtuals: true },
+  }
 );
+
+userSchema.virtual('shortHexId').get(function (this: any) {
+  const idStr = this._id ? this._id.toString() : '';
+  return idStr.length >= 8 ? idStr.slice(-8).toUpperCase() : idStr.toUpperCase();
+});
 
 userSchema.index({ email: 1, role: 1 }, { unique: true });
 

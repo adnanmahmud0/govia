@@ -65,7 +65,7 @@ const createInstantMeeting = async (
       participantName: hostUser?.name || 'Citizen',
     });
 
-    const meetingResult = populatedMeeting
+    const meetingResult: any = populatedMeeting
       ? populatedMeeting.toObject()
       : newMeeting.toObject();
     meetingResult.meetingId = newMeeting._id;

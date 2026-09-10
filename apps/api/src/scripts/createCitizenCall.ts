@@ -28,7 +28,7 @@ async function main() {
   );
 
   console.log('CALL_CREATED_OK');
-  console.log('MEETING_ID:', meeting.meetingId);
+  console.log('MEETING_ID:', (meeting as any).meetingId || (meeting as any)._id);
   console.log('ROOM_NAME:', meeting.roomName);
   console.log('TOKEN:', meeting.token);
 
