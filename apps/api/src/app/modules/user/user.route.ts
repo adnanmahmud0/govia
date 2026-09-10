@@ -20,6 +20,8 @@ router
         req.body = UserValidation.updateUserZodSchema.parse(
           JSON.parse(req.body.data)
         );
+      } else if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+        req.body = UserValidation.updateUserZodSchema.parse(req.body);
       }
       return UserController.updateProfile(req, res, next);
     }
