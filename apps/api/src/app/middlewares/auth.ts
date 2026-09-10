@@ -14,31 +14,35 @@ const auth =
           throw new ApiError(StatusCodes.UNAUTHORIZED, 'You are not authorized');
         }
 
-        if (tokenWithBearer && tokenWithBearer.startsWith('Bearer')) {
-          const token = tokenWithBearer.split(' ')[1];
+        const token = tokenWithBearer.startsWith('Bearer ')
+          ? tokenWithBearer.split(' ')[1]
+          : tokenWithBearer;
 
-          //verify token
-          const verifyUser = jwtHelper.verifyToken(
-            token,
-            config.jwt.jwt_secret as string
-          );
-          debug('auth', {
-            path: req.originalUrl,
-            role: verifyUser.role,
-          });
-          //set user to header
-          req.user = verifyUser;
-
-          //guard user
-          if (roles.length && !roles.includes(verifyUser.role)) {
-            throw new ApiError(
-              StatusCodes.FORBIDDEN,
-              "You don't have permission to access this api"
-            );
-          }
-
-          next();
+        if (!token) {
+          throw new ApiError(StatusCodes.UNAUTHORIZED, 'Token missing');
         }
+
+        //verify token
+        const verifyUser = jwtHelper.verifyToken(
+          token,
+          config.jwt.jwt_secret as string
+        );
+        debug('auth', {
+          path: req.originalUrl,
+          role: verifyUser.role,
+        });
+        //set user to header
+        req.user = verifyUser;
+
+        //guard user
+        if (roles.length && !roles.includes(verifyUser.role)) {
+          throw new ApiError(
+            StatusCodes.FORBIDDEN,
+            "You don't have permission to access this api"
+          );
+        }
+
+        next();
       } catch (error) {
         next(error);
       }

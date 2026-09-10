@@ -108,6 +108,14 @@ const resendVerifyEmail = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const logoutUser = catchAsync(async (req: Request, res: Response) => {
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'User logged out successfully',
+  });
+});
+
 export const AuthController = {
   verifyEmail,
   loginUser,
@@ -116,4 +124,5 @@ export const AuthController = {
   changePassword,
   refreshToken,
   resendVerifyEmail,
+  logoutUser,
 };
