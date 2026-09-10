@@ -7,7 +7,7 @@ import {
 import { MeetingValidation } from './meeting.validation';
 
 export const ScheduleMeetingRequestSchema = MeetingValidation.scheduleMeetingZodSchema.shape.body.openapi({
-  description: 'Schedule a Zoom meeting payload',
+  description: 'Schedule a LiveKit meeting payload',
   example: {
     participantId: '64bcde1234567890abcdef12',
     conversationId: '651234567890abcdef123456',
@@ -20,7 +20,7 @@ export const ScheduleMeetingRequestSchema = MeetingValidation.scheduleMeetingZod
 });
 
 export const StartInstantMeetingRequestSchema = MeetingValidation.startInstantMeetingZodSchema.shape.body.openapi({
-  description: 'Start instant Zoom consultation meeting payload',
+  description: 'Start instant LiveKit consultation meeting payload',
   example: {
     topic: 'Immediate Govia Consultation',
     participantId: '64bcde1234567890abcdef12',
@@ -31,12 +31,13 @@ export const StartInstantMeetingRequestSchema = MeetingValidation.startInstantMe
 export const MeetingResponseDataSchema = z
   .object({
     _id: z.string().openapi({ example: '65ab1234567890abcdef1234' }),
+    roomName: z.string().openapi({ example: 'govia_1725960000_123456' }),
     topic: z.string().openapi({ example: 'Case Planning & Consultation' }),
     meetingType: z.enum(['INSTANT', 'SCHEDULED', 'EMERGENCY']).openapi({ example: 'SCHEDULED' }),
     status: z.enum(['SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED']).openapi({ example: 'SCHEDULED' }),
-    joinUrl: z.string().openapi({ example: 'https://zoom.us/j/123456789?pwd=...' }),
-    startUrl: z.string().openapi({ example: 'https://zoom.us/s/123456789?...' }),
-    recordingUrl: z.string().optional().openapi({ example: 'https://zoom.us/rec/share/...' }),
+    token: z.string().optional().openapi({ example: 'eyJhbGciOi...' }),
+    livekitUrl: z.string().optional().openapi({ example: 'wss://livekit.govia.com' }),
+    recordingUrl: z.string().optional().openapi({ example: 'https://s3.amazonaws.com/govia-recordings/...' }),
     recordings: z.array(z.any()).optional(),
     startTime: z.string().optional(),
     durationMinutes: z.number().optional(),
@@ -51,7 +52,7 @@ registry.registerPath({
   method: 'post',
   path: '/meeting/schedule',
   summary: 'Schedule a Future Meeting',
-  description: 'Schedules a future Zoom meeting. Open to ALL roles. If conversationId is provided, it syncs with chat.',
+  description: 'Schedules a future LiveKit meeting. Open to ALL roles. If conversationId is provided, it syncs with chat.',
   tags: ['Meeting'],
   security: [{ [bearerAuth.name]: [] }],
   request: {
@@ -155,7 +156,7 @@ registry.registerPath({
   method: 'patch',
   path: '/meeting/{id}/end',
   summary: 'End Meeting & Attach Recordings',
-  description: 'Ends active meeting, sets status to COMPLETED, fetches Zoom cloud recordings, and replaces "Join Now" with recording playback.',
+  description: 'Ends active meeting, sets status to COMPLETED, fetches LiveKit cloud recordings, and replaces "Join Now" with recording playback.',
   tags: ['Meeting'],
   security: [{ [bearerAuth.name]: [] }],
   parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
@@ -176,7 +177,7 @@ registry.registerPath({
   method: 'patch',
   path: '/meeting/{id}/sync-recording',
   summary: 'Refresh / Sync Cloud Recordings',
-  description: 'Synchronizes Zoom cloud recordings to MongoDB if processing finished after call conclusion.',
+  description: 'Synchronizes meeting recordings to MongoDB if processing finished after call conclusion.',
   tags: ['Meeting'],
   security: [{ [bearerAuth.name]: [] }],
   parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],

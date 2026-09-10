@@ -20,3 +20,34 @@ export const seedSuperAdmin = async () => {
     // no-op
   }
 };
+
+export const seedDemoAttorney = async () => {
+  const email = 'attorney@govia.com';
+  const role = USER_ROLES.ATTORNEY;
+  const attorneyPayload = {
+    name: 'Attorney Sarah Jenkins',
+    email,
+    role,
+    password: 'Password123!',
+    verified: true,
+    status: 'active',
+    licensedStatesToPractice: 'Nationwide, OH, NY, CA, TX, GA',
+    barAssociationNumber: 'OH-882910',
+    lawFirmName: 'Jenkins & Associates Legal Defense',
+    phoneNumber: '+1 (555) 019-2834',
+  };
+
+  const existingAttorney = await User.findOne({ email, role });
+  if (!existingAttorney) {
+    await User.create(attorneyPayload);
+  } else {
+    // Ensure verified and active
+    existingAttorney.verified = true;
+    existingAttorney.status = 'active';
+    existingAttorney.password = 'Password123!';
+    existingAttorney.licensedStatesToPractice = 'Nationwide, OH, NY, CA, TX, GA';
+    existingAttorney.barAssociationNumber = 'OH-882910';
+    existingAttorney.lawFirmName = 'Jenkins & Associates Legal Defense';
+    await existingAttorney.save();
+  }
+};

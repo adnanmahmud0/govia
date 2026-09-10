@@ -14,9 +14,17 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       ref: 'User',
       index: true,
     },
-    zoomMeetingId: {
+    roomName: {
       type: String,
       required: true,
+      index: true,
+    },
+    zoomMeetingId: {
+      type: String,
+      required: false,
+    },
+    sessionName: {
+      type: String,
     },
     topic: {
       type: String,
@@ -24,11 +32,11 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
     },
     joinUrl: {
       type: String,
-      required: true,
+      required: false,
     },
     startUrl: {
       type: String,
-      required: true,
+      required: false,
     },
     password: {
       type: String,

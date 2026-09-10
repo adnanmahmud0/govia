@@ -25,6 +25,10 @@ const apiRoutes = [
     route: MeetingRoutes,
   },
   {
+    path: '/meetings',
+    route: MeetingRoutes,
+  },
+  {
     path: '/heroHighlight',
     route: HeroHighlightRoutes,
   },

@@ -14,7 +14,7 @@ export default {
   node_env: process.env.NODE_ENV,
   enable_api_docs:
     process.env.ENABLE_API_DOCS !== 'false',
-  port: process.env.PORT || '1000',
+  port: process.env.PORT || '5000',
   bcrypt_salt_rounds: process.env.BCRYPT_SALT_ROUNDS || '10',
   branding: {
     projectName: process.env.PROJECT_NAME || 'Govia',
@@ -37,10 +37,11 @@ export default {
     email: process.env.SUPER_ADMIN_EMAIL,
     password: process.env.SUPER_ADMIN_PASSWORD,
   },
-  zoom: {
-    accountId: process.env.ZOOM_ACCOUNT_ID,
-    clientId: process.env.ZOOM_CLIENT_ID,
-    clientSecret: process.env.ZOOM_CLIENT_SECRET,
+  livekit: {
+    // LiveKit WebRTC Cloud credentials
+    url: process.env.LIVEKIT_URL || 'wss://govia-0f13ke90.livekit.cloud',
+    apiKey: process.env.LIVEKIT_API_KEY || 'API6NLt8C36WoQ8',
+    apiSecret: process.env.LIVEKIT_API_SECRET || 'hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY',
   },
   ai: {
     baseUrl: process.env.AI_PROVIDER_BASE_URL || 'https://api.openai.com/v1',

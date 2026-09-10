@@ -153,6 +153,19 @@ const getAttorneyRecordings = catchAsync(
   }
 );
 
+const getMeetingSdkToken = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  const result = await MeetingService.getMeetingSdkToken(id, userId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Meeting SDK token retrieved successfully',
+    data: result,
+  });
+});
+
 export const MeetingController = {
   startGovia,
   emergencyCall,
@@ -165,5 +178,7 @@ export const MeetingController = {
   getActiveMeetings,
   joinMeeting,
   getAttorneyRecordings,
+  getMeetingSdkToken,
 };
+
 

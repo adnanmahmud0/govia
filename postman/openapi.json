@@ -194,6 +194,10 @@
             "type": "string",
             "example": "65ab1234567890abcdef1234"
           },
+          "roomName": {
+            "type": "string",
+            "example": "govia_1725960000_123456"
+          },
           "topic": {
             "type": "string",
             "example": "Case Planning & Consultation"
@@ -217,17 +221,17 @@
             ],
             "example": "SCHEDULED"
           },
-          "joinUrl": {
+          "token": {
             "type": "string",
-            "example": "https://zoom.us/j/123456789?pwd=..."
+            "example": "eyJhbGciOi..."
           },
-          "startUrl": {
+          "livekitUrl": {
             "type": "string",
-            "example": "https://zoom.us/s/123456789?..."
+            "example": "wss://livekit.govia.com"
           },
           "recordingUrl": {
             "type": "string",
-            "example": "https://zoom.us/rec/share/..."
+            "example": "https://s3.amazonaws.com/govia-recordings/..."
           },
           "recordings": {
             "type": "array",
@@ -253,11 +257,10 @@
         },
         "required": [
           "_id",
+          "roomName",
           "topic",
           "meetingType",
-          "status",
-          "joinUrl",
-          "startUrl"
+          "status"
         ]
       },
       "MessageResponseData": {
@@ -452,7 +455,8 @@
                     "type": "string"
                   },
                   "oneTimeCode": {
-                    "type": "number"
+                    "type": "number",
+                    "nullable": true
                   }
                 },
                 "required": [
@@ -1391,7 +1395,7 @@
     "/meeting/schedule": {
       "post": {
         "summary": "Schedule a Future Meeting",
-        "description": "Schedules a future Zoom meeting. Open to ALL roles. If conversationId is provided, it syncs with chat.",
+        "description": "Schedules a future LiveKit meeting. Open to ALL roles. If conversationId is provided, it syncs with chat.",
         "tags": [
           "Meeting"
         ],
@@ -1434,7 +1438,7 @@
                   "topic",
                   "startTime"
                 ],
-                "description": "Schedule a Zoom meeting payload",
+                "description": "Schedule a LiveKit meeting payload",
                 "example": {
                   "participantId": "64bcde1234567890abcdef12",
                   "conversationId": "651234567890abcdef123456",
@@ -1666,7 +1670,7 @@
                     "type": "string"
                   }
                 },
-                "description": "Start instant Zoom consultation meeting payload",
+                "description": "Start instant LiveKit consultation meeting payload",
                 "example": {
                   "topic": "Immediate Govia Consultation",
                   "participantId": "64bcde1234567890abcdef12",
@@ -1825,7 +1829,7 @@
     "/meeting/{id}/end": {
       "patch": {
         "summary": "End Meeting & Attach Recordings",
-        "description": "Ends active meeting, sets status to COMPLETED, fetches Zoom cloud recordings, and replaces \"Join Now\" with recording playback.",
+        "description": "Ends active meeting, sets status to COMPLETED, fetches LiveKit cloud recordings, and replaces \"Join Now\" with recording playback.",
         "tags": [
           "Meeting"
         ],
@@ -1914,7 +1918,7 @@
     "/meeting/{id}/sync-recording": {
       "patch": {
         "summary": "Refresh / Sync Cloud Recordings",
-        "description": "Synchronizes Zoom cloud recordings to MongoDB if processing finished after call conclusion.",
+        "description": "Synchronizes meeting recordings to MongoDB if processing finished after call conclusion.",
         "tags": [
           "Meeting"
         ],

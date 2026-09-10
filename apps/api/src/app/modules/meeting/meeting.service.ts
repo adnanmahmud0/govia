@@ -2,75 +2,12 @@ import { StatusCodes } from 'http-status-codes';
 import { Types } from 'mongoose';
 import config from '../../../config';
 import ApiError from '../../../errors/ApiError';
+import { createLiveKitToken } from '../../../helpers/livekit.helper';
 import { socketHelper } from '../../../helpers/socketHelper';
 import { User } from '../user/user.model';
 import { Meeting } from './meeting.model';
 import { Conversation } from '../conversation/conversation.model';
 import { Message } from '../message/message.model';
-
-type ZoomRecordingApiFile = {
-  id?: string;
-  file_type?: string;
-  file_extension?: string;
-  file_size?: number;
-  play_url?: string;
-  download_url?: string;
-  recording_type?: string;
-  recording_start?: string;
-  recording_end?: string;
-};
-
-type ZoomRecordingApiResponse = {
-  share_url?: string;
-  recording_files?: ZoomRecordingApiFile[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
-};
-
-const getZoomAccessToken = async () => {
-  const { accountId, clientId, clientSecret } = config.zoom;
-
-  if (!accountId || !clientId || !clientSecret) {
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      'Zoom credentials are not configured properly'
-    );
-  }
-
-  const tokenUrl = `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`;
-  const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
-    'base64'
-  );
-
-  try {
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Zoom token error:', errorData);
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        `Failed to get Zoom access token: ${errorData}`
-      );
-    }
-
-    const data = (await response.json()) as { access_token: string };
-    return data.access_token;
-  } catch (error: unknown) {
-    console.error('Catch error in getZoomAccessToken:', error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      'Error communicating with Zoom API'
-    );
-  }
-};
 
 const createInstantMeeting = async (
   userId: string,
@@ -79,9 +16,6 @@ const createInstantMeeting = async (
   isEmergency = false,
   conversationId?: string
 ) => {
-  const accessToken = await getZoomAccessToken();
-  const meetingUrl = 'https://api.zoom.us/v2/users/me/meetings';
-
   let participantObjectId: Types.ObjectId | undefined;
   if (participantId) {
     const participant = await User.findById(participantId);
@@ -105,46 +39,16 @@ const createInstantMeeting = async (
     }
   }
 
+  const roomName = `govia_${Date.now()}_${userId.slice(-6)}`;
+
   try {
-    const response = await fetch(meetingUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        topic,
-        type: 1, // Instant meeting
-        settings: {
-          host_video: true,
-          participant_video: true,
-          join_before_host: false,
-          mute_upon_entry: true,
-          auto_recording: 'cloud',
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        `Failed to create Zoom meeting: ${errorData}`
-      );
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await response.json()) as any;
-
     const newMeeting = await Meeting.create({
       userId: new Types.ObjectId(userId),
       participantId: participantObjectId,
       conversationId: convObjectId,
-      zoomMeetingId: data.id.toString(),
+      roomName,
+      sessionName: roomName,
       topic,
-      joinUrl: data.join_url,
-      startUrl: data.start_url,
-      password: data.password,
       meetingType: isEmergency ? 'EMERGENCY' : 'INSTANT',
       status: 'ACTIVE',
     });
@@ -153,6 +57,23 @@ const createInstantMeeting = async (
       .populate('userId', 'name email role image phoneNumber')
       .populate('participantId', 'name email role image phoneNumber')
       .populate('conversationId');
+
+    const hostUser = await User.findById(userId);
+    const livekitToken = await createLiveKitToken({
+      roomName,
+      participantIdentity: userId,
+      participantName: hostUser?.name || 'Citizen',
+    });
+
+    const meetingResult = populatedMeeting
+      ? populatedMeeting.toObject()
+      : newMeeting.toObject();
+    meetingResult.meetingId = newMeeting._id;
+    meetingResult.sessionName = roomName;
+    meetingResult.roomName = roomName;
+    meetingResult.token = livekitToken;
+    meetingResult.livekitToken = livekitToken;
+    meetingResult.livekitUrl = config.livekit.url;
 
     // If meeting is attached to a conversation thread, automatically post meeting message card
     if (convObjectId && participantObjectId) {
@@ -203,22 +124,25 @@ const createInstantMeeting = async (
 
     // Real-time socket notification
     if (isEmergency) {
-      socketHelper.emitToRole('ATTORNEY', 'emergency_alert', populatedMeeting);
-      socketHelper.broadcast('emergency_meeting_created', populatedMeeting);
+      socketHelper.emitToRole('ATTORNEY', 'emergency_alert', meetingResult);
+      socketHelper.broadcast('emergency_meeting_created', meetingResult);
     } else if (participantId) {
       socketHelper.emitToUser(
         participantId,
         'instant_meeting_invite',
-        populatedMeeting
+        meetingResult
       );
+    } else {
+      socketHelper.emitToRole('ATTORNEY', 'emergency_alert', meetingResult);
+      socketHelper.broadcast('emergency_meeting_created', meetingResult);
     }
 
-    return populatedMeeting;
+    return meetingResult;
   } catch (error: unknown) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
-      'Error creating Zoom meeting'
+      'Error creating meeting room'
     );
   }
 };
@@ -273,53 +197,16 @@ const scheduleMeeting = async (
     }
   }
 
-  const accessToken = await getZoomAccessToken();
-  const meetingUrl = 'https://api.zoom.us/v2/users/me/meetings';
+  const roomName = `govia_scheduled_${Date.now()}_${userId.slice(-6)}`;
 
   try {
-    const response = await fetch(meetingUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        topic,
-        type: 2, // Scheduled meeting
-        start_time: meetingDate.toISOString(),
-        duration: durationMinutes,
-        timezone,
-        agenda: agenda || topic,
-        settings: {
-          host_video: true,
-          participant_video: true,
-          join_before_host: false,
-          mute_upon_entry: true,
-          auto_recording: 'cloud',
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        `Failed to schedule Zoom meeting: ${errorData}`
-      );
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await response.json()) as any;
-
     const scheduledMeeting = await Meeting.create({
       userId: new Types.ObjectId(userId),
       participantId: participantObjectId,
       conversationId: convObjectId,
-      zoomMeetingId: data.id.toString(),
+      roomName,
+      sessionName: roomName,
       topic,
-      joinUrl: data.join_url,
-      startUrl: data.start_url,
-      password: data.password,
       meetingType: 'SCHEDULED',
       startTime: meetingDate,
       durationMinutes,
@@ -332,6 +219,12 @@ const scheduleMeeting = async (
       .populate('userId', 'name email role image phoneNumber')
       .populate('participantId', 'name email role image phoneNumber')
       .populate('conversationId');
+
+    const scheduledResult = populatedMeeting
+      ? populatedMeeting.toObject()
+      : scheduledMeeting.toObject();
+    scheduledResult.sessionName = roomName;
+    scheduledResult.roomName = roomName;
 
     // If meeting is attached to a conversation thread, automatically post meeting message card
     if (convObjectId && participantObjectId) {
@@ -378,11 +271,11 @@ const scheduleMeeting = async (
       socketHelper.emitToUser(
         participantId,
         'new_meeting_invite',
-        populatedMeeting
+        scheduledResult
       );
     }
 
-    return populatedMeeting;
+    return scheduledResult;
   } catch (error: unknown) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(
@@ -394,6 +287,7 @@ const scheduleMeeting = async (
 
 const getActiveMeetings = async () => {
   const activeMeetings = await Meeting.find({ status: 'ACTIVE' })
+    .sort({ createdAt: -1 })
     .populate('userId', 'name email role image phoneNumber')
     .populate('participantId', 'name email role image phoneNumber')
     .populate('conversationId');
@@ -482,12 +376,28 @@ const joinMeeting = async (meetingId: string, attorneyId: string) => {
     await meeting.save();
   }
 
+  const attorney = await User.findById(attorneyId);
+  const roomName = meeting.roomName || meeting.sessionName || `govia_${meeting._id}`;
+  const livekitToken = await createLiveKitToken({
+    roomName,
+    participantIdentity: attorneyId,
+    participantName: attorney?.name || 'Attorney',
+  });
+
   socketHelper.emitToUser(meeting.userId.toString(), 'meeting_joined', {
     meetingId: meeting._id,
     attorneyId,
   });
 
-  return { joinUrl: meeting.joinUrl };
+  return {
+    meetingId: meeting._id,
+    roomName,
+    sessionName: roomName,
+    token: livekitToken,
+    livekitToken,
+    livekitUrl: config.livekit.url,
+    joinUrl: meeting.joinUrl,
+  };
 };
 
 const endMeeting = async (userId: string, meetingId: string) => {
@@ -517,41 +427,6 @@ const endMeeting = async (userId: string, meetingId: string) => {
 
   meeting.status = 'COMPLETED';
   meeting.endedAt = new Date();
-
-  // Try to query Zoom recordings immediately
-  try {
-    const recordingData = await getMeetingRecordings(meeting.zoomMeetingId);
-    if (recordingData) {
-      if (recordingData.share_url) {
-        meeting.recordingUrl = recordingData.share_url;
-      }
-      if (
-        Array.isArray(recordingData.recording_files) &&
-        recordingData.recording_files.length > 0
-      ) {
-        meeting.recordings = recordingData.recording_files.map(
-          (file: ZoomRecordingApiFile) => ({
-          id: file.id,
-          fileType: file.file_type,
-          fileExtension: file.file_extension,
-          fileSize: file.file_size,
-          playUrl: file.play_url,
-          downloadUrl: file.download_url,
-          recordingType: file.recording_type,
-          recordingStart: file.recording_start,
-          recordingEnd: file.recording_end,
-        }));
-        if (
-          !meeting.recordingUrl &&
-          recordingData.recording_files[0]?.play_url
-        ) {
-          meeting.recordingUrl = recordingData.recording_files[0].play_url;
-        }
-      }
-    }
-  } catch (zoomErr) {
-    console.log('Zoom recordings processing or not ready yet:', zoomErr);
-  }
 
   await meeting.save();
 
@@ -622,91 +497,32 @@ const cancelMeeting = async (userId: string, meetingId: string) => {
   return meeting;
 };
 
-const getMeetingRecordings = async (zoomMeetingId: string) => {
-  const accessToken = await getZoomAccessToken();
-  const url = `https://api.zoom.us/v2/meetings/${zoomMeetingId}/recordings`;
+const getMeetingRecordings = async (meetingId: string) => {
+  const meeting = Types.ObjectId.isValid(meetingId)
+    ? await Meeting.findById(meetingId)
+    : await Meeting.findOne({ roomName: meetingId });
 
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        `Failed to fetch Zoom meeting recordings: ${errorData}`
-      );
-    }
-
-    const data = (await response.json()) as ZoomRecordingApiResponse;
-    return data;
-  } catch (error: unknown) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      'Error fetching Zoom meeting recordings'
-    );
-  }
-};
-
-const syncMeetingRecordings = async (meetingId: string) => {
-  let zoomMeetingId = meetingId;
-  let meetingDoc = null;
-
-  if (Types.ObjectId.isValid(meetingId)) {
-    meetingDoc = await Meeting.findById(meetingId);
-    if (meetingDoc) {
-      zoomMeetingId = meetingDoc.zoomMeetingId;
-    }
-  }
-
-  const recordingData = await getMeetingRecordings(zoomMeetingId);
-
-  if (meetingDoc && recordingData) {
-    if (recordingData.share_url) {
-      meetingDoc.recordingUrl = recordingData.share_url;
-    }
-    if (
-      Array.isArray(recordingData.recording_files) &&
-      recordingData.recording_files.length > 0
-    ) {
-      meetingDoc.recordings = recordingData.recording_files.map(
-        (file: ZoomRecordingApiFile) => ({
-        id: file.id,
-        fileType: file.file_type,
-        fileExtension: file.file_extension,
-        fileSize: file.file_size,
-        playUrl: file.play_url,
-        downloadUrl: file.download_url,
-        recordingType: file.recording_type,
-        recordingStart: file.recording_start,
-        recordingEnd: file.recording_end,
-      }));
-      if (
-        !meetingDoc.recordingUrl &&
-        recordingData.recording_files[0]?.play_url
-      ) {
-        meetingDoc.recordingUrl = recordingData.recording_files[0].play_url;
-      }
-    }
-    await meetingDoc.save();
-
-    if (meetingDoc.conversationId) {
-      socketHelper.emitToConversation(
-        meetingDoc.conversationId.toString(),
-        'meeting_updated',
-        meetingDoc
-      );
-    }
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
   }
 
   return {
-    meeting: meetingDoc,
-    recordings: recordingData,
+    share_url: meeting.recordingUrl || '',
+    recording_files: meeting.recordings || [],
+  };
+};
+
+const syncMeetingRecordings = async (meetingId: string) => {
+  const meeting = Types.ObjectId.isValid(meetingId)
+    ? await Meeting.findById(meetingId)
+    : await Meeting.findOne({ roomName: meetingId });
+
+  return {
+    meeting,
+    recordings: {
+      share_url: meeting?.recordingUrl || '',
+      recording_files: meeting?.recordings || [],
+    },
   };
 };
 
@@ -715,24 +531,45 @@ const getAttorneyRecordings = async (attorneyId: string) => {
     joinedAttorneys: new Types.ObjectId(attorneyId),
   });
 
-  const results = [];
-  for (const m of meetings) {
-    try {
-      const recordings = await getMeetingRecordings(m.zoomMeetingId);
-      results.push({
-        meeting: m,
-        recordings,
-      });
-    } catch {
-      results.push({
-        meeting: m,
-        recordings: null,
-        error: 'Failed to fetch recordings',
-      });
-    }
+  return meetings.map(m => ({
+    meeting: m,
+    recordings: {
+      share_url: m.recordingUrl || '',
+      recording_files: m.recordings || [],
+    },
+  }));
+};
+
+const getMeetingSdkToken = async (meetingId: string, userId: string) => {
+  if (!Types.ObjectId.isValid(meetingId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid meeting ID');
   }
 
-  return results;
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  const user = await User.findById(userId);
+  const userObjectId = new Types.ObjectId(userId);
+  const isHost = meeting.userId.equals(userObjectId);
+  const roomName = meeting.roomName || meeting.sessionName || `govia_${meeting._id}`;
+
+  const livekitToken = await createLiveKitToken({
+    roomName,
+    participantIdentity: userId,
+    participantName: user?.name || (isHost ? 'Host' : 'Participant'),
+  });
+
+  return {
+    meetingId: meeting._id,
+    sessionName: roomName,
+    roomName,
+    isHost,
+    token: livekitToken,
+    livekitToken,
+    livekitUrl: config.livekit.url,
+  };
 };
 
 export const MeetingService = {
@@ -746,4 +583,5 @@ export const MeetingService = {
   getMeetingRecordings,
   syncMeetingRecordings,
   getAttorneyRecordings,
+  getMeetingSdkToken,
 };

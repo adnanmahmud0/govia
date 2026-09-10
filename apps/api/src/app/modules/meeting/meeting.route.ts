@@ -76,4 +76,16 @@ router.get(
   MeetingController.getRecordings
 );
 
+// Get fresh LiveKit / SDK token for a meeting
+router.get(
+  '/:id/sdk-token',
+  auth(...allRoles),
+  MeetingController.getMeetingSdkToken
+);
+router.get(
+  '/:id/token',
+  auth(...allRoles),
+  MeetingController.getMeetingSdkToken
+);
+
 export const MeetingRoutes = router;

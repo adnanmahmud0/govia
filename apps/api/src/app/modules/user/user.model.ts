@@ -110,17 +110,20 @@ userSchema.statics.isMatchPassword = async (
 
 //check user
 userSchema.pre('save', async function (next) {
-  //check user
-  const isExist = await User.findOne({ email: this.email, role: this.role });
-  if (isExist) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and Role combination already exists!');
+  if (this.isNew) {
+    const isExist = await User.findOne({ email: this.email, role: this.role });
+    if (isExist) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and Role combination already exists!');
+    }
   }
 
   //password hash
-  this.password = await bcrypt.hash(
-    this.password,
-    Number(config.bcrypt_salt_rounds)
-  );
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(
+      this.password,
+      Number(config.bcrypt_salt_rounds)
+    );
+  }
   next();
 });
 

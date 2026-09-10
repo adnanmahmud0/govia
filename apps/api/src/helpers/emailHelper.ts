@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer';
 import config from '../config';
 import { ISendEmail } from '../types/email';
-import { debug, debugError } from '../shared/debug';
+import { errorLogger, logger } from '../shared/logger';
+import { debug } from '../shared/debug';
 
 const createConfiguredTransporter = async () => {
   const hasSmtpConfig =
@@ -38,10 +39,7 @@ const sendEmail = async (values: ISendEmail) => {
   try {
     const transporter = await createConfiguredTransporter();
     if (!transporter) {
-      debugError('email.transport.missing_config');
-      if (process.env.NODE_ENV !== 'production') {
-        debug('email.dev.dump', { to: values.to, subject: values.subject });
-      }
+      errorLogger.error('Email transport missing configuration. Check EMAIL_HOST, EMAIL_USER, and EMAIL_PASS');
       return;
     }
     const info = await transporter.sendMail({
@@ -50,12 +48,13 @@ const sendEmail = async (values: ISendEmail) => {
       subject: values.subject,
       html: values.html,
     });
+    logger.info(`📧 Email sent successfully to ${values.to} [Subject: "${values.subject}"]`);
     const preview = nodemailer.getTestMessageUrl(info);
     if (preview) {
-      debug('email.preview', preview);
+      logger.info(`Email preview URL: ${preview}`);
     }
   } catch (error) {
-    debugError('email.send.failed', error);
+    errorLogger.error(`❌ Email send failed to ${values.to}: ${error instanceof Error ? error.message : error}`);
     if (process.env.NODE_ENV !== 'production') {
       debug('email.dev.dump', { to: values.to, subject: values.subject });
     }

@@ -16,10 +16,11 @@ export type IMeeting = {
   userId: Types.ObjectId; // Host / Creator
   participantId?: Types.ObjectId; // Invited user (e.g. Attorney, Bondsman, Citizen)
   conversationId?: Types.ObjectId; // Associated conversation thread if created from chat
-  zoomMeetingId: string;
+  roomName: string;
+  zoomMeetingId?: string;
   topic: string;
-  joinUrl: string;
-  startUrl: string;
+  joinUrl?: string;
+  startUrl?: string;
   password?: string;
   meetingType: 'INSTANT' | 'SCHEDULED' | 'EMERGENCY';
   startTime?: Date;
@@ -30,6 +31,10 @@ export type IMeeting = {
   joinedAttorneys: Types.ObjectId[];
   recordingUrl?: string;
   recordings?: IMeetingRecording[];
+  sessionName?: string;
+  livekitToken?: string;
+  token?: string;
+  livekitUrl?: string;
   endedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
