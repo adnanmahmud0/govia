@@ -124,6 +124,18 @@ const deleteUser = catchAsync(
   }
 );
 
+const lookupUser = catchAsync(async (req: Request, res: Response) => {
+  const { identifier } = req.params;
+  const result = await UserService.lookupUserByIdentifier(identifier);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'User profile retrieved successfully',
+    data: result,
+  });
+});
+
 export const UserController = {
   createUser,
   getUserProfile,
@@ -133,4 +145,6 @@ export const UserController = {
   getSingleUser,
   updateUser,
   deleteUser,
+  lookupUser,
 };
+

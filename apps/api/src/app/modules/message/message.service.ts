@@ -336,11 +336,107 @@ const searchUsersForMessaging = async (
   };
 };
 
+const editMessage = async (
+  userId: string,
+  messageId: string,
+  newText: string
+) => {
+  if (!Types.ObjectId.isValid(messageId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid message ID format');
+  }
+
+  const trimmed = newText?.trim();
+  if (!trimmed) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Message text cannot be empty');
+  }
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Message not found');
+  }
+
+  if (message.sender.toString() !== userId) {
+    throw new ApiError(StatusCodes.FORBIDDEN, 'You can only edit your own messages');
+  }
+
+  if (message.isDeleted) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Cannot edit a deleted message');
+  }
+
+  message.text = trimmed;
+  message.isEdited = true;
+  await message.save();
+
+  // If this message was the latest message in the conversation, update lastMessageText
+  await Conversation.findOneAndUpdate(
+    { _id: message.conversationId, lastMessage: message._id },
+    { lastMessageText: trimmed }
+  );
+
+  const populatedMessage = await Message.findById(message._id)
+    .populate('sender', 'name email role image phoneNumber')
+    .populate('receiver', 'name email role image phoneNumber')
+    .populate('meetingId');
+
+  socketHelper.emitToConversation(
+    message.conversationId.toString(),
+    'message_edited',
+    populatedMessage
+  );
+
+  return populatedMessage;
+};
+
+const deleteMessage = async (userId: string, messageId: string) => {
+  if (!Types.ObjectId.isValid(messageId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid message ID format');
+  }
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Message not found');
+  }
+
+  if (message.sender.toString() !== userId) {
+    throw new ApiError(StatusCodes.FORBIDDEN, 'You can only delete your own messages');
+  }
+
+  message.isDeleted = true;
+  message.text = 'This message was deleted';
+  message.attachment = undefined;
+  await message.save();
+
+  // Update conversation last message snippet if it was the last message
+  await Conversation.findOneAndUpdate(
+    { _id: message.conversationId, lastMessage: message._id },
+    { lastMessageText: 'This message was deleted' }
+  );
+
+  socketHelper.emitToConversation(
+    message.conversationId.toString(),
+    'message_deleted',
+    {
+      messageId: message._id.toString(),
+      conversationId: message.conversationId.toString(),
+      text: 'This message was deleted',
+      isDeleted: true,
+    }
+  );
+
+  return {
+    message: 'Message deleted successfully',
+    messageId: message._id.toString(),
+  };
+};
+
 export const MessageService = {
   sendMessage,
   getMessagesByConversation,
   markMessagesAsRead,
   searchUsersForMessaging,
+  editMessage,
+  deleteMessage,
 };
+
 
 

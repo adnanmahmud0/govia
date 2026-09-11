@@ -26,5 +26,7 @@ router.get(
 );
 
 router.get('/:id', auth(...allRoles), ConversationController.getSingleConversation);
+router.delete('/:id', auth(...allRoles), ConversationController.deleteConversation);
 
 export const ConversationRoutes = router;
+

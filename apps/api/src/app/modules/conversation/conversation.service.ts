@@ -1,6 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import { Types } from 'mongoose';
 import ApiError from '../../../errors/ApiError';
+import { socketHelper } from '../../../helpers/socketHelper';
 import { User } from '../user/user.model';
 import { Conversation } from './conversation.model';
 import { Message } from '../message/message.model';
@@ -197,9 +198,45 @@ const getSingleConversation = async (
   return { ...conversation, unreadCount };
 };
 
+const deleteConversation = async (
+  userId: string,
+  conversationId: string
+) => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid conversation ID format');
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  const conversation = await Conversation.findOne({
+    _id: new Types.ObjectId(conversationId),
+    participants: userObjectId,
+  });
+
+  if (!conversation) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Conversation not found or access denied');
+  }
+
+  // Delete all messages belonging to this conversation
+  await Message.deleteMany({ conversationId: conversation._id });
+
+  // Delete the conversation document
+  await Conversation.findByIdAndDelete(conversation._id);
+
+  socketHelper.emitToConversation(conversationId, 'conversation_deleted', {
+    conversationId,
+  });
+
+  return {
+    message: 'Conversation and all messages deleted successfully',
+    conversationId,
+  };
+};
+
 export const ConversationService = {
   createOrGetConversation,
   getUserConversations,
   getSingleConversation,
+  deleteConversation,
 };
+
 
