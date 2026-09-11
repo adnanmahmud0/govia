@@ -46,6 +46,18 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       enum: ['INSTANT', 'SCHEDULED', 'EMERGENCY'],
       default: 'INSTANT',
     },
+    category: {
+      type: String,
+      enum: ['ENCOUNTER', 'EMERGENCY', 'CONSULTATION'],
+      default: 'CONSULTATION',
+      index: true,
+    },
+    vaultFolderId: {
+      type: Schema.Types.ObjectId,
+      ref: 'VaultFolder',
+      required: false,
+      index: true,
+    },
     startTime: {
       type: Date,
     },

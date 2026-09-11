@@ -61,9 +61,18 @@ const getUserFolders = async (
     const imageCount = folderItems.filter(i => i.fileType === 'IMAGE').length;
     const docCount = folderItems.filter(i => i.fileType === 'DOCUMENT').length;
 
+    const containedCategories = Array.from(new Set(folderItems.map(i => i.category)));
+
     return {
       ...folder,
       itemCount: folderItems.length,
+      counts: {
+        video: videoCount,
+        audio: audioCount,
+        image: imageCount,
+        doc: docCount,
+      },
+      containedCategories,
       itemSummary: {
         total: folderItems.length,
         videos: videoCount,
@@ -138,7 +147,14 @@ const uploadEvidence = async (
   userId: string,
   folderId: string,
   uploadedFiles: any,
-  payload: { title?: string; description?: string; category?: VaultCategory }
+  payload: {
+    title?: string;
+    description?: string;
+    subCategory?: string;
+    importance?: 'CRITICAL' | 'HIGH' | 'SUPPORTING' | 'GENERAL';
+    fileType?: VaultItemType;
+    duration?: string;
+  }
 ) => {
   const folder = await VaultFolder.findOne({
     _id: new Types.ObjectId(folderId),
@@ -167,13 +183,15 @@ const uploadEvidence = async (
   }
 
   for (const file of fileList) {
-    let fileType: VaultItemType = 'DOCUMENT';
-    if (file.mimetype.startsWith('image/')) {
-      fileType = 'IMAGE';
-    } else if (file.mimetype.startsWith('video/')) {
-      fileType = 'VIDEO';
-    } else if (file.mimetype.startsWith('audio/')) {
-      fileType = 'AUDIO';
+    let fileType: VaultItemType = payload.fileType || 'DOCUMENT';
+    if (!payload.fileType) {
+      if (file.mimetype.startsWith('image/')) {
+        fileType = 'IMAGE';
+      } else if (file.mimetype.startsWith('video/')) {
+        fileType = 'VIDEO';
+      } else if (file.mimetype.startsWith('audio/')) {
+        fileType = 'AUDIO';
+      }
     }
 
     const relativePath = `/uploads/${file.fieldname === 'image' ? 'image' : file.fieldname === 'media' ? 'media' : 'doc'}/${file.filename}`;
@@ -183,11 +201,14 @@ const uploadEvidence = async (
       folderId: new Types.ObjectId(folderId),
       title: payload.title || file.originalname || 'Uploaded Evidence',
       description: payload.description || '',
-      category: payload.category || folder.category || 'UPLOADED',
+      category: 'UPLOADED',
+      subCategory: payload.subCategory || '',
+      importance: payload.importance || 'GENERAL',
       fileType,
       fileUrl: relativePath,
       fileSize: file.size,
       mimeType: file.mimetype,
+      duration: payload.duration || '',
     });
   }
 
@@ -218,6 +239,15 @@ const linkMeetingToFolder = async (
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting record not found');
   }
 
+  // Auto-assign category based on meeting type or topic
+  const meetingCategory: VaultCategory =
+    (meeting.category as VaultCategory) ||
+    (meeting.meetingType === 'EMERGENCY'
+      ? 'EMERGENCY'
+      : (meeting.topic && meeting.topic.toLowerCase().includes('govia'))
+        ? 'ENCOUNTER'
+        : 'CONSULTATION');
+
   const recordingUrl = meeting.recordingUrl || meeting.joinUrl || '';
   const duration = meeting.durationMinutes
     ? `${meeting.durationMinutes} mins`
@@ -227,13 +257,17 @@ const linkMeetingToFolder = async (
     userId: new Types.ObjectId(userId),
     folderId: new Types.ObjectId(payload.folderId),
     title: payload.title || meeting.topic || 'Consultation Session Recording',
-    description: payload.description || meeting.agenda || 'Recorded consultation session from GoVia schedule.',
-    category: 'CONSULTATION',
-    fileType: 'RECORDING',
+    description: payload.description || meeting.agenda || 'Recorded session linked to Vault.',
+    category: meetingCategory,
+    fileType: 'VIDEO',
     fileUrl: recordingUrl,
     duration,
     meetingId: meeting._id,
   });
+
+  // Link back on Meeting document
+  meeting.vaultFolderId = folder._id;
+  await meeting.save();
 
   return item;
 };

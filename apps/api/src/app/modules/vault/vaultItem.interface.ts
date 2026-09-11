@@ -2,6 +2,7 @@ import { Model, Types } from 'mongoose';
 import { VaultCategory } from './vaultFolder.interface';
 
 export type VaultItemType = 'VIDEO' | 'AUDIO' | 'IMAGE' | 'DOCUMENT' | 'RECORDING';
+export type VaultImportance = 'CRITICAL' | 'HIGH' | 'SUPPORTING' | 'GENERAL';
 
 export type IVaultItem = {
   _id?: Types.ObjectId;
@@ -10,6 +11,8 @@ export type IVaultItem = {
   title?: string;
   description?: string;
   category: VaultCategory;
+  subCategory?: string;
+  importance?: VaultImportance;
   fileType: VaultItemType;
   fileUrl: string;
   thumbnailUrl?: string;

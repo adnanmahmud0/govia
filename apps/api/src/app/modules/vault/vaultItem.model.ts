@@ -31,6 +31,16 @@ const vaultItemSchema = new Schema<IVaultItem, VaultItemModel>(
       default: 'UPLOADED',
       index: true,
     },
+    subCategory: {
+      type: String,
+      default: '',
+    },
+    importance: {
+      type: String,
+      enum: ['CRITICAL', 'HIGH', 'SUPPORTING', 'GENERAL'],
+      default: 'GENERAL',
+      index: true,
+    },
     fileType: {
       type: String,
       enum: ['VIDEO', 'AUDIO', 'IMAGE', 'DOCUMENT', 'RECORDING'],

@@ -69,13 +69,16 @@ const deleteFolder = catchAsync(async (req: Request, res: Response) => {
 
 const uploadEvidence = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.id;
-  const { folderId, title, description, category } = req.body;
+  const { folderId, title, description, subCategory, importance, fileType, duration } = req.body;
   const files = req.files as any;
 
   const result = await VaultService.uploadEvidence(userId, folderId, files, {
     title,
     description,
-    category,
+    subCategory,
+    importance,
+    fileType,
+    duration,
   });
 
   sendResponse(res, {

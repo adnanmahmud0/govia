@@ -50,12 +50,18 @@ const createInstantMeeting = async (
       sessionName: roomName,
       topic,
       meetingType: isEmergency ? 'EMERGENCY' : 'INSTANT',
+      category: isEmergency
+        ? 'EMERGENCY'
+        : topic.toLowerCase().includes('govia')
+          ? 'ENCOUNTER'
+          : 'CONSULTATION',
       status: 'ACTIVE',
     });
 
     const populatedMeeting = await Meeting.findById(newMeeting._id)
       .populate('userId', 'name email role image phoneNumber')
       .populate('participantId', 'name email role image phoneNumber')
+      .populate('vaultFolderId', 'name description category')
       .populate('conversationId');
 
     const hostUser = await User.findById(userId);
@@ -208,6 +214,7 @@ const scheduleMeeting = async (
       sessionName: roomName,
       topic,
       meetingType: 'SCHEDULED',
+      category: 'CONSULTATION',
       startTime: meetingDate,
       durationMinutes,
       timezone,
@@ -218,6 +225,7 @@ const scheduleMeeting = async (
     const populatedMeeting = await Meeting.findById(scheduledMeeting._id)
       .populate('userId', 'name email role image phoneNumber')
       .populate('participantId', 'name email role image phoneNumber')
+      .populate('vaultFolderId', 'name description category')
       .populate('conversationId');
 
     const scheduledResult = populatedMeeting
@@ -340,6 +348,7 @@ const getUserMeetings = async (
     .populate('userId', 'name email role image phoneNumber')
     .populate('participantId', 'name email role image phoneNumber')
     .populate('joinedAttorneys', 'name email role image')
+    .populate('vaultFolderId', 'name description category')
     .populate('conversationId');
 
   if (query.page && query.limit) {

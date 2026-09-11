@@ -23,6 +23,8 @@ export type IMeeting = {
   startUrl?: string;
   password?: string;
   meetingType: 'INSTANT' | 'SCHEDULED' | 'EMERGENCY';
+  category?: 'ENCOUNTER' | 'EMERGENCY' | 'CONSULTATION';
+  vaultFolderId?: Types.ObjectId;
   startTime?: Date;
   durationMinutes?: number;
   timezone?: string;
