@@ -35,6 +35,12 @@ router.post(
 router.get('/my-meetings', auth(...allRoles), MeetingController.getMyMeetings);
 router.get('/schedule', auth(...allRoles), MeetingController.getMyMeetings);
 
+// Update a scheduled meeting
+router.patch('/:id', auth(...allRoles), MeetingController.updateMeeting);
+
+// Delete a meeting
+router.delete('/:id', auth(...allRoles), MeetingController.deleteMeeting);
+
 // End a meeting and automatically attach Zoom cloud recordings
 router.patch('/:id/end', auth(...allRoles), MeetingController.endMeeting);
 
@@ -55,10 +61,10 @@ router.get(
   MeetingController.getActiveMeetings
 );
 
-// Join a meeting (Attorney action)
+// Join a meeting (open to all roles)
 router.post(
   '/:meetingId/join',
-  auth(USER_ROLES.ATTORNEY),
+  auth(...allRoles),
   MeetingController.joinMeeting
 );
 

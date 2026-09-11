@@ -364,29 +364,32 @@ const getUserMeetings = async (
   return meetings;
 };
 
-const joinMeeting = async (meetingId: string, attorneyId: string) => {
+const joinMeeting = async (meetingId: string, userId: string) => {
   const meeting = await Meeting.findById(meetingId);
   if (!meeting) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
   }
 
-  const objAttorneyId = new Types.ObjectId(attorneyId);
-  if (!meeting.joinedAttorneys.some(id => id.equals(objAttorneyId))) {
-    meeting.joinedAttorneys.push(objAttorneyId);
-    await meeting.save();
+  const user = await User.findById(userId);
+  if (user?.role === 'ATTORNEY') {
+    const objAttorneyId = new Types.ObjectId(userId);
+    if (!meeting.joinedAttorneys.some(id => id.equals(objAttorneyId))) {
+      meeting.joinedAttorneys.push(objAttorneyId);
+      await meeting.save();
+    }
   }
 
-  const attorney = await User.findById(attorneyId);
   const roomName = meeting.roomName || meeting.sessionName || `govia_${meeting._id}`;
   const livekitToken = await createLiveKitToken({
     roomName,
-    participantIdentity: attorneyId,
-    participantName: attorney?.name || 'Attorney',
+    participantIdentity: userId,
+    participantName: user?.name || 'Participant',
   });
 
   socketHelper.emitToUser(meeting.userId.toString(), 'meeting_joined', {
     meetingId: meeting._id,
-    attorneyId,
+    userId,
+    userName: user?.name,
   });
 
   return {
@@ -398,6 +401,117 @@ const joinMeeting = async (meetingId: string, attorneyId: string) => {
     livekitUrl: config.livekit.url,
     joinUrl: meeting.joinUrl,
   };
+};
+
+const updateMeeting = async (
+  userId: string,
+  meetingId: string,
+  payload: {
+    topic?: string;
+    startTime?: string;
+    durationMinutes?: number;
+    timezone?: string;
+    agenda?: string;
+  }
+) => {
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  const isHost = meeting.userId.equals(userObjectId);
+  const isParticipant =
+    meeting.participantId && meeting.participantId.equals(userObjectId);
+
+  if (!isHost && !isParticipant) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'You do not have permission to edit this meeting'
+    );
+  }
+
+  if (payload.topic) meeting.topic = payload.topic;
+  if (payload.startTime) {
+    const meetingDate = new Date(payload.startTime);
+    if (isNaN(meetingDate.getTime())) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid startTime format');
+    }
+    meeting.startTime = meetingDate;
+  }
+  if (payload.durationMinutes !== undefined) {
+    meeting.durationMinutes = Number(payload.durationMinutes);
+  }
+  if (payload.timezone) meeting.timezone = payload.timezone;
+  if (payload.agenda !== undefined) meeting.agenda = payload.agenda;
+
+  await meeting.save();
+
+  await Message.updateMany(
+    { meetingId: meeting._id },
+    {
+      text: `📅 Meeting Updated: ${meeting.topic}\n🕒 Time: ${new Date(
+        meeting.startTime || Date.now()
+      ).toLocaleString()}\n⏱ Duration: ${meeting.durationMinutes} minutes${
+        meeting.agenda ? `\n📝 Agenda: ${meeting.agenda}` : ''
+      }`,
+      isEdited: true,
+    }
+  );
+
+  const populatedMeeting = await Meeting.findById(meeting._id)
+    .populate('userId', 'name email role image phoneNumber')
+    .populate('participantId', 'name email role image phoneNumber')
+    .populate('joinedAttorneys', 'name email role image')
+    .populate('conversationId');
+
+  if (meeting.conversationId) {
+    socketHelper.emitToConversation(
+      meeting.conversationId.toString(),
+      'meeting_updated',
+      populatedMeeting
+    );
+  }
+
+  return populatedMeeting;
+};
+
+const deleteMeeting = async (userId: string, meetingId: string) => {
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  const isHost = meeting.userId.equals(userObjectId);
+  const isParticipant =
+    meeting.participantId && meeting.participantId.equals(userObjectId);
+
+  if (!isHost && !isParticipant) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'You do not have permission to delete this meeting'
+    );
+  }
+
+  await Message.updateMany(
+    { meetingId: meeting._id },
+    { isDeleted: true, text: 'This meeting was deleted' }
+  );
+
+  meeting.status = 'CANCELLED';
+  await meeting.save();
+  await Meeting.findByIdAndDelete(meetingId);
+
+  if (meeting.conversationId) {
+    socketHelper.emitToConversation(
+      meeting.conversationId.toString(),
+      'meeting_deleted',
+      { meetingId }
+    );
+  }
+
+  return { message: 'Meeting deleted successfully', meetingId };
 };
 
 const endMeeting = async (userId: string, meetingId: string) => {
@@ -427,8 +541,18 @@ const endMeeting = async (userId: string, meetingId: string) => {
 
   meeting.status = 'COMPLETED';
   meeting.endedAt = new Date();
+  if (!meeting.recordingUrl) {
+    meeting.recordingUrl = `https://recordings.govia.ai/play/${meeting._id}`;
+  }
 
   await meeting.save();
+
+  await Message.updateMany(
+    { meetingId: meeting._id },
+    {
+      text: `🏁 Meeting Ended: ${meeting.topic}\n📹 Recording is available`,
+    }
+  );
 
   const populatedMeeting = await Meeting.findById(meeting._id)
     .populate('userId', 'name email role image phoneNumber')
@@ -575,6 +699,8 @@ const getMeetingSdkToken = async (meetingId: string, userId: string) => {
 export const MeetingService = {
   createInstantMeeting,
   scheduleMeeting,
+  updateMeeting,
+  deleteMeeting,
   getActiveMeetings,
   getUserMeetings,
   joinMeeting,

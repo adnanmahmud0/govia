@@ -32,10 +32,13 @@ const fileUploadHandler = () => {
           uploadDir = path.join(baseUploadDir, 'media');
           break;
         case 'doc':
+        case 'file':
+        case 'attachment':
           uploadDir = path.join(baseUploadDir, 'doc');
           break;
         default:
-          throw new ApiError(StatusCodes.BAD_REQUEST, 'File is not supported');
+          uploadDir = path.join(baseUploadDir, 'doc');
+          break;
       }
       createDir(uploadDir);
       cb(null, uploadDir);
@@ -62,38 +65,41 @@ const fileUploadHandler = () => {
   ) => {
     if (file.fieldname === 'image') {
       if (
+        file.mimetype.startsWith('image/') ||
         file.mimetype === 'image/jpeg' ||
         file.mimetype === 'image/png' ||
-        file.mimetype === 'image/jpg'
+        file.mimetype === 'image/jpg' ||
+        file.mimetype === 'image/webp' ||
+        file.mimetype === 'image/gif'
       ) {
         cb(null, true);
       } else {
         cb(
           new ApiError(
             StatusCodes.BAD_REQUEST,
-            'Only .jpeg, .png, .jpg file supported'
+            'Only image files (.jpeg, .png, .jpg, .webp, .gif) are supported'
           )
         );
       }
     } else if (file.fieldname === 'media') {
-      if (file.mimetype === 'video/mp4' || file.mimetype === 'audio/mpeg') {
+      if (
+        file.mimetype.startsWith('video/') ||
+        file.mimetype.startsWith('audio/') ||
+        file.mimetype === 'video/mp4' ||
+        file.mimetype === 'audio/mpeg'
+      ) {
         cb(null, true);
       } else {
         cb(
           new ApiError(
             StatusCodes.BAD_REQUEST,
-            'Only .mp4, .mp3, file supported'
+            'Only .mp4, .mp3, media files supported'
           )
         );
       }
-    } else if (file.fieldname === 'doc') {
-      if (file.mimetype === 'application/pdf') {
-        cb(null, true);
-      } else {
-        cb(new ApiError(StatusCodes.BAD_REQUEST, 'Only pdf supported'));
-      }
     } else {
-      cb(new ApiError(StatusCodes.BAD_REQUEST, 'This file is not supported'));
+      // doc, file, attachment or general documents
+      cb(null, true);
     }
   };
 
@@ -101,9 +107,11 @@ const fileUploadHandler = () => {
     storage: storage,
     fileFilter: filterFilter,
   }).fields([
-    { name: 'image', maxCount: 3 },
-    { name: 'media', maxCount: 3 },
-    { name: 'doc', maxCount: 3 },
+    { name: 'image', maxCount: 5 },
+    { name: 'media', maxCount: 5 },
+    { name: 'doc', maxCount: 5 },
+    { name: 'file', maxCount: 5 },
+    { name: 'attachment', maxCount: 5 },
   ]);
   return upload;
 };

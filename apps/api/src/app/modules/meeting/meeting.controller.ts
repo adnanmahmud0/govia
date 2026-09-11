@@ -166,10 +166,38 @@ const getMeetingSdkToken = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateMeeting = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  const result = await MeetingService.updateMeeting(userId, id, req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Meeting updated successfully',
+    data: result,
+  });
+});
+
+const deleteMeeting = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  const result = await MeetingService.deleteMeeting(userId, id);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Meeting deleted successfully',
+    data: result,
+  });
+});
+
 export const MeetingController = {
   startGovia,
   emergencyCall,
   scheduleMeeting,
+  updateMeeting,
+  deleteMeeting,
   getMyMeetings,
   endMeeting,
   syncRecording,

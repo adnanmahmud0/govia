@@ -16,7 +16,10 @@ const sendMessage = catchAsync(async (req: Request, res: Response) => {
 
   const imagePath = getSingleFilePath(files, 'image');
   const mediaPath = getSingleFilePath(files, 'media');
-  const docPath = getSingleFilePath(files, 'doc');
+  const docPath =
+    getSingleFilePath(files, 'doc') ||
+    getSingleFilePath(files, 'file') ||
+    getSingleFilePath(files, 'attachment');
 
   const attachment = imagePath || mediaPath || docPath;
 

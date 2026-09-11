@@ -35,7 +35,7 @@ const getUserProfile = catchAsync(async (req: Request, res: Response) => {
 const updateProfile = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
     const user = req.user;
-    const image = getSingleFilePath(req.files as Partial<Record<string, File[]>> | undefined, 'image');
+    const image = getSingleFilePath(req.files as any, 'image');
 
     const data = {
       image,
@@ -94,7 +94,7 @@ const getSingleUser = catchAsync(
 
 const updateUser = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
-    const image = getSingleFilePath(req.files as Partial<Record<string, File[]>> | undefined, 'image');
+    const image = getSingleFilePath(req.files as any, 'image');
 
     const data = {
       image,
