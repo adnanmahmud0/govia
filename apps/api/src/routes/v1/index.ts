@@ -8,6 +8,7 @@ import { CommunityResourceRoutes } from '../../app/modules/communityResource/com
 import { GoviaRecordingRoutes } from '../../app/modules/goviaRecording/goviaRecording.route';
 import { ConversationRoutes } from '../../app/modules/conversation/conversation.route';
 import { MessageRoutes } from '../../app/modules/message/message.route';
+import { VaultRoutes } from '../../app/modules/vault/vault.route';
 
 const router = express.Router();
 
@@ -51,6 +52,10 @@ const apiRoutes = [
   {
     path: '/message',
     route: MessageRoutes,
+  },
+  {
+    path: '/vault',
+    route: VaultRoutes,
   },
 ];
 
