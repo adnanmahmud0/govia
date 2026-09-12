@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { User } from '../app/modules/user/user.model';
+import { CommunityResource } from '../app/modules/communityResource/communityResource.model';
 import config from '../config';
 import { USER_ROLES } from '../enums/user';
 
@@ -230,6 +231,86 @@ export const seedDemoAccounts = async () => {
         }
       );
     }
+  }
+
+  // Seed initial community resources if not yet present
+  await seedCommunityResources();
+};
+
+export const defaultCommunityResources = [
+  {
+    name: 'Dana Bond',
+    shortName: 'Dana Bail Bonds',
+    email: 'danaacyinsurance@gmail.com',
+    phone: '2164108911',
+    websiteUrl: 'https://DanaBond.com',
+  },
+  {
+    name: 'American Civil Liberties Union',
+    shortName: 'ACLU',
+    websiteUrl: 'https://www.aclu.org',
+  },
+  {
+    name: 'Legal Aid Society',
+    shortName: 'LAS',
+    websiteUrl: 'https://www.legalaidinfo.org',
+  },
+  {
+    name: 'National Association for the Advancement of Colored People',
+    shortName: 'NAACP',
+    websiteUrl: 'https://naacp.org',
+  },
+  {
+    name: 'Southern Poverty Law Center',
+    shortName: 'SPLC',
+    websiteUrl: 'https://www.splcenter.org',
+  },
+  {
+    name: 'Equal Justice Initiative',
+    shortName: 'EJI',
+    websiteUrl: 'https://eji.org',
+  },
+  {
+    name: 'People, Places, and Dreams',
+    shortName: 'PPD',
+    websiteUrl: 'https://peopleplacesdreams.org',
+  },
+  {
+    name: 'Black Mental Health Alliance',
+    shortName: 'BMHA',
+    websiteUrl: 'https://blackmentalhealth.com',
+  },
+  {
+    name: 'Friend a Felon',
+    shortName: 'FAF',
+    websiteUrl: 'https://www.friendafelon.com',
+  },
+  {
+    name: 'Federal Bureau of Investigation / Civil Rights',
+    shortName: 'FBI.gov',
+    websiteUrl: 'https://www.fbi.gov',
+  },
+  {
+    name: 'DOJ Civil Rights Division',
+    shortName: 'Civil Rights Div',
+    websiteUrl: 'https://www.justice.gov/crt',
+  },
+  {
+    name: 'National Association for Civilian Oversight of Law Enforcement',
+    shortName: 'NACOLE',
+    websiteUrl: 'https://www.nacole.org',
+  },
+  {
+    name: 'State of Ohio Governor Official Portal',
+    shortName: 'Governor.Ohio',
+    websiteUrl: 'https://governor.ohio.gov',
+  },
+];
+
+export const seedCommunityResources = async () => {
+  const count = await CommunityResource.countDocuments();
+  if (count === 0) {
+    await CommunityResource.insertMany(defaultCommunityResources);
   }
 };
 

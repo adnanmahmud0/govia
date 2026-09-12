@@ -8,6 +8,8 @@ import fileUploadHandler from '../../middlewares/fileUploadHandler';
 
 const router = express.Router();
 
+const allRoles = Object.values(USER_ROLES);
+
 router.post(
   '/',
   auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
@@ -18,13 +20,13 @@ router.post(
 
 router.get(
   '/',
-  auth(USER_ROLES.USER, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  auth(...allRoles),
   CommunityResourceController.getAllResources
 );
 
 router.get(
   '/:id',
-  auth(USER_ROLES.USER, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  auth(...allRoles),
   CommunityResourceController.getSingleResource
 );
 
