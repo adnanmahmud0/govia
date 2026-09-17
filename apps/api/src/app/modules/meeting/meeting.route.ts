@@ -41,14 +41,29 @@ router.patch('/:id', auth(...allRoles), MeetingController.updateMeeting);
 // Delete a meeting
 router.delete('/:id', auth(...allRoles), MeetingController.deleteMeeting);
 
-// End a meeting and automatically attach Zoom cloud recordings
+// End a meeting and automatically attach cloud recordings
 router.patch('/:id/end', auth(...allRoles), MeetingController.endMeeting);
+router.post('/:id/end', auth(...allRoles), MeetingController.endMeeting);
+
+// Leave a meeting (participants exit cleanly, host triggers 5-min auto-end)
+router.post('/:id/leave', auth(...allRoles), MeetingController.leaveMeeting);
+router.patch('/:id/leave', auth(...allRoles), MeetingController.leaveMeeting);
+
+// Host rejoined meeting (clears 5-min grace timer)
+router.post('/:id/rejoin', auth(...allRoles), MeetingController.rejoinMeeting);
 
 // Sync / refresh meeting recordings from Zoom cloud
 router.patch(
   '/:id/sync-recording',
   auth(...allRoles),
   MeetingController.syncRecording
+);
+
+// Start cloud/incident recording
+router.post(
+  '/:id/recording/start',
+  auth(...allRoles),
+  MeetingController.startRecording
 );
 
 // Cancel a scheduled meeting

@@ -225,12 +225,19 @@ const lookupUserByIdentifier = async (rawIdentifier: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'No user found with the provided ID or QR card');
   }
 
-  // Check if this user currently has an active incident / emergency meeting
+  // Check if this user currently has an active incident / emergency meeting (Type 1: ENCOUNTER, Type 2: EMERGENCY)
+  // Note: Type 3 (CONSULTATION / SCHEDULED) is excluded from QR lookup per business requirements
   const activeMeeting = await Meeting.findOne({
     userId: user._id,
     status: 'ACTIVE',
+    $or: [
+      { category: { $in: ['ENCOUNTER', 'EMERGENCY'] } },
+      { meetingType: 'EMERGENCY' },
+      { topic: { $regex: /police|encounter|emergency|unsafe|stopped|govia/i } },
+    ],
+    category: { $ne: 'CONSULTATION' },
   })
-    .select('_id roomName topic meetingType status createdAt joinUrl token')
+    .select('_id roomName topic meetingType category status createdAt joinUrl token')
     .lean();
 
   return {

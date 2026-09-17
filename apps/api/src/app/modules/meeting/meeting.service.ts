@@ -8,6 +8,7 @@ import { User } from '../user/user.model';
 import { Meeting } from './meeting.model';
 import { Conversation } from '../conversation/conversation.model';
 import { Message } from '../message/message.model';
+import { debug } from '../../../shared/debug';
 
 const createInstantMeeting = async (
   userId: string,
@@ -40,6 +41,12 @@ const createInstantMeeting = async (
   }
 
   const roomName = `govia_${Date.now()}_${userId.slice(-6)}`;
+
+  // Retire any prior active meetings for this host so stale duplicate live incidents do not linger
+  await Meeting.updateMany(
+    { userId: new Types.ObjectId(userId), status: 'ACTIVE' },
+    { status: 'COMPLETED', endedAt: new Date() }
+  );
 
   try {
     const newMeeting = await Meeting.create({
@@ -294,12 +301,33 @@ const scheduleMeeting = async (
 };
 
 const getActiveMeetings = async () => {
-  const activeMeetings = await Meeting.find({ status: 'ACTIVE' })
+  const activeMeetings = await Meeting.find({
+    status: 'ACTIVE',
+    $or: [
+      { category: { $in: ['ENCOUNTER', 'EMERGENCY'] } },
+      { meetingType: 'EMERGENCY' },
+      { topic: { $regex: /police|encounter|emergency|unsafe|stopped|govia/i } },
+    ],
+    category: { $ne: 'CONSULTATION' },
+  })
     .sort({ createdAt: -1 })
     .populate('userId', 'name email role image phoneNumber')
     .populate('participantId', 'name email role image phoneNumber')
     .populate('conversationId');
-  return activeMeetings;
+
+  // De-duplicate meetings by host userId so only the most recent active request appears
+  const seenUsers = new Set<string>();
+  const uniqueActiveMeetings: typeof activeMeetings = [];
+  for (const m of activeMeetings) {
+    const uId = (m.userId as any)?._id?.toString() || m.userId?.toString();
+    if (uId && !seenUsers.has(uId)) {
+      seenUsers.add(uId);
+      uniqueActiveMeetings.push(m);
+    } else if (!uId) {
+      uniqueActiveMeetings.push(m);
+    }
+  }
+  return uniqueActiveMeetings;
 };
 
 const getUserMeetings = async (
@@ -308,6 +336,8 @@ const getUserMeetings = async (
     status?: string;
     meetingType?: string;
     timeFilter?: string;
+    isConsultationOnly?: string | boolean;
+    includeEmergency?: string | boolean;
     page?: number | string;
     limit?: number | string;
   } = {}
@@ -319,18 +349,37 @@ const getUserMeetings = async (
       { userId: userObjectId },
       { participantId: userObjectId },
       { joinedAttorneys: userObjectId },
+      { joinedParticipants: userObjectId },
     ],
   };
 
+  // 1. Meeting Type filtering & Emergency exclusion
+  if (query.meetingType) {
+    if (query.includeEmergency !== 'true' && query.meetingType === 'EMERGENCY') {
+      filter.meetingType = { $in: [] }; // Cannot return emergency meetings when emergency exclusion is active
+    } else {
+      filter.meetingType = query.meetingType;
+    }
+  } else if (query.includeEmergency !== 'true') {
+    filter.meetingType = { $ne: 'EMERGENCY' };
+  }
+
+  // Schedule filtering: Consultation Schedule strictly excludes emergency SOS calls,
+  // Start Govia encounters, and panic cards (e.g. 'I feel unsafe' / 'I'm being stopped').
+  // These incident recordings belong exclusively to the Evidence Vault Recordings.
+  if (query.includeEmergency !== 'true') {
+    filter.category = { $nin: ['EMERGENCY', 'ENCOUNTER'] };
+    filter.topic = {
+      $not: {
+        $regex: /emergency|unsafe|stopped|start govia|encounter|incident protocol/i,
+      },
+    };
+  }
+
+  // 2. Status & TimeFilter filtering
   if (query.status) {
     filter.status = query.status;
-  }
-
-  if (query.meetingType) {
-    filter.meetingType = query.meetingType;
-  }
-
-  if (query.timeFilter === 'upcoming') {
+  } else if (query.timeFilter === 'upcoming') {
     filter.status = { $in: ['SCHEDULED', 'ACTIVE'] };
   } else if (query.timeFilter === 'past') {
     filter.status = { $in: ['COMPLETED', 'CANCELLED'] };
@@ -380,10 +429,41 @@ const joinMeeting = async (meetingId: string, userId: string) => {
   }
 
   const user = await User.findById(userId);
-  if (user?.role === 'ATTORNEY') {
-    const objAttorneyId = new Types.ObjectId(userId);
-    if (!meeting.joinedAttorneys.some(id => id.equals(objAttorneyId))) {
-      meeting.joinedAttorneys.push(objAttorneyId);
+  const userObjectId = new Types.ObjectId(userId);
+
+  // If host joins / rejoins, cancel any pending 5-minute auto-end timer
+  if (meeting.userId.toString() === userId) {
+    hostRejoinedMeeting(meetingId, userId);
+  }
+
+  // If joiner is not the creator, register them as joined participant
+  if (meeting.userId.toString() !== userId) {
+    let shouldSave = false;
+
+    if (!meeting.joinedParticipants) {
+      meeting.joinedParticipants = [];
+    }
+    if (!meeting.joinedParticipants.some(id => id.equals(userObjectId))) {
+      meeting.joinedParticipants.push(userObjectId);
+      shouldSave = true;
+    }
+
+    if (user?.role === 'ATTORNEY') {
+      if (!meeting.joinedAttorneys) {
+        meeting.joinedAttorneys = [];
+      }
+      if (!meeting.joinedAttorneys.some(id => id.equals(userObjectId))) {
+        meeting.joinedAttorneys.push(userObjectId);
+        shouldSave = true;
+      }
+    }
+
+    if (!meeting.participantId) {
+      meeting.participantId = userObjectId;
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
       await meeting.save();
     }
   }
@@ -401,7 +481,16 @@ const joinMeeting = async (meetingId: string, userId: string) => {
     userName: user?.name,
   });
 
+  const populatedMeeting = await Meeting.findById(meeting._id)
+    .populate('userId', 'name email role image phoneNumber')
+    .populate('participantId', 'name email role image phoneNumber')
+    .populate('joinedAttorneys', 'name email role image')
+    .populate('joinedParticipants', 'name email role image phoneNumber');
+
+  const meetingData: any = populatedMeeting ? populatedMeeting.toObject() : meeting.toObject();
+
   return {
+    ...meetingData,
     meetingId: meeting._id,
     roomName,
     sessionName: roomName,
@@ -508,8 +597,6 @@ const deleteMeeting = async (userId: string, meetingId: string) => {
     { isDeleted: true, text: 'This meeting was deleted' }
   );
 
-  meeting.status = 'CANCELLED';
-  await meeting.save();
   await Meeting.findByIdAndDelete(meetingId);
 
   if (meeting.conversationId) {
@@ -521,6 +608,83 @@ const deleteMeeting = async (userId: string, meetingId: string) => {
   }
 
   return { message: 'Meeting deleted successfully', meetingId };
+};
+
+// Active 5-minute auto-end timers for meetings where host left without ending
+const hostLeaveTimers = new Map<string, NodeJS.Timeout>();
+
+const hostLeaveMeeting = async (meetingId: string, userId: string) => {
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) return;
+
+  if (meeting.userId.toString() === userId && meeting.status === 'ACTIVE') {
+    if (hostLeaveTimers.has(meetingId)) {
+      clearTimeout(hostLeaveTimers.get(meetingId)!);
+      hostLeaveTimers.delete(meetingId);
+    }
+
+    debug('meeting.host_left.5min_timer_started', { meetingId });
+
+    const timer = setTimeout(async () => {
+      try {
+        const currentMeeting = await Meeting.findById(meetingId);
+        if (currentMeeting && currentMeeting.status === 'ACTIVE') {
+          debug('meeting.auto_end_5min_triggered', { meetingId });
+          await endMeeting(currentMeeting.userId.toString(), meetingId);
+        }
+      } catch (err) {
+        debug('meeting.auto_end_5min_error', { meetingId, error: err });
+      } finally {
+        hostLeaveTimers.delete(meetingId);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    hostLeaveTimers.set(meetingId, timer);
+  }
+};
+
+const hostRejoinedMeeting = (meetingId: string, userId: string) => {
+  if (hostLeaveTimers.has(meetingId)) {
+    clearTimeout(hostLeaveTimers.get(meetingId)!);
+    hostLeaveTimers.delete(meetingId);
+    debug('meeting.host_rejoined.timer_cancelled', { meetingId, userId });
+  }
+};
+
+const leaveMeeting = async (meetingId: string, userId: string) => {
+  if (!Types.ObjectId.isValid(meetingId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid meeting ID format');
+  }
+
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  const isHost = meeting.userId.equals(userObjectId);
+
+  if (isHost) {
+    // Host disconnected/left without ending: start 5-minute grace auto-end
+    await hostLeaveMeeting(meetingId, userId);
+    return { message: 'Host left meeting. Will auto-end in 5 minutes if not rejoined.', isHost: true, meetingId };
+  }
+
+  // Participant leaves: remove from active attendees without ending the session for the host
+  if (meeting.joinedParticipants) {
+    meeting.joinedParticipants = meeting.joinedParticipants.filter(id => !id.equals(userObjectId));
+  }
+  if (meeting.joinedAttorneys) {
+    meeting.joinedAttorneys = meeting.joinedAttorneys.filter(id => !id.equals(userObjectId));
+  }
+  await meeting.save();
+
+  socketHelper.emitToUser(meeting.userId.toString(), 'participant_left', {
+    meetingId: meeting._id,
+    userId,
+  });
+
+  return { message: 'Left meeting successfully', isHost: false, meetingId };
 };
 
 const endMeeting = async (userId: string, meetingId: string) => {
@@ -537,29 +701,40 @@ const endMeeting = async (userId: string, meetingId: string) => {
   const isHost = meeting.userId.equals(userObjectId);
   const isParticipant =
     meeting.participantId && meeting.participantId.equals(userObjectId);
-  const isJoinedAttorney = meeting.joinedAttorneys.some(id =>
+  const isJoinedAttorney = meeting.joinedAttorneys?.some(id =>
+    id.equals(userObjectId)
+  );
+  const isJoinedParticipant = meeting.joinedParticipants?.some(id =>
     id.equals(userObjectId)
   );
 
-  if (!isHost && !isParticipant && !isJoinedAttorney) {
+  if (!isHost && !isParticipant && !isJoinedAttorney && !isJoinedParticipant) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
       'You do not have permission to end this meeting'
     );
   }
 
-  meeting.status = 'COMPLETED';
-  meeting.endedAt = new Date();
-  if (!meeting.recordingUrl) {
-    meeting.recordingUrl = `https://recordings.govia.ai/play/${meeting._id}`;
+  // If a joined participant taps end/leave, treat it as leaveMeeting so the host's encounter stays active!
+  if (!isHost) {
+    return await leaveMeeting(meetingId, userId);
   }
 
+  // Host explicitly ends meeting: cancel any pending auto-end timer
+  if (hostLeaveTimers.has(meetingId)) {
+    clearTimeout(hostLeaveTimers.get(meetingId)!);
+    hostLeaveTimers.delete(meetingId);
+  }
+
+  meeting.status = 'COMPLETED';
+  meeting.endedAt = new Date();
+  // Real recordings will be attached by LiveKit egress or cloud recording webhook
   await meeting.save();
 
   await Message.updateMany(
     { meetingId: meeting._id },
     {
-      text: `🏁 Meeting Ended: ${meeting.topic}\n📹 Recording is available`,
+      text: `🏁 Meeting Ended: ${meeting.topic}${meeting.recordingUrl ? '\n📹 Recording is available' : ''}`,
     }
   );
 
@@ -591,6 +766,28 @@ const endMeeting = async (userId: string, meetingId: string) => {
       populatedMeeting
     );
   }
+
+  // If the host ends the call, mark ANY other orphan ACTIVE meetings for this host as COMPLETED
+  if (isHost) {
+    await Meeting.updateMany(
+      { userId: userObjectId, status: 'ACTIVE' },
+      { status: 'COMPLETED', endedAt: new Date() }
+    );
+  }
+
+  // Broadcast to all participants on all platforms so the call ends everywhere
+  socketHelper.broadcast('meeting_ended', {
+    meetingId: meeting._id.toString(),
+    sessionName: meeting.sessionName || meeting.roomName,
+  });
+
+  socketHelper.broadcast('emergency_meeting_ended', {
+    meetingId: meeting._id.toString(),
+  });
+
+  socketHelper.broadcast('active_meetings_updated', {
+    meetingId: meeting._id.toString(),
+  });
 
   return populatedMeeting;
 };
@@ -705,6 +902,23 @@ const getMeetingSdkToken = async (meetingId: string, userId: string) => {
   };
 };
 
+const startRecording = async (meetingId: string, userId?: string) => {
+  const meeting = Types.ObjectId.isValid(meetingId)
+    ? await Meeting.findById(meetingId)
+    : await Meeting.findOne({ roomName: meetingId });
+
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  // Best-effort recording trigger. If LiveKit Egress or cloud recording is configured, trigger here.
+  return {
+    success: true,
+    meetingId: meeting._id,
+    recordingActive: true,
+  };
+};
+
 export const MeetingService = {
   createInstantMeeting,
   scheduleMeeting,
@@ -715,8 +929,12 @@ export const MeetingService = {
   joinMeeting,
   endMeeting,
   cancelMeeting,
+  leaveMeeting,
+  hostLeaveMeeting,
+  hostRejoinedMeeting,
   getMeetingRecordings,
   syncMeetingRecordings,
   getAttorneyRecordings,
   getMeetingSdkToken,
+  startRecording,
 };

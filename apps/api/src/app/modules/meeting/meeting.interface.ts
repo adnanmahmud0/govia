@@ -31,6 +31,7 @@ export type IMeeting = {
   agenda?: string;
   status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   joinedAttorneys: Types.ObjectId[];
+  joinedParticipants?: Types.ObjectId[];
   recordingUrl?: string;
   recordings?: IMeetingRecording[];
   sessionName?: string;

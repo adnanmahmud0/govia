@@ -114,6 +114,50 @@ const deleteItem = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const shareFolder = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  const { targetUserId } = req.body;
+
+  const result = await VaultService.shareFolder(userId, id, targetUserId);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Vault folder shared successfully',
+    data: result,
+  });
+});
+
+const getSharedWithMeFolders = catchAsync(
+  async (req: Request, res: Response) => {
+    const userId = req.user.id;
+    const result = await VaultService.getSharedWithMeFolders(
+      userId,
+      req.query as any
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: 'Shared vault folders retrieved successfully',
+      data: result,
+    });
+  }
+);
+
+const getAllRecordings = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.id;
+  const result = await VaultService.getAllRecordings(userId);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'All recordings retrieved successfully',
+    data: result,
+  });
+});
+
 export const VaultController = {
   createFolder,
   getUserFolders,
@@ -123,4 +167,7 @@ export const VaultController = {
   uploadEvidence,
   linkMeetingToFolder,
   deleteItem,
+  shareFolder,
+  getSharedWithMeFolders,
+  getAllRecordings,
 };

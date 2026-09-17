@@ -38,6 +38,24 @@ const vaultFolderSchema = new Schema<IVaultFolder, VaultFolderModel>(
       type: Boolean,
       default: false,
     },
+    sharedWith: [
+      {
+        userId: {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        sharedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        permission: {
+          type: String,
+          enum: ['VIEW'],
+          default: 'VIEW',
+        },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -2,6 +2,12 @@ import { Model, Types } from 'mongoose';
 
 export type VaultCategory = 'ENCOUNTER' | 'EMERGENCY' | 'CONSULTATION' | 'UPLOADED';
 
+export type IVaultFolderShare = {
+  userId: Types.ObjectId;
+  sharedAt: Date;
+  permission: 'VIEW';
+};
+
 export type IVaultFolder = {
   _id?: Types.ObjectId;
   userId: Types.ObjectId;
@@ -11,6 +17,7 @@ export type IVaultFolder = {
   incidentDate: Date;
   location?: string;
   isArchived: boolean;
+  sharedWith?: IVaultFolderShare[];
   createdAt?: Date;
   updatedAt?: Date;
 };

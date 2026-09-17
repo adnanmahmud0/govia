@@ -26,9 +26,10 @@ const startGovia = catchAsync(async (req: Request, res: Response) => {
 
 const emergencyCall = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
+  const topic = req.body?.topic || 'Emergency Incident Protocol';
   const result = await MeetingService.createInstantMeeting(
     userId,
-    'Emergency Protocol - I feel unsafe',
+    topic,
     undefined,
     true
   );
@@ -192,6 +193,45 @@ const deleteMeeting = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const leaveMeeting = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  const result = await MeetingService.leaveMeeting(id, userId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: result.message,
+    data: result,
+  });
+});
+
+const rejoinMeeting = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  MeetingService.hostRejoinedMeeting(id, userId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Host rejoined meeting',
+    data: { meetingId: id },
+  });
+});
+
+const startRecording = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  const result = await MeetingService.startRecording(id, userId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Recording started successfully',
+    data: result,
+  });
+});
+
 export const MeetingController = {
   startGovia,
   emergencyCall,
@@ -200,6 +240,8 @@ export const MeetingController = {
   deleteMeeting,
   getMyMeetings,
   endMeeting,
+  leaveMeeting,
+  rejoinMeeting,
   syncRecording,
   cancelMeeting,
   getRecordings,
@@ -207,6 +249,7 @@ export const MeetingController = {
   joinMeeting,
   getAttorneyRecordings,
   getMeetingSdkToken,
+  startRecording,
 };
 
 

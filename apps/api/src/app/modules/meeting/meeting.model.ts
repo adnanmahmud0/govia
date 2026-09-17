@@ -111,6 +111,12 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
         ref: 'User',
       },
     ],
+    joinedParticipants: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,
@@ -120,5 +126,6 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
 meetingSchema.index({ startTime: 1, status: 1 });
 meetingSchema.index({ userId: 1, status: 1 });
 meetingSchema.index({ participantId: 1, status: 1 });
+meetingSchema.index({ joinedParticipants: 1, status: 1 });
 
 export const Meeting = model<IMeeting, MeetingModel>('Meeting', meetingSchema);

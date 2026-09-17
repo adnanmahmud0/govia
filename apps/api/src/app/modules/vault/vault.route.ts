@@ -20,9 +20,22 @@ const allRoles = [
 // Folders
 router.post('/folders', auth(...allRoles), VaultController.createFolder);
 router.get('/folders', auth(...allRoles), VaultController.getUserFolders);
+router.get(
+  '/folders/shared-with-me',
+  auth(...allRoles),
+  VaultController.getSharedWithMeFolders
+);
+router.post(
+  '/folders/:id/share',
+  auth(...allRoles),
+  VaultController.shareFolder
+);
 router.get('/folders/:id', auth(...allRoles), VaultController.getFolderDetails);
 router.patch('/folders/:id', auth(...allRoles), VaultController.updateFolder);
 router.delete('/folders/:id', auth(...allRoles), VaultController.deleteFolder);
+
+// Recordings across encounters and consultations
+router.get('/recordings', auth(...allRoles), VaultController.getAllRecordings);
 
 // Evidence Items
 router.post(

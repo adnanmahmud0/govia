@@ -15,8 +15,8 @@ export const demoAccounts = [
     status: 'active' as const,
     phoneNumber: '+1 (555) 012-3456',
     languagesSpoken: 'English, Spanish',
-    preferredAttorney: 'Jenkins & Associates Legal Defense',
-    preferredBailBondsman: 'Dana Bail Bonds & Surety Services',
+    preferredAttorney: '',
+    preferredBailBondsman: '',
     image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   },
   {
@@ -28,8 +28,8 @@ export const demoAccounts = [
     status: 'active' as const,
     phoneNumber: '+1 (555) 013-8822',
     languagesSpoken: 'English',
-    preferredAttorney: 'Sterling Law Group LLP',
-    preferredBailBondsman: 'Freedom Fast Bail Bonds LLC',
+    preferredAttorney: '',
+    preferredBailBondsman: '',
     image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
   },
   {
@@ -41,8 +41,8 @@ export const demoAccounts = [
     status: 'active' as const,
     phoneNumber: '+1 (555) 014-7890',
     languagesSpoken: 'English, French',
-    preferredAttorney: 'Jenkins & Associates Legal Defense',
-    preferredBailBondsman: 'Dana Bail Bonds & Surety Services',
+    preferredAttorney: '',
+    preferredBailBondsman: '',
     image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
   },
 
