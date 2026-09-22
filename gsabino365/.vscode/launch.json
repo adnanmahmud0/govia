@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "gsabino365",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--android-skip-build-dependency-validation"
+            ]
+        },
+        {
+            "name": "gsabino365 (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "program": "lib/main.dart",
+            "args": [
+                "--android-skip-build-dependency-validation"
+            ]
+        },
+        {
+            "name": "gsabino365 (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "program": "lib/main.dart",
+            "args": [
+                "--android-skip-build-dependency-validation"
+            ]
+        }
+    ]
+}

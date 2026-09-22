@@ -1,0 +1,389 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:gsabino365/data/models/notification_model.dart';
+import 'package:gsabino365/module/bail_bondsman/notification/controller/bail_bondsman_notification_controller.dart';
+
+class BailBondsmanNotificationView extends GetView<BailBondsmanNotificationController> {
+  const BailBondsmanNotificationView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F4FF),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(24.w, 20.h, 24.w, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Notifications',
+                          style: GoogleFonts.inter(
+                            fontSize: 26.sp,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0A192F),
+                          ),
+                        ),
+                        Obx(() {
+                          final count = controller.unreadCount;
+                          return Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1550A6).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8.w,
+                                  height: 8.w,
+                                  decoration: BoxDecoration(
+                                    color: count > 0 ? const Color(0xFFFF5252) : const Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                                Text(
+                                  count > 0 ? '$count Unread' : 'All Caught Up',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF1550A6),
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'Stay up to date with your latest bond alerts',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        color: const Color(0xFF7A8A9A),
+                      ),
+                    ),
+                    SizedBox(height: 14.h),
+
+                    // Filter chips & Mark All as Read Row
+                    Row(
+                      children: [
+                        _buildFilterChip('All'),
+                        SizedBox(width: 8.w),
+                        _buildFilterChip('Unread'),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => controller.markAllAsRead(),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'Mark all read',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1550A6),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                  ],
+                ),
+              ),
+
+              // Notifications List
+              Expanded(
+                child: Obx(() {
+                  if (controller.isLoading.value && controller.notifications.isEmpty) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1550A6)),
+                      ),
+                    );
+                  }
+
+                  final list = controller.filteredNotifications;
+
+                  if (list.isEmpty) {
+                    return RefreshIndicator(
+                      color: const Color(0xFF1550A6),
+                      onRefresh: () => controller.fetchNotifications(),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 60.h),
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 64.r,
+                              height: 64.r,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE0E7FF),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.notifications_off_outlined,
+                                color: const Color(0xFF1550A6),
+                                size: 32.sp,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16.h),
+                          Text(
+                            'No Notifications Found',
+                            style: GoogleFonts.inter(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1E293B),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(
+                            'You do not have any notifications matching this filter.',
+                            style: GoogleFonts.inter(
+                              fontSize: 13.sp,
+                              color: const Color(0xFF64748B),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    color: const Color(0xFF1550A6),
+                    onRefresh: () => controller.fetchNotifications(),
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 4.h),
+                      physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
+                      itemCount: list.length,
+                      itemBuilder: (context, index) {
+                        final notif = list[index];
+                        final isLast = index == list.length - 1;
+                        return _NotifCard(
+                          notif: notif,
+                          isLast: isLast,
+                          onTap: () => controller.markAsRead(notif),
+                        );
+                      },
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    return Obx(() {
+      final isSelected = controller.selectedFilter.value == label;
+      return GestureDetector(
+        onTap: () => controller.selectedFilter.value = label,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF1550A6) : Colors.white,
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF1550A6) : const Color(0xFFCBD5E1),
+              width: 1.w,
+            ),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? Colors.white : const Color(0xFF475569),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class _NotifCard extends StatelessWidget {
+  final NotificationModel notif;
+  final bool isLast;
+  final VoidCallback onTap;
+
+  const _NotifCard({
+    required this.notif,
+    required this.isLast,
+    required this.onTap,
+  });
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes <= 0 ? 1 : diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h ago';
+    } else {
+      return '${diff.inDays}d ago';
+    }
+  }
+
+  String _getInitials(String title) {
+    final words = title.trim().split(' ');
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    } else if (title.isNotEmpty) {
+      return title.substring(0, title.length > 2 ? 2 : title.length).toUpperCase();
+    }
+    return 'BB';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isUnread = !notif.isRead;
+    final initials = _getInitials(notif.title);
+
+    return Container(
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 12.h),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16.r),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16.r),
+          child: Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: isUnread ? Colors.white : Colors.white.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(
+                color: isUnread
+                    ? const Color(0xFF1550A6).withValues(alpha: 0.15)
+                    : const Color(0xFFE2E8F0),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isUnread
+                      ? const Color(0xFF1550A6).withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.02),
+                  blurRadius: isUnread ? 10 : 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: 48.w,
+                      height: 48.w,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1550A6).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF1550A6).withValues(alpha: 0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          initials,
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF1550A6),
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isUnread)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 12.w,
+                          height: 12.w,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF5252),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notif.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 15.sp,
+                                fontWeight: isUnread ? FontWeight.w700 : FontWeight.w600,
+                                color: const Color(0xFF0A192F),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            _timeAgo(notif.createdAt),
+                            style: GoogleFonts.inter(
+                              fontSize: 11.sp,
+                              color: const Color(0xFF90A0B3),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        notif.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          color: isUnread ? const Color(0xFF3A4A5C) : const Color(0xFF7A8A9A),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

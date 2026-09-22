@@ -1,0 +1,79 @@
+Govia App - Improvements and Changes Log
+========================================
+
+Here is the list of changes and improvements implemented based on client feedback:
+
+1. Gifting Hub Updates (Manual Quantity Input)
+   - Replaced the static quantity text views in both Family Gifting (GiftSafetyView) and Organization Gifting (OrganizationDetailsView) with styled, centered numeric input fields (TextFields).
+   - Added TextEditingControllers to coordinate manual input text with reactive codeCount values in both controllers.
+   - Removed the restrictive upper count limits (formerly 99 and 999) to support arbitrary quantities (e.g., 3000 people).
+
+2. Professionals ID & License Display
+   - Modified DoctorTransferSessionController mock data to include ID and license details.
+   - Updated DoctorTransferSessionView to display "ID: [id] | Lic: [license]" under the professional's role.
+   - Modified DoctorRequestCrisisView's professional card component to accept and display ID and license details (e.g., Dr. Sarah Chen -> ID: 101 | Lic: PSY-887213).
+
+3. Highlight a Hero updates
+   - Redesigned the top blue header of HighlightHeroView to include custom-drawn vector GoVia star logos (gradient circle with sparkles) on both sides of the header title.
+   - Appended a 4th checkbox in the Sharing Options card for "4. Affidavit" that is checked by default and disabled (grayed out) using specialized Theme colors to represent its required state.
+
+4. Stop Card Redirection
+   - Updated the onTap handler for the "I'm being stopped / I feel unsafe" card on the Citizen Home Screen to navigate to the live call connecting screen (AppRoutes.citizenLiveCallConnecting), matching the behavior of the central "START GOVIA" button.
+
+5. Dana Bond Community Resource
+   - Extended the CommunityResource data class to support optional phoneNumber and email fields.
+   - Placed "Dana Bond" (Dana Bail Bonds and Insurance Services LLC) at the top of the community resources registry.
+   - Added website (DanaBond.com), phone (2164108911), and email (danaacyinsurance@gmail.com) metadata for Dana Bond.
+   - Programmed a custom vector rendering of the Dana circular gold-and-black logo with nested concentric gold borders and stylized typography in the _buildLogo method of CitizenCommunityView.
+   - Updated the openResource callback in CitizenCommunityController to show a bottom sheet choices menu (Visit Website / Call [Number] / Send Email) if the resource contains phone/email contacts, using the url_launcher package to launch tel:, mailto:, and https:// actions.
+
+6. GoVia AI UI Generalization
+   - Replaced real-time analysis status indicator text ("Active • Analyzing Live Situation") with standard chatbot assistant state ("Active • Ready to Assist").
+   - Replaced live video feed processing indicators with standard chatbot typing/thinking indicator ("AI is thinking...") and hid it when the AI is not active.
+
+7. Doctor Call Handoff UX Optimization
+   - Removed the illogical "Handoff Call" button from the bottom of the Active Medical Sessions list view (DoctorActiveSessionsView), as no session is active on that screen.
+   - Configured the Options button (three dots) inside the Doctor Live Call Screen (DoctorLiveCallView) to trigger a clean bottom sheet containing the "Handoff Call / Transfer" action, routing the user to DoctorTransferSessionView.
+
+8. Active Sessions List Tap Area Optimization
+   - Wrapped the entire active session row container in DoctorActiveSessionsView with a GestureDetector, making the whole card clickable to join the video call (previously only the small red arrow at the right side of the card was clickable).
+
+9. Bail Bondsman Profile Shortcut across All Roles
+   - Integrated the "Bail Bondsman" directory shortcut option into the profile menus of all key roles including Citizen (CitizenProfileView), Doctor/Mental Health Professional (DoctorProfileView), Attorney (AttorneyProfileView), and Police/Officer (PoliceProfileView) to allow quick, universal access to bondsmen services.
+
+10. App Name and Launcher Icon Customization ("GoVia")
+    - Updated the app's user-facing title metadata name to "GoVia" across Android (AndroidManifest.xml label), iOS (Info.plist CFBundleDisplayName / CFBundleName), and Flutter framework level (GetMaterialApp title).
+    - Configured the flutter_launcher_icons package to automatically generate and generate Android adaptive mipmap structures and iOS AppStore assets based on assets/images/app_icon.png to prevent any logo distortions.
+
+11. Shared OTP Verification Page Integration for Sign Up
+    - Integrated a shared OTP verification flow for all registration controllers (Citizen, Attorney, Mental Health, Police, Bail Bondsman). After completing sign up, users are redirected to AppRoutes.otpVerification, passing their role and signup flow indicator, which routes them straight to their respective dashboard screens upon successful code verification.
+
+12. Note: Mental Health Live Call and Video Mock Review
+    - Verified that DoctorLiveCallView and AttorneyLiveCallView are correctly displaying mockup video feeds (using placeholder assets) and that the tap-to-join area on the DoctorActiveSessionsView cards works properly. Reviewed client feedback regarding beta testers not seeing the projected streaming, noting that the frontend views are properly implemented and connected, and live streaming APIs will be integrated next.
+
+13. Languages Spoken Profile and Registration Fields
+    - Added "Languages Spoken" input text fields to all role registration forms (Citizen, Attorney, Mental Health, Police, Bail Bondsman).
+    - Updated PersonalInfoController and PersonalInfoView to include an editable "Languages Spoken" field, allowing all users to manage languages.
+    - Updated Citizen, Attorney, Mental Health, Police, and Bail Bondsman profile views to display their speaks languages (e.g. Speaks: English, Spanish) in the profile header area.
+    - Updated the live call view participant feed cards (Doctor, Driver, Attorney) to render Speaks languages indicators dynamically.
+
+14. Attorney Multi-State Jurisdiction Routing Rule & Configuration
+    - Added "Licensed States to Practice" fields to Attorney onboarding registration form and Personal Information edit view.
+    - Displayed Licensed States details (e.g. Licensed: Nationwide) in the AttorneyProfileView header.
+    - Embedded origin state tags (e.g., NY, CA, TX, GA) into Active Requests items.
+    - Implemented active routing validation checks inside joinRequest, displaying a warning dialog if an attorney tries to answer a call originating from a state outside their license jurisdiction.
+
+15. Police Crisis Management Bumper Sticker Connection
+    - Integrated a "Crisis Management Link" card into the PoliceHomeView dashboard.
+    - Implemented a premium Scanner Simulator dialog in PoliceHomeController, showcasing mock bumper QR sticker scanning with scanning line animations.
+    - Created the standalone PoliceCrisisManagementView and PoliceCrisisManagementController containing active streaming simulation overlays, location tracking mock values, and de-escalation chronology logs.
+    - Compiled a detailed Technical Requirements document outlining the WebRTC infrastructure, QR scanning plugins, database schemas, and media servers needed for production release.
+    - [PRODUCTION NOTE]: The entire visual workflow, QR scanner simulation, and interactive dashboard have been successfully implemented on the mobile client. To make this fully functional and 'real-live' in a production environment, your backend engineering team will need to provide and set up complex infrastructure, including:
+      1) Bumper sticker decrypted validation database APIs.
+      2) Active WebSocket signaling servers for call brokering.
+      3) Dedicated STUN/TURN traversal servers to bypass mobile firewalls.
+      4) Subscription credentials and configuration for high-bandwidth WebRTC/RTC media server engines (such as LiveKit or Agora) to ingest the live video stream.
+      Because of the massive cloud hosting costs and backend server complexity involved, the current mobile simulation is fully recommended and ready to demonstrate the entire user experience to stakeholders.
+
+16. Temporary Demo Placeholders Note (Aesthetic & Authenticity Feedback)
+    - [NOTE ON MOCKUP PHOTOGRAPHS]: Regarding feedback that current profile/mockup images look AI-generated: please note that these are temporary stock placeholders used solely for the demo and layout design. In the final live production build, these will be replaced entirely by authentic user-uploaded photographs and real camera feeds, ensuring full reliability and credibility.

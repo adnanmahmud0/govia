@@ -38,6 +38,8 @@ fullstack-turborepo-starter-kit/**
 Govia-admin-dashboard
 Govia-admin-dashboard/
 Govia-admin-dashboard/**
-gsabino365
-gsabino365/
-gsabino365/**
+
+# Flutter app caches & nested git backup
+**/gsabino365/.dart_tool
+**/gsabino365/build
+**/.git_backup
