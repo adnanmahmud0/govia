@@ -7,6 +7,7 @@ import {
 } from 'livekit-server-sdk';
 import config from '../config';
 import { debug, debugError } from '../shared/debug';
+import { StorageSetting } from '../app/modules/storageSetting/storageSetting.model';
 
 export interface TokenOptions {
   roomName: string;
@@ -28,8 +29,18 @@ export const createLiveKitToken = async ({
   canPublish = true,
   canSubscribe = true,
 }: TokenOptions): Promise<string> => {
-  const apiKey = config.livekit.apiKey;
-  const apiSecret = config.livekit.apiSecret;
+  let apiKey = config.livekit.apiKey;
+  let apiSecret = config.livekit.apiSecret;
+
+  try {
+    const dbSetting = await StorageSetting.findOne().sort({ updatedAt: -1 });
+    if (dbSetting?.livekitApiKey && dbSetting?.livekitApiSecret) {
+      apiKey = dbSetting.livekitApiKey;
+      apiSecret = dbSetting.livekitApiSecret;
+    }
+  } catch (err) {
+    // fallback to config
+  }
 
   const at = new AccessToken(apiKey, apiSecret, {
     identity: participantIdentity,
@@ -57,9 +68,33 @@ export const startLiveKitRecording = async (
   roomName: string,
   options?: { layout?: string }
 ): Promise<any> => {
-  const apiKey = config.livekit.apiKey;
-  const apiSecret = config.livekit.apiSecret;
-  const host = config.livekit.url
+  let apiKey = config.livekit.apiKey;
+  let apiSecret = config.livekit.apiSecret;
+  let livekitUrl = config.livekit.url;
+
+  let s3Bucket = config.s3.bucket;
+  let s3Region = config.s3.region || 'us-east-1';
+  let s3AccessKey = config.s3.accessKey;
+  let s3SecretKey = config.s3.secretKey;
+  let s3Endpoint = config.s3.endpoint || '';
+
+  try {
+    const dbSetting = await StorageSetting.findOne().sort({ updatedAt: -1 });
+    if (dbSetting) {
+      if (dbSetting.bucket) s3Bucket = dbSetting.bucket;
+      if (dbSetting.region) s3Region = dbSetting.region;
+      if (dbSetting.accessKey) s3AccessKey = dbSetting.accessKey;
+      if (dbSetting.secretKey) s3SecretKey = dbSetting.secretKey;
+      if (dbSetting.endpoint !== undefined) s3Endpoint = dbSetting.endpoint;
+      if (dbSetting.livekitApiKey) apiKey = dbSetting.livekitApiKey;
+      if (dbSetting.livekitApiSecret) apiSecret = dbSetting.livekitApiSecret;
+      if (dbSetting.livekitUrl) livekitUrl = dbSetting.livekitUrl;
+    }
+  } catch (err) {
+    // fallback to config
+  }
+
+  const host = livekitUrl
     .replace(/^wss:\/\//, 'https://')
     .replace(/^ws:\/\//, 'http://');
 
@@ -69,9 +104,9 @@ export const startLiveKitRecording = async (
   }
 
   // S3 storage must be configured for cloud egress uploads
-  if (!config.s3.bucket || !config.s3.accessKey || !config.s3.secretKey) {
+  if (!s3Bucket || !s3AccessKey || !s3SecretKey) {
     debug(
-      '[LiveKit] S3 bucket or credentials not set in .env. Skipping cloud egress.'
+      '[LiveKit] S3 bucket or credentials not set in DB or .env. Skipping cloud egress.'
     );
     return null;
   }
@@ -79,13 +114,12 @@ export const startLiveKitRecording = async (
   try {
     const egressClient = new EgressClient(host, apiKey, apiSecret);
     const s3Upload = new S3Upload({
-      bucket: config.s3.bucket,
-      region: config.s3.region || 'us-east-1',
-      accessKey: config.s3.accessKey,
-      secret: config.s3.secretKey,
-      endpoint: config.s3.endpoint || '',
-      forcePathStyle:
-        !config.s3.region || (config.s3.endpoint?.length ?? 0) > 0,
+      bucket: s3Bucket,
+      region: s3Region || 'us-east-1',
+      accessKey: s3AccessKey,
+      secret: s3SecretKey,
+      endpoint: s3Endpoint || '',
+      forcePathStyle: !s3Region || (s3Endpoint?.length ?? 0) > 0,
     });
 
     const fileOutput = new EncodedFileOutput({
@@ -122,9 +156,22 @@ export const startLiveKitRecording = async (
  */
 export const stopLiveKitRecording = async (egressId: string): Promise<any> => {
   if (!egressId) return null;
-  const apiKey = config.livekit.apiKey;
-  const apiSecret = config.livekit.apiSecret;
-  const host = config.livekit.url
+  let apiKey = config.livekit.apiKey;
+  let apiSecret = config.livekit.apiSecret;
+  let livekitUrl = config.livekit.url;
+
+  try {
+    const dbSetting = await StorageSetting.findOne().sort({ updatedAt: -1 });
+    if (dbSetting?.livekitApiKey && dbSetting?.livekitApiSecret) {
+      apiKey = dbSetting.livekitApiKey;
+      apiSecret = dbSetting.livekitApiSecret;
+      if (dbSetting.livekitUrl) livekitUrl = dbSetting.livekitUrl;
+    }
+  } catch (err) {
+    // fallback
+  }
+
+  const host = livekitUrl
     .replace(/^wss:\/\//, 'https://')
     .replace(/^ws:\/\//, 'http://');
 

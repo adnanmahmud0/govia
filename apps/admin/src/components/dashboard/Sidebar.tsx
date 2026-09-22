@@ -26,6 +26,7 @@ import {
   Crown,
   BookOpen,
   UserCheck,
+  Video,
 } from "lucide-react";
 import {
   Sheet,
@@ -53,6 +54,7 @@ const items: Array<{
   { href: "/patients", label: "Patients & Clients", Icon: HeartPulse },
   { href: "/live-call-monitoring", label: "Live Call Monitoring", Icon: Activity },
   { href: "/call-history", label: "Call History", Icon: History },
+  { href: "/recordings", label: "Meeting Recordings", Icon: Video },
   { href: "/hero-highlight", label: "Hero Highlight", Icon: Star },
   { href: "/formularies", label: "Community Resources", Icon: BookOpen },
   { href: "/notification", label: "Notification", Icon: Bell },

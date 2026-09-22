@@ -10,6 +10,7 @@ import { ConversationRoutes } from '../../app/modules/conversation/conversation.
 import { MessageRoutes } from '../../app/modules/message/message.route';
 import { VaultRoutes } from '../../app/modules/vault/vault.route';
 import { NotificationRoutes } from '../../app/modules/notification/notification.route';
+import { StorageSettingRoutes } from '../../app/modules/storageSetting/storageSetting.route';
 
 const router = express.Router();
 
@@ -65,6 +66,14 @@ const apiRoutes = [
   {
     path: '/notifications',
     route: NotificationRoutes,
+  },
+  {
+    path: '/recording-settings',
+    route: StorageSettingRoutes,
+  },
+  {
+    path: '/storage-settings',
+    route: StorageSettingRoutes,
   },
 ];
 
