@@ -16,7 +16,10 @@ const sendMessage = catchAsync(async (req: Request, res: Response) => {
 
   const imagePath = getSingleFilePath(files, 'image');
   const mediaPath = getSingleFilePath(files, 'media');
-  const docPath = getSingleFilePath(files, 'doc');
+  const docPath =
+    getSingleFilePath(files, 'doc') ||
+    getSingleFilePath(files, 'file') ||
+    getSingleFilePath(files, 'attachment');
 
   const attachment = imagePath || mediaPath || docPath;
 
@@ -158,6 +161,35 @@ const openChat = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const editMessage = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  const { text } = req.body;
+
+  const result = await MessageService.editMessage(userId, id, text);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Message edited successfully',
+    data: result,
+  });
+});
+
+const deleteMessage = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  const result = await MessageService.deleteMessage(userId, id);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Message deleted successfully',
+    data: result,
+  });
+});
+
 export const MessageController = {
   sendMessage,
   createMeetingInChat,
@@ -165,5 +197,8 @@ export const MessageController = {
   markAsRead,
   searchUsersForMessaging,
   openChat,
+  editMessage,
+  deleteMessage,
 };
+
 

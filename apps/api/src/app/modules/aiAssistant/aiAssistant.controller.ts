@@ -6,9 +6,10 @@ import { AiAssistantService } from './aiAssistant.service';
 
 const generateResponse = catchAsync(async (req: Request, res: Response) => {
   const { prompt, history, chatId } = req.body;
-  const userId = req.user?.id; // Assuming auth middleware sets req.user
+  const userId = req.user?.id;
+  const userRole = req.user?.role;
   
-  const result = await AiAssistantService.generateResponse(userId, prompt, chatId, history);
+  const result = await AiAssistantService.generateResponse(userId, prompt, chatId, history, userRole);
 
   sendResponse(res, {
     success: true,
@@ -43,8 +44,23 @@ const getChatHistory = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteChat = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  const result = await AiAssistantService.deleteChat(userId, id);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Chat deleted successfully',
+    data: result,
+  });
+});
+
 export const AiAssistantController = {
   generateResponse,
   getChatList,
   getChatHistory,
+  deleteChat,
 };
+

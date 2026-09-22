@@ -16,21 +16,33 @@ export type IMeeting = {
   userId: Types.ObjectId; // Host / Creator
   participantId?: Types.ObjectId; // Invited user (e.g. Attorney, Bondsman, Citizen)
   conversationId?: Types.ObjectId; // Associated conversation thread if created from chat
-  zoomMeetingId: string;
+  roomName: string;
+  zoomMeetingId?: string;
   topic: string;
-  joinUrl: string;
-  startUrl: string;
+  joinUrl?: string;
+  startUrl?: string;
   password?: string;
   meetingType: 'INSTANT' | 'SCHEDULED' | 'EMERGENCY';
+  category?: 'ENCOUNTER' | 'EMERGENCY' | 'CONSULTATION';
+  vaultFolderId?: Types.ObjectId;
   startTime?: Date;
   durationMinutes?: number;
   timezone?: string;
   agenda?: string;
   status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   joinedAttorneys: Types.ObjectId[];
+  joinedParticipants?: Types.ObjectId[];
   recordingUrl?: string;
   recordings?: IMeetingRecording[];
+  sessionName?: string;
+  egressId?: string;
+  livekitToken?: string;
+  token?: string;
+  livekitUrl?: string;
   endedAt?: Date;
+  latitude?: number;
+  longitude?: number;
+  locationAddress?: string;
   createdAt?: Date;
   updatedAt?: Date;
 };

@@ -78,9 +78,29 @@ const searchUsersForMessaging = catchAsync(
   }
 );
 
+const deleteConversation = catchAsync(
+  async (req: Request, res: Response) => {
+    const currentUserId = req.user.id;
+    const { id } = req.params;
+    const result = await ConversationService.deleteConversation(
+      currentUserId,
+      id
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'Conversation deleted successfully',
+      data: result,
+    });
+  }
+);
+
 export const ConversationController = {
   createOrGetConversation,
   getUserConversations,
   getSingleConversation,
   searchUsersForMessaging,
+  deleteConversation,
 };
+

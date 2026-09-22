@@ -30,4 +30,12 @@ router.get(
   AiAssistantController.getChatHistory
 );
 
+// Delete a specific chat
+router.delete(
+  '/chats/:id',
+  auth(...allRoles),
+  AiAssistantController.deleteChat
+);
+
 export const AiAssistantRoutes = router;
+

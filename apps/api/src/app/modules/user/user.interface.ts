@@ -29,6 +29,7 @@ export type IUser = {
   didCarNumberChange?: string;
   newCarNumber?: string;
   licenseNumber?: string;
+  shortHexId?: string;
   authentication?: {
     isResetPassword: boolean;
     oneTimeCode: number;

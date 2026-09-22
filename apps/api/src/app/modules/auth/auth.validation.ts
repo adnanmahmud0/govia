@@ -3,7 +3,7 @@ import { z } from 'zod';
 const createVerifyEmailZodSchema = z.object({
   body: z.object({
     email: z.string({ required_error: 'Email is required' }),
-    role: z.string({ required_error: 'Role is required' }),
+    role: z.string().optional(),
     oneTimeCode: z.coerce.number({ required_error: 'One time code is required' }),
   }),
 });
@@ -11,7 +11,7 @@ const createVerifyEmailZodSchema = z.object({
 const createLoginZodSchema = z.object({
   body: z.object({
     email: z.string({ required_error: 'Email is required' }),
-    role: z.string({ required_error: 'Role is required' }),
+    role: z.string().optional(),
     password: z.string({ required_error: 'Password is required' }),
   }),
 });
@@ -19,7 +19,7 @@ const createLoginZodSchema = z.object({
 const createForgetPasswordZodSchema = z.object({
   body: z.object({
     email: z.string({ required_error: 'Email is required' }),
-    role: z.string({ required_error: 'Role is required' }),
+    role: z.string().optional(),
   }),
 });
 

@@ -34,6 +34,17 @@ const updateUserZodSchema = z.object({
   name: z.string().optional(),
   email: z.string().optional(),
   image: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  languagesSpoken: z.string().optional(),
+  preferredAttorney: z.string().optional(),
+  preferredBailBondsman: z.string().optional(),
+  licensedStatesToPractice: z.string().optional(),
+  barAssociationNumber: z.string().optional(),
+  lawFirmName: z.string().optional(),
+  officeName: z.string().optional(),
+  specialization: z.string().optional(),
+  companyName: z.string().optional(),
+  businessAddress: z.string().optional(),
 });
 
 const adminUpdateUserZodSchema = z.object({

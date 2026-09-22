@@ -21,13 +21,20 @@ import {
   CreditCard,
   FileSignature,
   User,
-  Bell
+  Bell,
+  LogOut,
+  Crown,
+  BookOpen,
+  UserCheck,
 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetClose,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useMeetings } from "@/hooks/useMeetings";
 
 type IconType = LucideIcon;
 
@@ -36,22 +43,25 @@ const items: Array<{
   label: string;
   Icon: IconType;
 }> = [
-    { href: "/overview", label: "Overview", Icon: LayoutDashboard },
-    { href: "/citizen-management", label: "Citizen Management", Icon: Users },
-    { href: "/police-management", label: "Police Management", Icon: Shield },
-    { href: "/attorney-management", label: "Attorney Management", Icon: Scale },
-    { href: "/mhp-management", label: "MHP Management", Icon: HeartPulse },
-    { href: "/bonds-management", label: "Bonds Management", Icon: FileText },
-    { href: "/live-call-monitoring", label: "Live Call Monitoring", Icon: Activity },
-    { href: "/call-history", label: "Call History", Icon: History },
-    { href: "/hero-highlight", label: "Hero highlight", Icon: Star },
-    { href: "/risk-map", label: "Risk Map", Icon: Map },
-    { href: "/gift-code", label: "Gift Code", Icon: Gift },
-    { href: "/subscription", label: "Subscription", Icon: CreditCard },
-    { href: "/subpoena", label: "Subpoena", Icon: FileSignature },
-    { href: "/profile", label: "Profile", Icon: User },
-    { href: "/notification", label: "Notification", Icon: Bell },
-  ];
+  { href: "/overview", label: "Overview", Icon: LayoutDashboard },
+  { href: "/users", label: "All Users", Icon: Users },
+  { href: "/citizen-management", label: "Citizen Management", Icon: UserCheck },
+  { href: "/police-management", label: "Police Management", Icon: Shield },
+  { href: "/attorney-management", label: "Attorney Management", Icon: Scale },
+  { href: "/mhp-management", label: "MHP Management", Icon: HeartPulse },
+  { href: "/bonds-management", label: "Bonds Management", Icon: FileText },
+  { href: "/patients", label: "Patients & Clients", Icon: HeartPulse },
+  { href: "/live-call-monitoring", label: "Live Call Monitoring", Icon: Activity },
+  { href: "/call-history", label: "Call History", Icon: History },
+  { href: "/hero-highlight", label: "Hero Highlight", Icon: Star },
+  { href: "/formularies", label: "Community Resources", Icon: BookOpen },
+  { href: "/notification", label: "Notification", Icon: Bell },
+  { href: "/risk-map", label: "Risk Map", Icon: Map },
+  { href: "/gift-code", label: "Gift Code", Icon: Gift },
+  { href: "/subscription", label: "Subscription", Icon: CreditCard },
+  { href: "/subpoena", label: "Subpoena", Icon: FileSignature },
+  { href: "/profile", label: "Profile", Icon: User },
+];
 
 interface SidebarProps {
   active?: string;
@@ -62,19 +72,38 @@ interface SidebarProps {
 export default function Sidebar({ active, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const current = active ?? pathname ?? "";
+  const { user, isSuperAdmin, logout } = useAuth();
+  const { unreadCount } = useNotifications();
+  const { activeMeetings } = useMeetings();
 
   const SidebarContent = () => (
     <div className="h-full bg-white text-slate-600 flex flex-col">
-      <div className="p-6 pb-2">
-        <div className="flex items-center justify-center w-full min-h-[60px]">
+      <div className="p-6 pb-3 border-b border-slate-100">
+        <div className="flex flex-col items-center justify-center w-full">
           <Image
             src="/image 1 (1).png"
-            alt="Logo"
+            alt="Govia Logo"
             width={80}
             height={80}
-            className="w-auto h-28 object-contain"
+            className="w-auto h-20 object-contain"
             priority
           />
+          {user && (
+            <div
+              className={`mt-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide flex items-center gap-1.5 shadow-2xs ${
+                isSuperAdmin
+                  ? "bg-amber-50 text-amber-900 border border-amber-200"
+                  : "bg-blue-50 text-blue-900 border border-blue-200"
+              }`}
+            >
+              {isSuperAdmin ? (
+                <Crown className="w-3 h-3 text-amber-600" />
+              ) : (
+                <Shield className="w-3 h-3 text-blue-600" />
+              )}
+              <span>{isSuperAdmin ? "SUPER ADMIN" : "ADMIN"}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -82,24 +111,63 @@ export default function Sidebar({ active, isOpen, onClose }: SidebarProps) {
         <nav className="space-y-1">
           {items.map((item) => {
             const isActive = current === item.href || current.startsWith(`${item.href}/`);
+            const isLiveMonitoring = item.href === "/live-call-monitoring";
+            const isNotification = item.href === "/notification";
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-sm transition-colors rounded-lg",
+                  "flex items-center justify-between px-4 py-2.5 text-sm transition-colors rounded-xl",
                   isActive
-                    ? "bg-[#1554ad] text-white font-medium"
-                    : "text-slate-800 font-semibold hover:bg-slate-50 hover:text-slate-700"
+                    ? "bg-[#1554ad] text-white font-medium shadow-xs"
+                    : "text-slate-700 font-semibold hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <item.Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-slate-800")} />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <item.Icon className={cn("h-4 w-4", isActive ? "text-white" : "text-slate-600")} />
+                  <span>{item.label}</span>
+                </div>
+
+                {/* Badge indicators */}
+                {isNotification && unreadCount > 0 && (
+                  <span
+                    className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                      isActive ? "bg-white text-[#1554ad]" : "bg-red-500 text-white"
+                    )}
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+
+                {isLiveMonitoring && activeMeetings.length > 0 && (
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse",
+                      isActive ? "bg-white text-[#1554ad]" : "bg-emerald-500 text-white"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    {activeMeetings.length}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
+      </div>
+
+      <div className="p-4 border-t border-slate-100">
+        <button
+          onClick={() => logout()}
+          className="flex items-center gap-3 w-full px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </div>
   );

@@ -19,11 +19,12 @@ const verifyEmail = catchAsync(async (req: Request, res: Response) => {
 
 const loginUser = catchAsync(async (req: Request, res: Response) => {
   const { ...loginData } = req.body;
-  debug('auth.login.request', { email: loginData.email });
+  debug('auth.login.request', { email: loginData.email, role: loginData.role });
   const result = await AuthService.loginUserFromDB(loginData);
   debug('auth.login.response', {
     accessToken: !!result.accessToken,
     refreshToken: !!result.refreshToken,
+    role: result.user?.role,
   });
 
   sendResponse(res, {
@@ -33,6 +34,7 @@ const loginUser = catchAsync(async (req: Request, res: Response) => {
     data: {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
+      user: result.user,
     },
   });
 });
@@ -108,6 +110,14 @@ const resendVerifyEmail = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const logoutUser = catchAsync(async (req: Request, res: Response) => {
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'User logged out successfully',
+  });
+});
+
 export const AuthController = {
   verifyEmail,
   loginUser,
@@ -116,4 +126,5 @@ export const AuthController = {
   changePassword,
   refreshToken,
   resendVerifyEmail,
+  logoutUser,
 };

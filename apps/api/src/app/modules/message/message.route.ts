@@ -68,4 +68,17 @@ router.patch(
   MessageController.markAsRead
 );
 
+router.patch(
+  '/:id',
+  auth(...allRoles),
+  MessageController.editMessage
+);
+
+router.delete(
+  '/:id',
+  auth(...allRoles),
+  MessageController.deleteMessage
+);
+
 export const MessageRoutes = router;
+

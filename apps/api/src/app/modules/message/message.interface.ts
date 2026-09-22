@@ -9,6 +9,8 @@ export type IMessage = {
   messageType: 'text' | 'image' | 'file' | 'meeting';
   meetingId?: Types.ObjectId;
   read: boolean;
+  isEdited?: boolean;
+  isDeleted?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

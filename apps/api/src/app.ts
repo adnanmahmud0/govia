@@ -28,9 +28,17 @@ app.use(
   })
 );
 
-// Body parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parsers with rawBody retention for webhook signature verification
+app.use(
+  express.json({
+    limit: '50mb',
+    type: ['application/json', 'application/webhook+json'],
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf.toString('utf-8');
+    },
+  })
+);
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // File retrieve
 app.use(express.static('uploads'));

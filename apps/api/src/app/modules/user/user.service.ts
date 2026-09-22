@@ -1,11 +1,13 @@
 import { StatusCodes } from 'http-status-codes';
 import { JwtPayload } from 'jsonwebtoken';
+import { Types } from 'mongoose';
 import { USER_ROLES } from '../../../enums/user';
 import ApiError from '../../../errors/ApiError';
 import { emailHelper } from '../../../helpers/emailHelper';
 import { emailTemplate } from '../../../shared/emailTemplate';
 import unlinkFile from '../../../shared/unlinkFile';
 import generateOTP from '../../../util/generateOTP';
+import { Meeting } from '../meeting/meeting.model';
 import { IUser } from './user.interface';
 import { User } from './user.model';
 import { debug } from '../../../shared/debug';
@@ -152,6 +154,98 @@ const deleteUserFromDB = async (id: string): Promise<IUser | null> => {
   return deletedUser;
 };
 
+const lookupUserByIdentifier = async (rawIdentifier: string) => {
+  if (!rawIdentifier || !rawIdentifier.trim()) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'User identifier or QR payload is required');
+  }
+
+  let cleaned = rawIdentifier.trim();
+
+  // Try parsing JSON if identifier comes from GoVia QR card payload
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.id && typeof parsed.id === 'string') {
+        cleaned = parsed.id.trim();
+      } else if (parsed.shortId && typeof parsed.shortId === 'string') {
+        cleaned = parsed.shortId.trim();
+      }
+    } catch (_) {
+      // Not JSON, continue with raw string
+    }
+  }
+
+  // Strip leading '#' if present (e.g. '#e3d7a82b')
+  if (cleaned.startsWith('#')) {
+    cleaned = cleaned.substring(1).trim();
+  }
+
+  const queryConditions: Array<Record<string, unknown>> = [];
+
+  if (Types.ObjectId.isValid(cleaned) && cleaned.length === 24) {
+    queryConditions.push({ _id: new Types.ObjectId(cleaned) });
+  }
+
+  // Exact or case-insensitive shortHexId
+  queryConditions.push({
+    shortHexId: { $regex: new RegExp(`^${cleaned}$`, 'i') },
+  });
+
+  // assignedNumber
+  queryConditions.push({ assignedNumber: cleaned });
+
+  let user = await User.findOne({
+    $or: queryConditions,
+    status: 'active',
+  })
+    .select(
+      '_id name email role image phoneNumber badgeNumber lawFirmName officeName specialization companyName shortHexId assignedNumber'
+    )
+    .lean();
+
+  // Fallback: If 8-character hex code, check if it matches the prefix or suffix of any user's ObjectId
+  if (!user && /^[0-9a-fA-F]{8}$/.test(cleaned)) {
+    const activeUsers = await User.find({ status: 'active' })
+      .select(
+        '_id name email role image phoneNumber badgeNumber lawFirmName officeName specialization companyName shortHexId assignedNumber'
+      )
+      .lean();
+
+    const target = cleaned.toLowerCase();
+    user =
+      activeUsers.find(
+        u =>
+          u.shortHexId?.toLowerCase() === target ||
+          u._id.toString().toLowerCase().endsWith(target) ||
+          u._id.toString().toLowerCase().startsWith(target)
+      ) || null;
+  }
+
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'No user found with the provided ID or QR card');
+  }
+
+  // Check if this user currently has an active incident / emergency meeting (Type 1: ENCOUNTER, Type 2: EMERGENCY)
+  // Note: Type 3 (CONSULTATION / SCHEDULED) is excluded from QR lookup per business requirements
+  const activeMeeting = await Meeting.findOne({
+    userId: user._id,
+    status: 'ACTIVE',
+    $or: [
+      { category: { $in: ['ENCOUNTER', 'EMERGENCY'] } },
+      { meetingType: 'EMERGENCY' },
+      { topic: { $regex: /police|encounter|emergency|unsafe|stopped|govia/i } },
+    ],
+    category: { $ne: 'CONSULTATION' },
+  })
+    .select('_id roomName topic meetingType category status createdAt joinUrl token')
+    .lean();
+
+  return {
+    ...user,
+    activeMeeting: activeMeeting || null,
+  };
+};
+
 export const UserService = {
   createUserToDB,
   getUserProfileFromDB,
@@ -161,4 +255,6 @@ export const UserService = {
   getSingleUserFromDB,
   updateUserFromDB,
   deleteUserFromDB,
+  lookupUserByIdentifier,
 };
+

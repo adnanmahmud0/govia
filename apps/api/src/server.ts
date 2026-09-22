@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import { Server as IOServer } from 'socket.io';
 import app from './app';
 import config from './config';
-import { seedSuperAdmin } from './DB/seedAdmin';
+import { seedDemoAccounts } from './DB/seedAdmin';
 import { socketHelper } from './helpers/socketHelper';
 import { errorLogger, logger } from './shared/logger';
 
@@ -55,8 +55,8 @@ async function main() {
       await mongoose.connect(config.database_url as string);
       logger.info(colors.green('🚀 MongoDB connected successfully'));
 
-      // Seed Super Admin if not already present
-      await seedSuperAdmin();
+      // Seed all demo accounts across multiple roles if not present or need update
+      await seedDemoAccounts();
     } else {
       logger.warn(colors.yellow('⚠️ DATABASE_URL not configured in environment'));
     }

@@ -8,6 +8,8 @@ import { CommunityResourceRoutes } from '../../app/modules/communityResource/com
 import { GoviaRecordingRoutes } from '../../app/modules/goviaRecording/goviaRecording.route';
 import { ConversationRoutes } from '../../app/modules/conversation/conversation.route';
 import { MessageRoutes } from '../../app/modules/message/message.route';
+import { VaultRoutes } from '../../app/modules/vault/vault.route';
+import { NotificationRoutes } from '../../app/modules/notification/notification.route';
 
 const router = express.Router();
 
@@ -22,6 +24,10 @@ const apiRoutes = [
   },
   {
     path: '/meeting',
+    route: MeetingRoutes,
+  },
+  {
+    path: '/meetings',
     route: MeetingRoutes,
   },
   {
@@ -47,6 +53,18 @@ const apiRoutes = [
   {
     path: '/message',
     route: MessageRoutes,
+  },
+  {
+    path: '/vault',
+    route: VaultRoutes,
+  },
+  {
+    path: '/notification',
+    route: NotificationRoutes,
+  },
+  {
+    path: '/notifications',
+    route: NotificationRoutes,
   },
 ];
 

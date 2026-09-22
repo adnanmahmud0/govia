@@ -61,8 +61,8 @@ const userSchema = new Schema<IUser, UserModal>(
     subRole: { type: String },
     phoneNumber: { type: String },
     languagesSpoken: { type: String },
-    preferredAttorney: { type: String },
-    preferredBailBondsman: { type: String },
+    preferredAttorney: { type: String, default: '' },
+    preferredBailBondsman: { type: String, default: '' },
     licensedStatesToPractice: { type: String },
     barAssociationNumber: { type: String },
     lawFirmName: { type: String },
@@ -79,8 +79,23 @@ const userSchema = new Schema<IUser, UserModal>(
     newCarNumber: { type: String },
     licenseNumber: { type: String },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret: any) => {
+        ret.id = ret._id;
+        return ret;
+      },
+    },
+    toObject: { virtuals: true },
+  }
 );
+
+userSchema.virtual('shortHexId').get(function (this: any) {
+  const idStr = this._id ? this._id.toString() : '';
+  return idStr.length >= 8 ? idStr.slice(-8).toUpperCase() : idStr.toUpperCase();
+});
 
 userSchema.index({ email: 1, role: 1 }, { unique: true });
 
@@ -110,17 +125,20 @@ userSchema.statics.isMatchPassword = async (
 
 //check user
 userSchema.pre('save', async function (next) {
-  //check user
-  const isExist = await User.findOne({ email: this.email, role: this.role });
-  if (isExist) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and Role combination already exists!');
+  if (this.isNew) {
+    const isExist = await User.findOne({ email: this.email, role: this.role });
+    if (isExist) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and Role combination already exists!');
+    }
   }
 
   //password hash
-  this.password = await bcrypt.hash(
-    this.password,
-    Number(config.bcrypt_salt_rounds)
-  );
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(
+      this.password,
+      Number(config.bcrypt_salt_rounds)
+    );
+  }
   next();
 });
 

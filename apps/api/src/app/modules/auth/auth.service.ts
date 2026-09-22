@@ -18,12 +18,30 @@ import cryptoToken from '../../../util/cryptoToken';
 import generateOTP from '../../../util/generateOTP';
 import { ResetToken } from '../resetToken/resetToken.model';
 import { User } from '../user/user.model';
+import { USER_ROLES } from '../../../enums/user';
 
 //login
 const loginUserFromDB = async (payload: ILoginData) => {
   const { email, password, role } = payload;
   debug('auth.login.db', { email, role });
-  const isExistUser = await User.findOne({ email, role }).select('+password');
+
+  let isExistUser;
+  if (role) {
+    isExistUser = await User.findOne({ email, role }).select('+password');
+  } else {
+    // If role not explicitly provided, find matching users by email
+    const users = await User.find({ email }).select('+password');
+    if (users.length === 1) {
+      isExistUser = users[0];
+    } else if (users.length > 1) {
+      // Prioritize SUPER_ADMIN or ADMIN
+      isExistUser =
+        users.find(
+          u => u.role === USER_ROLES.SUPER_ADMIN || u.role === USER_ROLES.ADMIN
+        ) || users[0];
+    }
+  }
+
   if (!isExistUser) {
     debug('auth.login.db.user_missing', { email });
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
@@ -72,14 +90,38 @@ const loginUserFromDB = async (payload: ILoginData) => {
     config.jwt.jwt_refresh_secret as string,
     config.jwt.jwt_refresh_expire_in as StringValue
   );
-  debug('auth.login.db.tokens_created', { email });
+  debug('auth.login.db.tokens_created', { email, role: isExistUser.role });
 
-  return { accessToken, refreshToken };
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: isExistUser._id,
+      name: isExistUser.name,
+      email: isExistUser.email,
+      role: isExistUser.role,
+      image: isExistUser.image || '',
+      phoneNumber: isExistUser.phoneNumber || '',
+    },
+  };
 };
 
 //forget password
-const forgetPasswordToDB = async (email: string, role: string) => {
-  const isExistUser = await User.isExistUserByEmailAndRole(email, role);
+const forgetPasswordToDB = async (email: string, role?: string) => {
+  let isExistUser: any = null;
+  if (role) {
+    isExistUser = await User.isExistUserByEmailAndRole(email, role);
+  } else {
+    const matchingUsers = await User.find({ email });
+    if (matchingUsers.length === 0) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+    }
+    isExistUser =
+      matchingUsers.find((u) => u.role === USER_ROLES.SUPER_ADMIN) ||
+      matchingUsers.find((u) => u.role === USER_ROLES.ADMIN) ||
+      matchingUsers[0];
+  }
+
   if (!isExistUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
@@ -92,21 +134,36 @@ const forgetPasswordToDB = async (email: string, role: string) => {
   };
   const forgetPassword = emailTemplate.resetPassword(value);
   emailHelper.sendEmail(forgetPassword);
-  debug('auth.forget_password.email_sent', { email });
+  debug('auth.forget_password.email_sent', { email, otp });
 
   //save to DB
   const authentication = {
     oneTimeCode: otp,
     expireAt: new Date(Date.now() + 3 * 60000),
   };
-  await User.findOneAndUpdate({ email }, { $set: { authentication } });
-  debug('auth.forget_password.saved', { email });
+  await User.findOneAndUpdate({ _id: isExistUser._id }, { $set: { authentication } });
+  debug('auth.forget_password.saved', { email, userId: isExistUser._id });
+  return { email: isExistUser.email };
 };
 
 //verify email
 const verifyEmailToDB = async (payload: IVerifyEmail) => {
   const { email, role, oneTimeCode } = payload;
-  const isExistUser = await User.findOne({ email, role }).select('+authentication');
+  let isExistUser: any = null;
+  if (role) {
+    isExistUser = await User.findOne({ email, role }).select('+authentication');
+  } else {
+    const matchingUsers = await User.find({ email }).select('+authentication');
+    if (matchingUsers.length === 0) {
+      debug('auth.verify_email.user_missing', { email });
+      throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+    }
+    isExistUser =
+      matchingUsers.find((u) => u.role === USER_ROLES.SUPER_ADMIN) ||
+      matchingUsers.find((u) => u.role === USER_ROLES.ADMIN) ||
+      matchingUsers[0];
+  }
+
   if (!isExistUser) {
     debug('auth.verify_email.user_missing', { email });
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");

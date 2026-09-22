@@ -13,6 +13,8 @@ router.post(
   AuthController.loginUser
 );
 
+router.post('/logout', AuthController.logoutUser);
+
 router.post(
   '/refresh',
   validateRequest(AuthValidation.createRefreshTokenZodSchema),

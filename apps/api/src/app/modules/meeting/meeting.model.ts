@@ -14,9 +14,17 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       ref: 'User',
       index: true,
     },
-    zoomMeetingId: {
+    roomName: {
       type: String,
       required: true,
+      index: true,
+    },
+    zoomMeetingId: {
+      type: String,
+      required: false,
+    },
+    sessionName: {
+      type: String,
     },
     topic: {
       type: String,
@@ -24,11 +32,11 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
     },
     joinUrl: {
       type: String,
-      required: true,
+      required: false,
     },
     startUrl: {
       type: String,
-      required: true,
+      required: false,
     },
     password: {
       type: String,
@@ -37,6 +45,18 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       type: String,
       enum: ['INSTANT', 'SCHEDULED', 'EMERGENCY'],
       default: 'INSTANT',
+    },
+    category: {
+      type: String,
+      enum: ['ENCOUNTER', 'EMERGENCY', 'CONSULTATION'],
+      default: 'CONSULTATION',
+      index: true,
+    },
+    vaultFolderId: {
+      type: Schema.Types.ObjectId,
+      ref: 'VaultFolder',
+      required: false,
+      index: true,
     },
     startTime: {
       type: Date,
@@ -66,6 +86,11 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       type: String,
       default: '',
     },
+    egressId: {
+      type: String,
+      default: '',
+      index: true,
+    },
     recordings: {
       type: [
         {
@@ -85,7 +110,22 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
     endedAt: {
       type: Date,
     },
+    latitude: {
+      type: Number,
+    },
+    longitude: {
+      type: Number,
+    },
+    locationAddress: {
+      type: String,
+    },
     joinedAttorneys: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    joinedParticipants: [
       {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -100,5 +140,6 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
 meetingSchema.index({ startTime: 1, status: 1 });
 meetingSchema.index({ userId: 1, status: 1 });
 meetingSchema.index({ participantId: 1, status: 1 });
+meetingSchema.index({ joinedParticipants: 1, status: 1 });
 
 export const Meeting = model<IMeeting, MeetingModel>('Meeting', meetingSchema);
