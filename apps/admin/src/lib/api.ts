@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  process.env.NEXT_PUBLIC_API_URL || 'http://172.252.13.197:9777/api/v1';
 
 const TOKEN_KEY = 'govia_admin_token';
 const REFRESH_TOKEN_KEY = 'govia_admin_refresh_token';

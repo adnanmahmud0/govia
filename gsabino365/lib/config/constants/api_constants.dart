@@ -3,10 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ApiConstants {
   // ─── Base URL ─────────────────────────────────────────────────────────────
   // Read from .env file → API_BASE_URL key.
-  // Fallback to https://adnan5000.binarybards.online/api/v1
+  // Fallback to http://172.252.13.197:9777/api/v1
   static String get baseUrl {
     final raw = dotenv.env['API_BASE_URL'] ??
-        'https://adnan5000.binarybards.online/api/v1';
+        'http://172.252.13.197:9777/api/v1';
     final trimmed = raw.trim();
     final noTrailingSlash = trimmed.endsWith('/')
         ? trimmed.substring(0, trimmed.length - 1)
@@ -23,7 +23,7 @@ class ApiConstants {
     if (uri != null) {
       return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
     }
-    return 'https://adnan5000.binarybards.online';
+    return 'http://172.252.13.197:9777';
   }
 
   // Full URL for an attachment or upload path
