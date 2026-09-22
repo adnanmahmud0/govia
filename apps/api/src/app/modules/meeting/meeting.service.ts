@@ -11,6 +11,7 @@ import {
 import { socketHelper } from '../../../helpers/socketHelper';
 import { User } from '../user/user.model';
 import { Meeting } from './meeting.model';
+import { IMeeting } from './meeting.interface';
 import { Conversation } from '../conversation/conversation.model';
 import { Message } from '../message/message.model';
 import { NotificationService } from '../notification/notification.service';
@@ -94,7 +95,7 @@ const createInstantMeeting = async (
       participantName: hostUser?.name || 'Citizen',
     });
 
-    const meetingResult: any = populatedMeeting
+    const meetingResult: Record<string, unknown> = populatedMeeting
       ? populatedMeeting.toObject()
       : newMeeting.toObject();
     meetingResult.meetingId = newMeeting._id;
@@ -433,7 +434,9 @@ const getActiveMeetings = async () => {
   const seenUsers = new Set<string>();
   const uniqueActiveMeetings: typeof activeMeetings = [];
   for (const m of activeMeetings) {
-    const uId = (m.userId as any)?._id?.toString() || m.userId?.toString();
+    const uId =
+      (m.userId as unknown as { _id?: { toString(): string } })?._id?.toString() ||
+      m.userId?.toString();
     if (uId && !seenUsers.has(uId)) {
       seenUsers.add(uId);
       uniqueActiveMeetings.push(m);
@@ -601,7 +604,9 @@ const joinMeeting = async (meetingId: string, userId: string) => {
     .populate('joinedAttorneys', 'name email role image')
     .populate('joinedParticipants', 'name email role image phoneNumber');
 
-  const meetingData: any = populatedMeeting ? populatedMeeting.toObject() : meeting.toObject();
+  const meetingData: Record<string, unknown> = populatedMeeting
+    ? populatedMeeting.toObject()
+    : meeting.toObject();
 
   return {
     ...meetingData,
@@ -1042,7 +1047,7 @@ const getMeetingSdkToken = async (meetingId: string, userId: string) => {
  * Helper to auto-save or update meeting recording into the user's Evidence Vault
  */
 const autoSaveMeetingToVault = async (
-  meeting: any,
+  meeting: Partial<IMeeting> & { _id?: unknown },
   fileUrl: string,
   fileSize = 0
 ) => {
@@ -1090,15 +1095,15 @@ const autoSaveMeetingToVault = async (
       if (fileSize) existingItem.fileSize = fileSize;
       await existingItem.save();
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     debugError(
       '[Vault] Failed to auto-save meeting recording to Vault:',
-      err?.message || err
+      err instanceof Error ? err.message : String(err)
     );
   }
 };
 
-const startRecording = async (meetingId: string, userId?: string) => {
+const startRecording = async (meetingId: string, _userId?: string) => {
   const meeting = Types.ObjectId.isValid(meetingId)
     ? await Meeting.findById(meetingId)
     : await Meeting.findOne({ roomName: meetingId });
@@ -1121,7 +1126,7 @@ const startRecording = async (meetingId: string, userId?: string) => {
   // Trigger LiveKit Egress room composite recording if S3 storage is configured
   const egressInfo = await startLiveKitRecording(meeting.roomName);
   if (egressInfo?.egressId) {
-    meeting.egressId = egressInfo.egressId;
+    meeting.egressId = String(egressInfo.egressId);
     await meeting.save();
     debug(
       `[Meeting] Saved egressId ${meeting.egressId} for meeting ${meeting._id}`
@@ -1146,7 +1151,7 @@ const startRecording = async (meetingId: string, userId?: string) => {
   };
 };
 
-const stopRecording = async (meetingId: string, userId?: string) => {
+const stopRecording = async (meetingId: string, _userId?: string) => {
   const meeting = Types.ObjectId.isValid(meetingId)
     ? await Meeting.findById(meetingId)
     : await Meeting.findOne({ roomName: meetingId });
@@ -1311,12 +1316,13 @@ const handleLiveKitWebhook = async (
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     debugError(
       '[LiveKit Webhook] Error processing webhook:',
-      error?.message || error
+      errorMsg
     );
-    return { success: false, error: error?.message || error };
+    return { success: false, error: errorMsg };
   }
 };
 
@@ -1324,7 +1330,7 @@ const uploadRecordingDirect = async (
   meetingId: string,
   filePath: string,
   fileSize = 0,
-  userId?: string
+  _userId?: string
 ) => {
   const meeting = Types.ObjectId.isValid(meetingId)
     ? await Meeting.findById(meetingId)

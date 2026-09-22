@@ -50,7 +50,7 @@ const notificationSchema = new Schema<INotification, NotificationModel>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (doc, ret: any) => {
+      transform: (_doc, ret: Record<string, unknown>) => {
         ret.id = ret._id;
         return ret;
       },

@@ -162,7 +162,7 @@ At the end of your guidance, include a brief one-line note:
   ];
 
   try {
-    let response = await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: config.ai.modelName as string,
       messages,
       temperature: 0.5,

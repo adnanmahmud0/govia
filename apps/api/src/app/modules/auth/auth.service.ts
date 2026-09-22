@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { IUser } from '../user/user.interface';
 import { StatusCodes } from 'http-status-codes';
 import { JwtPayload } from 'jsonwebtoken';
 import type { StringValue } from 'ms';
@@ -108,7 +109,7 @@ const loginUserFromDB = async (payload: ILoginData) => {
 
 //forget password
 const forgetPasswordToDB = async (email: string, role?: string) => {
-  let isExistUser: any = null;
+  let isExistUser: (IUser & { _id?: unknown }) | null = null;
   if (role) {
     isExistUser = await User.isExistUserByEmailAndRole(email, role);
   } else {
@@ -149,7 +150,7 @@ const forgetPasswordToDB = async (email: string, role?: string) => {
 //verify email
 const verifyEmailToDB = async (payload: IVerifyEmail) => {
   const { email, role, oneTimeCode } = payload;
-  let isExistUser: any = null;
+  let isExistUser: (IUser & { _id?: unknown }) | null = null;
   if (role) {
     isExistUser = await User.findOne({ email, role }).select('+authentication');
   } else {

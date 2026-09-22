@@ -5,7 +5,9 @@ import sendResponse from '../../../shared/sendResponse';
 import { RiskAnalyticsService } from './riskAnalytics.service';
 
 const getRiskAnalytics = catchAsync(async (req: Request, res: Response) => {
-  const result = await RiskAnalyticsService.getRiskAnalytics(req.query as any);
+  const result = await RiskAnalyticsService.getRiskAnalytics(
+    req.query as Record<string, string | undefined>
+  );
   sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,

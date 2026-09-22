@@ -33,7 +33,7 @@ app.use(
   express.json({
     limit: '50mb',
     type: ['application/json', 'application/webhook+json'],
-    verify: (req: any, _res, buf) => {
+    verify: (req: express.Request & { rawBody?: string }, _res, buf) => {
       req.rawBody = buf.toString('utf-8');
     },
   })

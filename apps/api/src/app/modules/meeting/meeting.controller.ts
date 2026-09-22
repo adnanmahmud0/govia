@@ -271,8 +271,9 @@ const stopRecording = catchAsync(async (req: Request, res: Response) => {
 });
 
 const handleLiveKitWebhook = catchAsync(async (req: Request, res: Response) => {
+  const reqWithRaw = req as Request & { rawBody?: string };
   const rawBody =
-    (req as any).rawBody ||
+    reqWithRaw.rawBody ||
     (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
   const authHeader = req.headers.authorization;
 
@@ -308,8 +309,8 @@ const uploadRecordingDirect = catchAsync(async (req: Request, res: Response) => 
         baseIndex !== -1 ? '/' + relPath.substring(baseIndex) : `/${file.filename}`;
       fileSize = file.size;
     }
-  } else if ((req as any).file) {
-    const file = (req as any).file as Express.Multer.File;
+  } else if (req.file) {
+    const file = req.file;
     const relPath = file.path.replace(/\\/g, '/');
     const baseIndex = relPath.indexOf('uploads/');
     filePath =
@@ -371,7 +372,9 @@ const attachRecording = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllMeetingsForAdmin = catchAsync(async (req: Request, res: Response) => {
-  const result = await MeetingService.getAllMeetingsForAdmin(req.query as any);
+  const result = await MeetingService.getAllMeetingsForAdmin(
+    req.query as Record<string, string | undefined>
+  );
   sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,

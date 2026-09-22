@@ -37,6 +37,15 @@
   "overrides": [
     {
       "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "rules": {
+        "no-undef": "off"
+      }
+    },
+    {
+      "files": [
         "**/*.d.ts"
       ],
       "rules": {

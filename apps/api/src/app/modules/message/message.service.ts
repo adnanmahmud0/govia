@@ -120,7 +120,8 @@ const sendMessage = async (
   });
 
   // 4. Create persistent notification for message receiver
-  const senderName = (populatedMessage?.sender as any)?.name || 'User';
+  const senderName =
+    (populatedMessage?.sender as unknown as { name?: string })?.name || 'User';
   NotificationService.createNotification({
     userId: receiverObjectId.toString(),
     type: 'message',

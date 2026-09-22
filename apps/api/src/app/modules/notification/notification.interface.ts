@@ -13,12 +13,12 @@ export type INotificationType =
   | 'system'
   | string;
 
-export interface INotificationLink {
+export type INotificationLink = {
   label: string;
   url: string;
 }
 
-export interface INotification {
+export type INotification = {
   _id?: Types.ObjectId;
   userId: Types.ObjectId;
   type: INotificationType;

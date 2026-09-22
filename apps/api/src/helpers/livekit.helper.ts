@@ -9,11 +9,11 @@ import config from '../config';
 import { debug, debugError } from '../shared/debug';
 import { StorageSetting } from '../app/modules/storageSetting/storageSetting.model';
 
-export interface TokenOptions {
+export type TokenOptions = {
   roomName: string;
   participantIdentity: string;
   participantName?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   canPublish?: boolean;
   canSubscribe?: boolean;
 }
@@ -38,7 +38,7 @@ export const createLiveKitToken = async ({
       apiKey = dbSetting.livekitApiKey;
       apiSecret = dbSetting.livekitApiSecret;
     }
-  } catch (err) {
+  } catch (_err) {
     // fallback to config
   }
 
@@ -67,7 +67,7 @@ export const createLiveKitToken = async ({
 export const startLiveKitRecording = async (
   roomName: string,
   options?: { layout?: string }
-): Promise<any> => {
+): Promise<Record<string, unknown> | null> => {
   let apiKey = config.livekit.apiKey;
   let apiSecret = config.livekit.apiSecret;
   let livekitUrl = config.livekit.url;
@@ -90,7 +90,7 @@ export const startLiveKitRecording = async (
       if (dbSetting.livekitApiSecret) apiSecret = dbSetting.livekitApiSecret;
       if (dbSetting.livekitUrl) livekitUrl = dbSetting.livekitUrl;
     }
-  } catch (err) {
+  } catch (_err) {
     // fallback to config
   }
 
@@ -141,11 +141,11 @@ export const startLiveKitRecording = async (
     debug(
       `[LiveKit] Egress recording started for room ${roomName}. EgressId: ${info.egressId}`
     );
-    return info;
-  } catch (error: any) {
+    return info as unknown as Record<string, unknown>;
+  } catch (error: unknown) {
     debugError(
       `[LiveKit] Failed to start Egress for room ${roomName}:`,
-      error?.message || error
+      error instanceof Error ? error.message : String(error)
     );
     return null;
   }
@@ -154,7 +154,9 @@ export const startLiveKitRecording = async (
 /**
  * Stops an ongoing LiveKit Egress recording.
  */
-export const stopLiveKitRecording = async (egressId: string): Promise<any> => {
+export const stopLiveKitRecording = async (
+  egressId: string
+): Promise<Record<string, unknown> | null> => {
   if (!egressId) return null;
   let apiKey = config.livekit.apiKey;
   let apiSecret = config.livekit.apiSecret;
@@ -167,7 +169,7 @@ export const stopLiveKitRecording = async (egressId: string): Promise<any> => {
       apiSecret = dbSetting.livekitApiSecret;
       if (dbSetting.livekitUrl) livekitUrl = dbSetting.livekitUrl;
     }
-  } catch (err) {
+  } catch (_err) {
     // fallback
   }
 
@@ -179,11 +181,11 @@ export const stopLiveKitRecording = async (egressId: string): Promise<any> => {
     const egressClient = new EgressClient(host, apiKey, apiSecret);
     const info = await egressClient.stopEgress(egressId);
     debug(`[LiveKit] Stopped Egress ${egressId}:`, info?.status);
-    return info;
-  } catch (error: any) {
+    return info as unknown as Record<string, unknown>;
+  } catch (error: unknown) {
     debugError(
       `[LiveKit] Failed to stop Egress ${egressId}:`,
-      error?.message || error
+      error instanceof Error ? error.message : String(error)
     );
     return null;
   }

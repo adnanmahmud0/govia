@@ -4,7 +4,7 @@ import { StorageSetting } from './storageSetting.model';
 import { IStorageSetting } from './storageSetting.interface';
 import { Meeting } from '../meeting/meeting.model';
 import { EgressClient } from 'livekit-server-sdk';
-import { debug, debugError } from '../../../shared/debug';
+import { debugError } from '../../../shared/debug';
 
 const getStorageSetting = async () => {
   let setting = await StorageSetting.findOne().sort({ updatedAt: -1 });
@@ -48,7 +48,9 @@ const saveStorageSetting = async (
 ) => {
   let setting = await StorageSetting.findOne().sort({ updatedAt: -1 });
 
-  const updateData: any = { ...payload };
+  const updateData: Partial<IStorageSetting> & { updatedBy?: Types.ObjectId } = {
+    ...payload,
+  };
   if (userId) {
     updateData.updatedBy = new Types.ObjectId(userId);
   }
@@ -101,7 +103,6 @@ const testStorageConnection = async (payload: Partial<IStorageSetting>) => {
   const bucket = payload.bucket;
   const region = payload.region || 'us-east-1';
   const accessKey = payload.accessKey;
-  const secretKey = payload.secretKey;
   const endpoint = payload.endpoint;
 
   const livekitUrl = payload.livekitUrl || config.livekit.url;
@@ -137,12 +138,13 @@ const testStorageConnection = async (payload: Partial<IStorageSetting>) => {
           livekitHost: host,
         },
       };
-    } catch (err: any) {
-      debugError('[StorageSetting] Connection test failed:', err?.message || err);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      debugError('[StorageSetting] Connection test failed:', errMsg);
       // If LiveKit call fails due to invalid key
       return {
         success: false,
-        message: `LiveKit / Storage credentials verification error: ${err?.message || 'Unauthorized access'}`,
+        message: `LiveKit / Storage credentials verification error: ${errMsg || 'Unauthorized access'}`,
       };
     }
   }
@@ -166,7 +168,7 @@ const getAllRecordings = async (
   const skip = (page - 1) * limit;
 
   // Filter meetings that have recordingUrl or items in recordings array
-  const filter: Record<string, any> = {
+  const filter: Record<string, unknown> = {
     $or: [
       { recordingUrl: { $exists: true, $ne: '' } },
       { 'recordings.0': { $exists: true } },

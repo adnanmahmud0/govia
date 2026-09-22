@@ -5,6 +5,8 @@ import { getSingleFilePath } from '../../../shared/getFilePath';
 import sendResponse from '../../../shared/sendResponse';
 import { UserService } from './user.service';
 
+type FileParam = Parameters<typeof getSingleFilePath>[0];
+
 const createUser = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
     const { ...userData } = req.body;
@@ -35,7 +37,7 @@ const getUserProfile = catchAsync(async (req: Request, res: Response) => {
 const updateProfile = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
     const user = req.user;
-    const image = getSingleFilePath(req.files as any, 'image');
+    const image = getSingleFilePath(req.files as FileParam, 'image');
 
     const data = {
       image,
@@ -94,7 +96,7 @@ const getSingleUser = catchAsync(
 
 const updateUser = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
-    const image = getSingleFilePath(req.files as any, 'image');
+    const image = getSingleFilePath(req.files as FileParam, 'image');
 
     const data = {
       image,

@@ -18,7 +18,10 @@ const createFolder = catchAsync(async (req: Request, res: Response) => {
 
 const getUserFolders = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.id;
-  const result = await VaultService.getUserFolders(userId, req.query as any);
+  const result = await VaultService.getUserFolders(
+    userId,
+    req.query as Record<string, string | undefined>
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -70,7 +73,7 @@ const deleteFolder = catchAsync(async (req: Request, res: Response) => {
 const uploadEvidence = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.id;
   const { folderId, title, description, subCategory, importance, fileType, duration } = req.body;
-  const files = req.files as any;
+  const files = req.files as Record<string, Express.Multer.File[]> | undefined;
 
   const result = await VaultService.uploadEvidence(userId, folderId, files, {
     title,
@@ -134,7 +137,7 @@ const getSharedWithMeFolders = catchAsync(
     const userId = req.user.id;
     const result = await VaultService.getSharedWithMeFolders(
       userId,
-      req.query as any
+      req.query as Record<string, string | undefined>
     );
 
     sendResponse(res, {

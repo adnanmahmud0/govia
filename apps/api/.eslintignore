@@ -3,3 +3,5 @@ dist
 winston
 uploads
 *.d.ts
+src/scripts
+

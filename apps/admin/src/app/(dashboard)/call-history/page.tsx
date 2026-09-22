@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DataTable, ColumnDef } from "@/components/tables/DataTable";
 import { Input } from "@/components/ui/input";
 import {
@@ -65,6 +65,11 @@ export default function CallHistoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [referenceTime, setReferenceTime] = useState(0);
+
+  useEffect(() => {
+    setReferenceTime(Date.now());
+  }, []);
 
   const filteredMeetings = allMeetings.filter((m) => {
     // Search
@@ -84,14 +89,13 @@ export default function CallHistoryPage() {
     }
 
     // Date range
-    if (dateFilter !== "all") {
+    if (dateFilter !== "all" && referenceTime > 0) {
       const d = m.startTime || m.createdAt;
       if (!d) return false;
       const meetingDate = new Date(d).getTime();
-      const now = Date.now();
-      if (dateFilter === "today" && now - meetingDate > 86400000) return false;
-      if (dateFilter === "week" && now - meetingDate > 86400000 * 7) return false;
-      if (dateFilter === "month" && now - meetingDate > 86400000 * 30) return false;
+      if (dateFilter === "today" && referenceTime - meetingDate > 86400000) return false;
+      if (dateFilter === "week" && referenceTime - meetingDate > 86400000 * 7) return false;
+      if (dateFilter === "month" && referenceTime - meetingDate > 86400000 * 30) return false;
     }
 
     return true;

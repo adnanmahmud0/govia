@@ -1,7 +1,6 @@
-import { Types } from 'mongoose';
 import { Meeting } from './meeting.model';
 
-export interface GeoIncident {
+export type GeoIncident = {
   id: string;
   roomName: string;
   topic: string;
@@ -20,7 +19,7 @@ export interface GeoIncident {
   isEmergency: boolean;
 }
 
-export interface HotspotCluster {
+export type HotspotCluster = {
   id: string;
   name: string;
   center: [number, number]; // [lat, lng]
@@ -32,7 +31,7 @@ export interface HotspotCluster {
   recentTopics: string[];
 }
 
-export interface ResponderStation {
+export type ResponderStation = {
   id: string;
   name: string;
   type: 'PRECINCT' | 'LEGAL_AID' | 'MHP_DISPATCH';
@@ -42,7 +41,7 @@ export interface ResponderStation {
   activeUnits: number;
 }
 
-export interface RiskAnalyticsResult {
+export type RiskAnalyticsResult = {
   summary: {
     totalIncidents: number;
     activeCriticalIncidents: number;
@@ -156,7 +155,7 @@ const getRiskAnalytics = async (query: {
       address = address || district.address;
     }
 
-    const citizen = m.userId as any;
+    const citizen = m.userId as unknown as { name?: string; email?: string } | null;
     const cat = (m.category || 'ENCOUNTER') as 'ENCOUNTER' | 'EMERGENCY' | 'CONSULTATION';
 
     return {
@@ -311,7 +310,7 @@ const getRiskAnalytics = async (query: {
     const activeInRadius = inRadius.filter(i => i.status === 'ACTIVE').length;
 
     // Calculate dynamic risk score (0 to 100)
-    let score = Math.min(100, inRadius.length * 12 + emgInRadius * 20 + activeInRadius * 25);
+    const score = Math.min(100, inRadius.length * 12 + emgInRadius * 20 + activeInRadius * 25);
     let level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' = 'LOW';
     if (score >= 70) level = 'CRITICAL';
     else if (score >= 45) level = 'HIGH';

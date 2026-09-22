@@ -1,7 +1,8 @@
 import { StatusCodes } from 'http-status-codes';
-import { Types } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import ApiError from '../../../errors/ApiError';
 import { Meeting } from '../meeting/meeting.model';
+import { IMeeting } from '../meeting/meeting.interface';
 import { IVaultFolder, VaultCategory } from './vaultFolder.interface';
 import { VaultFolder } from './vaultFolder.model';
 import { IVaultItem, VaultItemType } from './vaultItem.interface';
@@ -28,7 +29,7 @@ const getUserFolders = async (
   userId: string,
   query: { category?: string; search?: string }
 ) => {
-  const filter: any = {
+  const filter: Record<string, unknown> = {
     userId: new Types.ObjectId(userId),
     isArchived: false,
   };
@@ -92,7 +93,7 @@ const getUserFolders = async (
 
 const getFolderDetails = async (userId: string, folderId: string) => {
   const userObjectId = new Types.ObjectId(userId);
-  const folder: any = await VaultFolder.findOne({
+  const folder = await VaultFolder.findOne({
     _id: new Types.ObjectId(folderId),
     $or: [
       { userId: userObjectId },
@@ -118,7 +119,13 @@ const getFolderDetails = async (userId: string, folderId: string) => {
     .sort({ createdAt: -1 })
     .lean();
 
-  const normalizedItems = items.map((item: any) => {
+  const normalizedItems = items.map(
+    (
+      item: Record<string, unknown> & {
+        fileUrl?: string;
+        meetingId?: { recordingUrl?: string; _id?: unknown };
+      }
+    ) => {
     if (!item.fileUrl || item.fileUrl === '') {
       if (item.meetingId?.recordingUrl) {
         item.fileUrl = item.meetingId.recordingUrl;
@@ -177,7 +184,7 @@ const deleteFolder = async (userId: string, folderId: string) => {
 const uploadEvidence = async (
   userId: string,
   folderId: string,
-  uploadedFiles: any,
+  uploadedFiles: Record<string, Express.Multer.File[]> | undefined,
   payload: {
     title?: string;
     description?: string;
@@ -199,7 +206,7 @@ const uploadEvidence = async (
   const itemsToCreate: Partial<IVaultItem>[] = [];
 
   // Extract all files from multer fields
-  const fileList: any[] = [];
+  const fileList: Express.Multer.File[] = [];
   if (uploadedFiles) {
     Object.keys(uploadedFiles).forEach(key => {
       const arr = uploadedFiles[key];
@@ -267,7 +274,7 @@ const linkMeetingToFolder = async (
   }
 
   // 1. Resolve meeting: payload.meetingId might be a direct Meeting ID OR a VaultItem ID that links to a meeting!
-  let meeting: any = null;
+  let meeting: HydratedDocument<IMeeting> | null = null;
   if (Types.ObjectId.isValid(payload.meetingId)) {
     meeting = await Meeting.findById(payload.meetingId);
     if (!meeting) {
@@ -391,7 +398,7 @@ const getSharedWithMeFolders = async (
   query: { search?: string }
 ) => {
   const userObjectId = new Types.ObjectId(userId);
-  const filter: any = {
+  const filter: Record<string, unknown> = {
     'sharedWith.userId': userObjectId,
     isArchived: false,
   };
@@ -479,22 +486,37 @@ const getAllRecordings = async (userId: string) => {
     .sort({ createdAt: -1 })
     .lean();
 
-  const meetingObjectIds = meetings.map((m: any) => m._id);
+  const meetingObjectIds = meetings.map(m => m._id);
 
   // Ensure every meeting has a valid playback URL and category
-  const normalizedMeetings = meetings.map((m: any) => {
+  const normalizedMeetings = (
+    meetings as unknown as Array<Record<string, unknown>>
+  ).map((m) => {
     if (!m.recordingUrl || m.recordingUrl === '') {
       m.recordingUrl = `https://recordings.govia.ai/play/${m._id}`;
     }
-    if (!m.category || !['ENCOUNTER', 'EMERGENCY', 'CONSULTATION'].includes(m.category)) {
-      m.category = m.meetingType === 'EMERGENCY'
-        ? 'EMERGENCY'
-        : (m.topic && (m.topic.toLowerCase().includes('police') || m.topic.toLowerCase().includes('encounter') || m.topic.toLowerCase().includes('govia')))
-          ? 'ENCOUNTER'
-          : 'CONSULTATION';
+    const cat = m.category as string | undefined;
+    if (!cat || !['ENCOUNTER', 'EMERGENCY', 'CONSULTATION'].includes(cat)) {
+      const topic = typeof m.topic === 'string' ? m.topic.toLowerCase() : '';
+      m.category =
+        m.meetingType === 'EMERGENCY'
+          ? 'EMERGENCY'
+          : topic.includes('police') ||
+              topic.includes('encounter') ||
+              topic.includes('govia')
+            ? 'ENCOUNTER'
+            : 'CONSULTATION';
     }
-    m.hostName = m.userId?.name || 'Citizen';
-    m.participantName = m.participantId?.name || (m.joinedAttorneys?.[0]?.name) || (m.joinedParticipants?.[0]?.name) || 'Responder';
+    const userObj = m.userId as { name?: string } | undefined;
+    const participantObj = m.participantId as { name?: string } | undefined;
+    const attorneys = m.joinedAttorneys as { name?: string }[] | undefined;
+    const participants = m.joinedParticipants as { name?: string }[] | undefined;
+    m.hostName = userObj?.name || 'Citizen';
+    m.participantName =
+      participantObj?.name ||
+      attorneys?.[0]?.name ||
+      participants?.[0]?.name ||
+      'Responder';
     return m;
   });
 

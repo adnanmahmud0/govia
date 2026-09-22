@@ -375,7 +375,7 @@ const createRoleNotification = async (
   excludeUserId?: string
 ) => {
   try {
-    const filter: any = { role: targetRole, status: 'active' };
+    const filter: Record<string, unknown> = { role: targetRole, status: 'active' };
     if (excludeUserId && Types.ObjectId.isValid(excludeUserId)) {
       filter._id = { $ne: new Types.ObjectId(excludeUserId) };
     }

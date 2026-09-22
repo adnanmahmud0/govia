@@ -83,7 +83,7 @@ const userSchema = new Schema<IUser, UserModal>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (doc, ret: any) => {
+      transform: (_doc, ret: Record<string, unknown>) => {
         ret.id = ret._id;
         return ret;
       },
@@ -92,7 +92,7 @@ const userSchema = new Schema<IUser, UserModal>(
   }
 );
 
-userSchema.virtual('shortHexId').get(function (this: any) {
+userSchema.virtual('shortHexId').get(function (this: { _id?: { toString(): string } }) {
   const idStr = this._id ? this._id.toString() : '';
   return idStr.length >= 8 ? idStr.slice(-8).toUpperCase() : idStr.toUpperCase();
 });

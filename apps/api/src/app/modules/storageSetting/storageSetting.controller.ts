@@ -31,12 +31,14 @@ const testStorageConnection = catchAsync(async (req: Request, res: Response) => 
     success: result.success,
     statusCode: result.success ? StatusCodes.OK : StatusCodes.BAD_REQUEST,
     message: result.message,
-    data: (result as any).details || null,
+    data: (result as { details?: unknown }).details || null,
   });
 });
 
 const getAllRecordings = catchAsync(async (req: Request, res: Response) => {
-  const result = await StorageSettingService.getAllRecordings(req.query as any);
+  const result = await StorageSettingService.getAllRecordings(
+    req.query as Record<string, string | undefined>
+  );
   sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,

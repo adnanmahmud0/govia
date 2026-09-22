@@ -54,10 +54,11 @@ export default function LiveCallMonitoringPage() {
   const [endCallConfirmOpen, setEndCallConfirmOpen] = useState(false);
   const [endingCall, setEndingCall] = useState(false);
   const [activeParticipantModal, setActiveParticipantModal] = useState<{ title: string; user: { name: string; email: string; phone?: string; id?: string } } | null>(null);
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [currentTime, setCurrentTime] = useState(0);
 
   // Live seconds ticker
   useEffect(() => {
+    setCurrentTime(Date.now());
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
