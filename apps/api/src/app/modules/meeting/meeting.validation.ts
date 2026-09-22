@@ -42,6 +42,9 @@ const startInstantMeetingZodSchema = z.object({
       .refine(val => !val || Types.ObjectId.isValid(val), {
         message: 'Invalid conversationId ObjectId format',
       }),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    locationAddress: z.string().optional(),
   }),
 });
 

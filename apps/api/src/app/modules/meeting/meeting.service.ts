@@ -2,20 +2,33 @@ import { StatusCodes } from 'http-status-codes';
 import { Types } from 'mongoose';
 import config from '../../../config';
 import ApiError from '../../../errors/ApiError';
-import { createLiveKitToken } from '../../../helpers/livekit.helper';
+import {
+  createLiveKitToken,
+  startLiveKitRecording,
+  stopLiveKitRecording,
+  verifyLiveKitWebhook,
+} from '../../../helpers/livekit.helper';
 import { socketHelper } from '../../../helpers/socketHelper';
 import { User } from '../user/user.model';
 import { Meeting } from './meeting.model';
 import { Conversation } from '../conversation/conversation.model';
 import { Message } from '../message/message.model';
-import { debug } from '../../../shared/debug';
+import { NotificationService } from '../notification/notification.service';
+import { VaultFolder } from '../vault/vaultFolder.model';
+import { VaultItem } from '../vault/vaultItem.model';
+import { debug, debugError } from '../../../shared/debug';
 
 const createInstantMeeting = async (
   userId: string,
   topic = 'Instant Govia Consultation',
   participantId?: string,
   isEmergency = false,
-  conversationId?: string
+  conversationId?: string,
+  latitude?: number,
+  longitude?: number,
+  locationAddress?: string,
+  preferredAttorney?: string,
+  preferredBailBondsman?: string
 ) => {
   let participantObjectId: Types.ObjectId | undefined;
   if (participantId) {
@@ -63,6 +76,9 @@ const createInstantMeeting = async (
           ? 'ENCOUNTER'
           : 'CONSULTATION',
       status: 'ACTIVE',
+      latitude,
+      longitude,
+      locationAddress,
     });
 
     const populatedMeeting = await Meeting.findById(newMeeting._id)
@@ -87,6 +103,9 @@ const createInstantMeeting = async (
     meetingResult.token = livekitToken;
     meetingResult.livekitToken = livekitToken;
     meetingResult.livekitUrl = config.livekit.url;
+    meetingResult.latitude = newMeeting.latitude;
+    meetingResult.longitude = newMeeting.longitude;
+    meetingResult.locationAddress = newMeeting.locationAddress;
 
     // If meeting is attached to a conversation thread, automatically post meeting message card
     if (convObjectId && participantObjectId) {
@@ -135,18 +154,88 @@ const createInstantMeeting = async (
       );
     }
 
-    // Real-time socket notification
+    // Real-time socket notification & persistent notification records for all roles
     if (isEmergency) {
       socketHelper.emitToRole('ATTORNEY', 'emergency_alert', meetingResult);
+      socketHelper.emitToRole('POLICE', 'emergency_alert', meetingResult);
+      socketHelper.emitToRole('MENTAL_HEALTH_PROFESSIONAL', 'emergency_alert', meetingResult);
+      socketHelper.emitToRole('BAIL_BONDSMAN', 'emergency_alert', meetingResult);
+      if (preferredAttorney && Types.ObjectId.isValid(preferredAttorney)) {
+        socketHelper.emitToUser(preferredAttorney, 'emergency_alert', meetingResult);
+      }
+      if (preferredBailBondsman && Types.ObjectId.isValid(preferredBailBondsman)) {
+        socketHelper.emitToUser(preferredBailBondsman, 'emergency_alert', meetingResult);
+      }
       socketHelper.broadcast('emergency_meeting_created', meetingResult);
+
+      const hostName = hostUser?.name || 'Citizen';
+      const loc = locationAddress || 'Active GPS Location';
+
+      // 1. Citizen's own active protection notification
+      NotificationService.createNotification({
+        userId,
+        type: 'emergency',
+        title: '🛡️ Govia Active Protection Enabled',
+        subtitle: `Live encounter active at ${loc}. Responders alerted and cloud recording started.`,
+        resourceType: 'encounter',
+        resourceId: newMeeting._id.toString(),
+      });
+
+      // 2. Police notification
+      NotificationService.createRoleNotification('POLICE', {
+        type: 'dispatch',
+        title: '🚨 Emergency Stop Encounter',
+        subtitle: `${hostName} initiated an emergency encounter at ${loc}. Live video & GPS streaming.`,
+        resourceType: 'encounter',
+        resourceId: newMeeting._id.toString(),
+      }, userId);
+
+      // 3. Attorney notification
+      NotificationService.createRoleNotification('ATTORNEY', {
+        type: 'legal',
+        title: '⚖️ Emergency Defense Dispatch',
+        subtitle: `${hostName} initiated an emergency encounter at ${loc} and requested legal representation.`,
+        resourceType: 'meeting',
+        resourceId: newMeeting._id.toString(),
+      }, userId);
+
+      // 4. Mental Health notification
+      NotificationService.createRoleNotification('MENTAL_HEALTH_PROFESSIONAL', {
+        type: 'medical',
+        title: '🩺 Crisis De-escalation Alert',
+        subtitle: `Mental health crisis support requested for active encounter with ${hostName}.`,
+        resourceType: 'meeting',
+        resourceId: newMeeting._id.toString(),
+      }, userId);
+
+      // 5. Bail Bondsman notification
+      NotificationService.createRoleNotification('BAIL_BONDSMAN', {
+        type: 'bail',
+        title: '🏛️ Urgent Bail Assistance Notice',
+        subtitle: `Citizen ${hostName} initiated an emergency stop in your service jurisdiction.`,
+        resourceType: 'meeting',
+        resourceId: newMeeting._id.toString(),
+      }, userId);
     } else if (participantId) {
       socketHelper.emitToUser(
         participantId,
         'instant_meeting_invite',
         meetingResult
       );
+      const hostName = hostUser?.name || 'User';
+      NotificationService.createNotification({
+        userId: participantId,
+        type: 'consultation',
+        title: '📞 Instant Consultation Call',
+        subtitle: `${hostName} started an instant video consultation: "${topic}".`,
+        resourceType: 'meeting',
+        resourceId: newMeeting._id.toString(),
+      });
     } else {
       socketHelper.emitToRole('ATTORNEY', 'emergency_alert', meetingResult);
+      socketHelper.emitToRole('POLICE', 'emergency_alert', meetingResult);
+      socketHelper.emitToRole('MENTAL_HEALTH_PROFESSIONAL', 'emergency_alert', meetingResult);
+      socketHelper.emitToRole('BAIL_BONDSMAN', 'emergency_alert', meetingResult);
       socketHelper.broadcast('emergency_meeting_created', meetingResult);
     }
 
@@ -288,6 +377,31 @@ const scheduleMeeting = async (
         'new_meeting_invite',
         scheduledResult
       );
+
+      const hostUser = await User.findById(userId);
+      const hostName = hostUser?.name || 'Professional';
+      const participantUser = await User.findById(participantId);
+      const participantName = participantUser?.name || 'Client';
+
+      // 1. Participant notification
+      NotificationService.createNotification({
+        userId: participantId,
+        type: 'consultation',
+        title: '📅 Consultation Scheduled',
+        subtitle: `${hostName} scheduled "${topic}" for ${meetingDate.toLocaleDateString()} at ${meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+        resourceType: 'meeting',
+        resourceId: scheduledMeeting._id.toString(),
+      });
+
+      // 2. Host confirmation notification
+      NotificationService.createNotification({
+        userId,
+        type: 'consultation',
+        title: '📅 Consultation Confirmed',
+        subtitle: `Consultation with ${participantName} confirmed for ${meetingDate.toLocaleDateString()} at ${meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+        resourceType: 'meeting',
+        resourceId: scheduledMeeting._id.toString(),
+      });
     }
 
     return scheduledResult;
@@ -510,6 +624,9 @@ const updateMeeting = async (
     durationMinutes?: number;
     timezone?: string;
     agenda?: string;
+    latitude?: number;
+    longitude?: number;
+    locationAddress?: string;
   }
 ) => {
   const meeting = await Meeting.findById(meetingId);
@@ -542,8 +659,20 @@ const updateMeeting = async (
   }
   if (payload.timezone) meeting.timezone = payload.timezone;
   if (payload.agenda !== undefined) meeting.agenda = payload.agenda;
+  if (payload.latitude !== undefined) meeting.latitude = Number(payload.latitude);
+  if (payload.longitude !== undefined) meeting.longitude = Number(payload.longitude);
+  if (payload.locationAddress !== undefined) meeting.locationAddress = payload.locationAddress;
 
   await meeting.save();
+
+  if (payload.latitude !== undefined || payload.longitude !== undefined) {
+    socketHelper.broadcast('meeting_location_updated', {
+      meetingId: meeting._id,
+      latitude: meeting.latitude,
+      longitude: meeting.longitude,
+      locationAddress: meeting.locationAddress,
+    });
+  }
 
   await Message.updateMany(
     { meetingId: meeting._id },
@@ -728,7 +857,14 @@ const endMeeting = async (userId: string, meetingId: string) => {
 
   meeting.status = 'COMPLETED';
   meeting.endedAt = new Date();
-  // Real recordings will be attached by LiveKit egress or cloud recording webhook
+  if (meeting.egressId) {
+    stopLiveKitRecording(meeting.egressId).catch(err => {
+      debugError(
+        '[Meeting] Error stopping LiveKit egress on meeting end:',
+        err?.message || err
+      );
+    });
+  }
   await meeting.save();
 
   await Message.updateMany(
@@ -902,6 +1038,66 @@ const getMeetingSdkToken = async (meetingId: string, userId: string) => {
   };
 };
 
+/**
+ * Helper to auto-save or update meeting recording into the user's Evidence Vault
+ */
+const autoSaveMeetingToVault = async (
+  meeting: any,
+  fileUrl: string,
+  fileSize = 0
+) => {
+  try {
+    if (!meeting || !meeting.userId || !fileUrl) return;
+
+    let folder = await VaultFolder.findOne({
+      userId: meeting.userId,
+      $or: [
+        { name: meeting.topic },
+        { category: meeting.category || 'ENCOUNTER' },
+      ],
+      isArchived: false,
+    });
+
+    if (!folder) {
+      folder = await VaultFolder.create({
+        userId: meeting.userId,
+        name: meeting.topic || 'Recorded Incident',
+        description: `Encounter & meeting recording for ${meeting.topic}`,
+        category: meeting.category || 'ENCOUNTER',
+        incidentDate: meeting.createdAt || new Date(),
+        location: meeting.locationAddress || '',
+      });
+    }
+
+    const existingItem = await VaultItem.findOne({ meetingId: meeting._id });
+    if (!existingItem) {
+      await VaultItem.create({
+        userId: meeting.userId,
+        folderId: folder._id,
+        title: `${meeting.topic} - Video Recording`,
+        description: `Official recorded evidence for session: ${meeting.topic}`,
+        category: meeting.category || 'ENCOUNTER',
+        importance: meeting.meetingType === 'EMERGENCY' ? 'CRITICAL' : 'HIGH',
+        fileType: 'RECORDING',
+        fileUrl,
+        fileSize,
+        mimeType: 'video/mp4',
+        meetingId: meeting._id,
+      });
+      debug(`[Vault] Created evidence vault item for meeting ${meeting._id}`);
+    } else {
+      existingItem.fileUrl = fileUrl;
+      if (fileSize) existingItem.fileSize = fileSize;
+      await existingItem.save();
+    }
+  } catch (err: any) {
+    debugError(
+      '[Vault] Failed to auto-save meeting recording to Vault:',
+      err?.message || err
+    );
+  }
+};
+
 const startRecording = async (meetingId: string, userId?: string) => {
   const meeting = Types.ObjectId.isValid(meetingId)
     ? await Meeting.findById(meetingId)
@@ -911,11 +1107,331 @@ const startRecording = async (meetingId: string, userId?: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
   }
 
-  // Best-effort recording trigger. If LiveKit Egress or cloud recording is configured, trigger here.
+  // If egress is already running for this meeting, return existing info
+  if (meeting.egressId) {
+    return {
+      success: true,
+      meetingId: meeting._id,
+      egressId: meeting.egressId,
+      recordingActive: true,
+      message: 'Recording is already active for this meeting',
+    };
+  }
+
+  // Trigger LiveKit Egress room composite recording if S3 storage is configured
+  const egressInfo = await startLiveKitRecording(meeting.roomName);
+  if (egressInfo?.egressId) {
+    meeting.egressId = egressInfo.egressId;
+    await meeting.save();
+    debug(
+      `[Meeting] Saved egressId ${meeting.egressId} for meeting ${meeting._id}`
+    );
+  }
+
+  // Notify active participants via socket that meeting recording is active
+  if (meeting.conversationId) {
+    socketHelper.emitToConversation(
+      meeting.conversationId.toString(),
+      'meeting_recording_started',
+      { meetingId: meeting._id, egressId: meeting.egressId }
+    );
+  }
+
   return {
     success: true,
     meetingId: meeting._id,
+    egressId: meeting.egressId || '',
     recordingActive: true,
+    cloudEgress: Boolean(egressInfo?.egressId),
+  };
+};
+
+const stopRecording = async (meetingId: string, userId?: string) => {
+  const meeting = Types.ObjectId.isValid(meetingId)
+    ? await Meeting.findById(meetingId)
+    : await Meeting.findOne({ roomName: meetingId });
+
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  if (meeting.egressId) {
+    await stopLiveKitRecording(meeting.egressId);
+  }
+
+  return {
+    success: true,
+    meetingId: meeting._id,
+    recordingActive: false,
+    message:
+      'Stop recording initiated. The video will be processed and attached shortly.',
+  };
+};
+
+const handleLiveKitWebhook = async (
+  rawBody: string,
+  authHeader?: string
+) => {
+  try {
+    const event = await verifyLiveKitWebhook(rawBody, authHeader);
+    debug(`[LiveKit Webhook] Event received: ${event.event}`);
+
+    if (event.event === 'egress_ended' || event.event === 'egress_updated') {
+      const egress = event.egressInfo;
+      if (!egress) return { success: true };
+
+      const roomName = egress.roomName;
+      const egressId = egress.egressId;
+
+      const meeting = await Meeting.findOne({
+        $or: [
+          { egressId: egressId },
+          { roomName: roomName },
+          { sessionName: roomName },
+        ],
+      });
+
+      if (!meeting) {
+        debug(
+          `[LiveKit Webhook] Meeting not found for egress ${egressId} room ${roomName}`
+        );
+        return { success: true };
+      }
+
+      let fileLocation = '';
+      let fileSize = 0;
+
+      if (egress.fileResults && egress.fileResults.length > 0) {
+        const file = egress.fileResults[0];
+        fileLocation = file.location || '';
+        fileSize = Number(file.size || 0);
+      }
+
+      if (fileLocation) {
+        meeting.recordingUrl = fileLocation;
+        meeting.status = 'COMPLETED';
+        meeting.endedAt = meeting.endedAt || new Date();
+
+        const recordingStart = egress.startedAt
+          ? new Date(Number(egress.startedAt) / 1000000).toISOString()
+          : new Date().toISOString();
+        const recordingEnd = egress.endedAt
+          ? new Date(Number(egress.endedAt) / 1000000).toISOString()
+          : new Date().toISOString();
+
+        meeting.recordings = [
+          {
+            id: egressId,
+            fileType: 'mp4',
+            fileExtension: 'mp4',
+            fileSize,
+            playUrl: fileLocation,
+            downloadUrl: fileLocation,
+            recordingType: 'livekit_egress',
+            recordingStart,
+            recordingEnd,
+          },
+        ];
+
+        await meeting.save();
+
+        // Update chat messages
+        await Message.updateMany(
+          { meetingId: meeting._id },
+          {
+            text: `🏁 Meeting Ended: ${meeting.topic}\n📹 Recording is available`,
+          }
+        );
+
+        // Auto-save into Evidence Vault
+        await autoSaveMeetingToVault(meeting, fileLocation, fileSize);
+
+        // Real-time socket broadcast
+        const populatedMeeting = await Meeting.findById(meeting._id)
+          .populate('userId', 'name email role image phoneNumber')
+          .populate('participantId', 'name email role image phoneNumber')
+          .populate('joinedAttorneys', 'name email role image')
+          .populate('conversationId');
+
+        if (meeting.conversationId) {
+          socketHelper.emitToConversation(
+            meeting.conversationId.toString(),
+            'meeting_ended',
+            populatedMeeting
+          );
+          socketHelper.emitToConversation(
+            meeting.conversationId.toString(),
+            'meeting_recording_ready',
+            { meetingId: meeting._id, recordingUrl: fileLocation }
+          );
+        }
+
+        socketHelper.emitToUser(
+          meeting.userId.toString(),
+          'meeting_ended',
+          populatedMeeting
+        );
+        if (meeting.participantId) {
+          socketHelper.emitToUser(
+            meeting.participantId.toString(),
+            'meeting_ended',
+            populatedMeeting
+          );
+        }
+
+        debug(
+          `[LiveKit Webhook] Attached recording ${fileLocation} to meeting ${meeting._id}`
+        );
+      }
+    } else if (event.event === 'room_finished') {
+      const room = event.room;
+      if (room?.name) {
+        const meeting = await Meeting.findOne({
+          $or: [{ roomName: room.name }, { sessionName: room.name }],
+          status: 'ACTIVE',
+        });
+        if (meeting) {
+          meeting.status = 'COMPLETED';
+          meeting.endedAt = new Date();
+          await meeting.save();
+
+          if (meeting.egressId) {
+            stopLiveKitRecording(meeting.egressId).catch(() => {});
+          }
+
+          if (meeting.conversationId) {
+            socketHelper.emitToConversation(
+              meeting.conversationId.toString(),
+              'meeting_ended',
+              meeting
+            );
+          }
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    debugError(
+      '[LiveKit Webhook] Error processing webhook:',
+      error?.message || error
+    );
+    return { success: false, error: error?.message || error };
+  }
+};
+
+const uploadRecordingDirect = async (
+  meetingId: string,
+  filePath: string,
+  fileSize = 0,
+  userId?: string
+) => {
+  const meeting = Types.ObjectId.isValid(meetingId)
+    ? await Meeting.findById(meetingId)
+    : await Meeting.findOne({ roomName: meetingId });
+
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  meeting.recordingUrl = filePath;
+  meeting.status = 'COMPLETED';
+  meeting.endedAt = new Date();
+  meeting.recordings = [
+    {
+      id: `upload_${Date.now()}`,
+      fileType: 'mp4',
+      fileExtension: 'mp4',
+      fileSize,
+      playUrl: filePath,
+      downloadUrl: filePath,
+      recordingType: 'direct_upload',
+      recordingStart:
+        meeting.createdAt?.toISOString() || new Date().toISOString(),
+      recordingEnd: new Date().toISOString(),
+    },
+  ];
+
+  await meeting.save();
+
+  await Message.updateMany(
+    { meetingId: meeting._id },
+    {
+      text: `🏁 Meeting Ended: ${meeting.topic}\n📹 Recording is available`,
+    }
+  );
+
+  await autoSaveMeetingToVault(meeting, filePath, fileSize);
+
+  const populatedMeeting = await Meeting.findById(meeting._id)
+    .populate('userId', 'name email role image phoneNumber')
+    .populate('participantId', 'name email role image phoneNumber')
+    .populate('joinedAttorneys', 'name email role image')
+    .populate('conversationId');
+
+  if (meeting.conversationId) {
+    socketHelper.emitToConversation(
+      meeting.conversationId.toString(),
+      'meeting_ended',
+      populatedMeeting
+    );
+    socketHelper.emitToConversation(
+      meeting.conversationId.toString(),
+      'meeting_recording_ready',
+      { meetingId: meeting._id, recordingUrl: filePath }
+    );
+  }
+
+  return populatedMeeting || meeting;
+};
+
+const attachRecording = async (
+  meetingId: string,
+  recordingUrl: string,
+  userId?: string
+) => {
+  if (!recordingUrl) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'recordingUrl is required');
+  }
+  return await uploadRecordingDirect(meetingId, recordingUrl, 0, userId);
+};
+
+const getAllMeetingsForAdmin = async (
+  query: {
+    page?: number | string;
+    limit?: number | string;
+    status?: string;
+    category?: string;
+    searchTerm?: string;
+  } = {}
+) => {
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+  const skip = (page - 1) * limit;
+
+  const filter: Record<string, unknown> = {};
+  if (query.status) filter.status = query.status;
+  if (query.category) filter.category = query.category;
+
+  const meetings = await Meeting.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate('userId', 'name email role image phoneNumber')
+    .populate('participantId', 'name email role image phoneNumber')
+    .populate('joinedAttorneys', 'name email')
+    .populate('joinedParticipants', 'name email role');
+
+  const total = await Meeting.countDocuments(filter);
+
+  return {
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
+    },
+    data: meetings,
   };
 };
 
@@ -925,6 +1441,7 @@ export const MeetingService = {
   updateMeeting,
   deleteMeeting,
   getActiveMeetings,
+  getAllMeetingsForAdmin,
   getUserMeetings,
   joinMeeting,
   endMeeting,
@@ -937,4 +1454,8 @@ export const MeetingService = {
   getAttorneyRecordings,
   getMeetingSdkToken,
   startRecording,
+  stopRecording,
+  handleLiveKitWebhook,
+  uploadRecordingDirect,
+  attachRecording,
 };

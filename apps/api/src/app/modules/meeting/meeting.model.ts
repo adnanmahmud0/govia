@@ -86,6 +86,11 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       type: String,
       default: '',
     },
+    egressId: {
+      type: String,
+      default: '',
+      index: true,
+    },
     recordings: {
       type: [
         {
@@ -104,6 +109,15 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
     },
     endedAt: {
       type: Date,
+    },
+    latitude: {
+      type: Number,
+    },
+    longitude: {
+      type: Number,
+    },
+    locationAddress: {
+      type: String,
     },
     joinedAttorneys: [
       {

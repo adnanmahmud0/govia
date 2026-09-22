@@ -35,10 +35,14 @@ export type IMeeting = {
   recordingUrl?: string;
   recordings?: IMeetingRecording[];
   sessionName?: string;
+  egressId?: string;
   livekitToken?: string;
   token?: string;
   livekitUrl?: string;
   endedAt?: Date;
+  latitude?: number;
+  longitude?: number;
+  locationAddress?: string;
   createdAt?: Date;
   updatedAt?: Date;
 };

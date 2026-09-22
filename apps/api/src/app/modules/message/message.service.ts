@@ -4,6 +4,7 @@ import ApiError from '../../../errors/ApiError';
 import { socketHelper } from '../../../helpers/socketHelper';
 import { User } from '../user/user.model';
 import { Conversation } from '../conversation/conversation.model';
+import { NotificationService } from '../notification/notification.service';
 import { IMessage } from './message.interface';
 import { Message } from './message.model';
 
@@ -116,6 +117,17 @@ const sendMessage = async (
     lastMessageText,
     lastMessageAt: now,
     unreadCount: receiverUnreadCount,
+  });
+
+  // 4. Create persistent notification for message receiver
+  const senderName = (populatedMessage?.sender as any)?.name || 'User';
+  NotificationService.createNotification({
+    userId: receiverObjectId.toString(),
+    type: 'message',
+    title: `💬 Message from ${senderName}`,
+    subtitle: trimmedText || (resolvedMessageType === 'meeting' ? '📅 Meeting Invitation' : 'Sent an attachment'),
+    resourceType: 'conversation',
+    resourceId: conversationId,
   });
 
   return populatedMessage;

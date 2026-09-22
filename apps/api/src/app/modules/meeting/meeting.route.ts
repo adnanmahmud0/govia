@@ -1,12 +1,17 @@
 import express from 'express';
 import { USER_ROLES } from '../../../enums/user';
 import auth from '../../middlewares/auth';
+import fileUploadHandler from '../../middlewares/fileUploadHandler';
 import validateRequest from '../../middlewares/validateRequest';
 import { MeetingController } from './meeting.controller';
 import { MeetingValidation } from './meeting.validation';
+import { RiskAnalyticsController } from './riskAnalytics.controller';
 
 const router = express.Router();
 const allRoles = Object.values(USER_ROLES);
+
+// LiveKit Cloud recording webhook (egress_ended, room_finished)
+router.post('/webhook/livekit', MeetingController.handleLiveKitWebhook);
 
 // Instant consultation meeting (open to all roles)
 router.post(
@@ -66,8 +71,44 @@ router.post(
   MeetingController.startRecording
 );
 
+// Stop cloud/incident recording
+router.post(
+  '/:id/recording/stop',
+  auth(...allRoles),
+  MeetingController.stopRecording
+);
+
+// Direct recording video file upload (multipart/form-data)
+router.post(
+  '/:id/recording-upload',
+  auth(...allRoles),
+  fileUploadHandler(),
+  MeetingController.uploadRecordingDirect
+);
+
+// Attach recording URL directly
+router.post(
+  '/:id/attach-recording',
+  auth(...allRoles),
+  MeetingController.attachRecording
+);
+
 // Cancel a scheduled meeting
 router.patch('/:id/cancel', auth(...allRoles), MeetingController.cancelMeeting);
+
+// Get ALL meetings for admin (call history)
+router.get(
+  '/admin-all',
+  auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  MeetingController.getAllMeetingsForAdmin
+);
+
+// Get Risk Map & Tactical Analytics telemetry
+router.get(
+  '/risk-analytics',
+  auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  RiskAnalyticsController.getRiskAnalytics
+);
 
 // Get list of active meetings (Attorney & Admin view)
 router.get(

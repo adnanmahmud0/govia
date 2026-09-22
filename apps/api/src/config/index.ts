@@ -43,6 +43,14 @@ export default {
     apiKey: process.env.LIVEKIT_API_KEY || 'API6NLt8C36WoQ8',
     apiSecret: process.env.LIVEKIT_API_SECRET || 'hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY',
   },
+  s3: {
+    // Cloud storage for LiveKit Egress recordings (AWS S3, Cloudflare R2, or MinIO)
+    bucket: process.env.S3_BUCKET || '',
+    region: process.env.S3_REGION || 'us-east-1',
+    accessKey: process.env.S3_ACCESS_KEY || '',
+    secretKey: process.env.S3_SECRET_KEY || '',
+    endpoint: process.env.S3_ENDPOINT || '',
+  },
   ai: {
     baseUrl: process.env.AI_PROVIDER_BASE_URL || 'https://api.openai.com/v1',
     apiKey: process.env.AI_API_KEY,
