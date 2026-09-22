@@ -140,11 +140,11 @@ export default function RecordingsPage() {
         bucket: settings.bucket || "",
         region: settings.region || "us-east-1",
         accessKey: settings.accessKey || "",
-        secretKey: settings.maskedSecretKey || "",
+        secretKey: "",
         endpoint: settings.endpoint || "",
         livekitUrl: settings.livekitUrl || "",
         livekitApiKey: settings.livekitApiKey || "",
-        livekitApiSecret: settings.maskedLivekitSecret || "",
+        livekitApiSecret: "",
         autoRecordMeetings: settings.autoRecordMeetings ?? true,
       });
     }
@@ -165,7 +165,14 @@ export default function RecordingsPage() {
     setTestingConnection(true);
     setTestResult(null);
     try {
-      const res: any = await testConnection(formData);
+      const payload = { ...formData };
+      if (payload.secretKey && (payload.secretKey.includes("•") || payload.secretKey.includes("*"))) {
+        delete payload.secretKey;
+      }
+      if (payload.livekitApiSecret && (payload.livekitApiSecret.includes("•") || payload.livekitApiSecret.includes("*"))) {
+        delete payload.livekitApiSecret;
+      }
+      const res: any = await testConnection(payload);
       setTestResult({
         success: true,
         message: res?.message || "Storage credentials verified successfully!",
@@ -186,7 +193,14 @@ export default function RecordingsPage() {
     e.preventDefault();
     setSavingSettings(true);
     try {
-      await saveSettings(formData);
+      const payload = { ...formData };
+      if (payload.secretKey && (payload.secretKey.includes("•") || payload.secretKey.includes("*"))) {
+        delete payload.secretKey;
+      }
+      if (payload.livekitApiSecret && (payload.livekitApiSecret.includes("•") || payload.livekitApiSecret.includes("*"))) {
+        delete payload.livekitApiSecret;
+      }
+      await saveSettings(payload);
       toast.success("Storage and recording credentials saved and applied!");
       setTestResult(null);
     } catch (err: any) {

@@ -137,15 +137,28 @@ export function useRecordings() {
     fetchSettings();
   }, [fetchSettings]);
 
+  const sanitizePayload = (payload: Partial<StorageSettingData>) => {
+    const clean = { ...payload };
+    if (clean.secretKey && (clean.secretKey.includes("•") || clean.secretKey.includes("*"))) {
+      delete clean.secretKey;
+    }
+    if (clean.livekitApiSecret && (clean.livekitApiSecret.includes("•") || clean.livekitApiSecret.includes("*"))) {
+      delete clean.livekitApiSecret;
+    }
+    return clean;
+  };
+
   const saveSettings = async (payload: Partial<StorageSettingData>) => {
-    const res = await api.post<StorageSettingData>("/recording-settings", payload);
+    const cleanPayload = sanitizePayload(payload);
+    const res = await api.post<StorageSettingData>("/recording-settings", cleanPayload);
     setSettings(res);
     setRefreshKey((k) => k + 1);
     return res;
   };
 
   const testConnection = async (payload: Partial<StorageSettingData>) => {
-    return await api.post("/recording-settings/test-connection", payload);
+    const cleanPayload = sanitizePayload(payload);
+    return await api.post("/recording-settings/test-connection", cleanPayload);
   };
 
   const deleteRecording = async (meetingId: string) => {

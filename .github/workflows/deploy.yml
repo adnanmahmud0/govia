@@ -135,6 +135,10 @@ jobs:
 
           NEXT_PUBLIC_API_URL=http://${SERVER_HOST}:9777/api/v1
           NEXT_PUBLIC_SOCKET_URL=http://${SERVER_HOST}:9777
+
+          LIVEKIT_URL=wss://govia-0f13ke90.livekit.cloud
+          LIVEKIT_API_KEY=API6NLt8C36WoQ8
+          LIVEKIT_API_SECRET=hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY
           EOF
 
           cp docker-compose.prod.yml deploy-payload/

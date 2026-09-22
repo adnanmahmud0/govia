@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import crypto from 'crypto';
 import config from '../../../config';
 import { StorageSetting } from './storageSetting.model';
 import { IStorageSetting } from './storageSetting.interface';
@@ -59,8 +60,8 @@ const saveStorageSetting = async (
   if (
     setting &&
     (!updateData.secretKey ||
-      updateData.secretKey.includes('••••') ||
-      updateData.secretKey === '********')
+      updateData.secretKey.includes('•') ||
+      updateData.secretKey.includes('*'))
   ) {
     delete updateData.secretKey;
   }
@@ -68,8 +69,8 @@ const saveStorageSetting = async (
   if (
     setting &&
     (!updateData.livekitApiSecret ||
-      updateData.livekitApiSecret.includes('••••') ||
-      updateData.livekitApiSecret === '********')
+      updateData.livekitApiSecret.includes('•') ||
+      updateData.livekitApiSecret.includes('*'))
   ) {
     delete updateData.livekitApiSecret;
   }
@@ -98,25 +99,117 @@ const saveStorageSetting = async (
   return await getStorageSetting();
 };
 
+const testAwsS3Connection = async (
+  bucket: string,
+  region: string,
+  accessKey: string,
+  secretKey: string,
+  endpoint?: string
+): Promise<{ success: boolean; message: string }> => {
+  const host = endpoint
+    ? endpoint.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+    : `${bucket}.s3.${region}.amazonaws.com`;
+  const url = endpoint
+    ? `${endpoint.replace(/\/$/, '')}/${bucket}`
+    : `https://${host}`;
+
+  try {
+    const date = new Date();
+    const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.slice(0, 8);
+
+    const service = 's3';
+    const method = 'HEAD';
+    const canonicalUri = '/';
+    const canonicalQueryString = '';
+    const payloadHash = crypto.createHash('sha256').update('').digest('hex');
+
+    const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+
+    const canonicalRequest = `${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+
+    const algorithm = 'AWS4-HMAC-SHA256';
+    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+    const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${crypto.createHash('sha256').update(canonicalRequest).digest('hex')}`;
+
+    const kDate = crypto.createHmac('sha256', `AWS4${secretKey}`).update(dateStamp).digest();
+    const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
+    const kService = crypto.createHmac('sha256', kRegion).update(service).digest();
+    const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+    const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+
+    const authorizationHeader = `${algorithm} Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const res = await fetch(url, {
+      method: 'HEAD',
+      headers: {
+        'Host': host,
+        'x-amz-date': amzDate,
+        'x-amz-content-sha256': payloadHash,
+        'Authorization': authorizationHeader,
+      },
+    });
+
+    if (res.status === 200 || res.status === 204) {
+      return { success: true, message: `Connected to S3 bucket "${bucket}" successfully!` };
+    } else if (res.status === 403) {
+      return { success: false, message: `S3 Access Denied (403): Check IAM permissions for user on bucket "${bucket}".` };
+    } else if (res.status === 404) {
+      return { success: false, message: `S3 Bucket Not Found (404): Bucket "${bucket}" does not exist in region "${region}".` };
+    } else {
+      return { success: false, message: `S3 verification returned HTTP status ${res.status}.` };
+    }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return { success: false, message: `S3 endpoint check: ${errorMsg}` };
+  }
+};
+
 const testStorageConnection = async (payload: Partial<IStorageSetting>) => {
   const provider = payload.provider || 'AWS_S3';
   const bucket = payload.bucket;
   const region = payload.region || 'us-east-1';
   const accessKey = payload.accessKey;
+  let secretKey = payload.secretKey;
   const endpoint = payload.endpoint;
 
-  const livekitUrl = payload.livekitUrl || config.livekit.url;
-  const livekitApiKey = payload.livekitApiKey || config.livekit.apiKey;
-  const livekitApiSecret = payload.livekitApiSecret || config.livekit.apiSecret;
+  const setting = await StorageSetting.findOne().sort({ updatedAt: -1 });
+
+  // Unmask secretKey if masked with bullets or asterisks
+  if (!secretKey || secretKey.includes('•') || secretKey.includes('*')) {
+    secretKey = setting?.secretKey || config.s3.secretKey;
+  }
+
+  const livekitUrl = payload.livekitUrl || setting?.livekitUrl || config.livekit.url;
+  const livekitApiKey = payload.livekitApiKey || setting?.livekitApiKey || config.livekit.apiKey;
+  let livekitApiSecret = payload.livekitApiSecret;
+
+  if (!livekitApiSecret || livekitApiSecret.includes('•') || livekitApiSecret.includes('*')) {
+    livekitApiSecret = setting?.livekitApiSecret || config.livekit.apiSecret;
+  }
 
   if (!bucket || !accessKey) {
     return {
       success: false,
-      message: 'S3 Bucket name and Access Key are required to test connection.',
+      message: 'S3 Bucket name and Access Key ID are required to test connection.',
     };
   }
 
-  // Test LiveKit Server Egress connectivity if credentials are provided
+  if (!secretKey) {
+    return {
+      success: false,
+      message: 'Please provide the S3 Secret Access Key to verify storage connection.',
+    };
+  }
+
+  // 1. Direct S3 Signature check
+  const s3Result = await testAwsS3Connection(bucket, region, accessKey, secretKey, endpoint);
+  if (!s3Result.success) {
+    return s3Result;
+  }
+
+  // 2. Test LiveKit Server Egress connectivity if credentials are provided
   if (livekitUrl && livekitApiKey && livekitApiSecret) {
     try {
       const host = livekitUrl
@@ -124,12 +217,11 @@ const testStorageConnection = async (payload: Partial<IStorageSetting>) => {
         .replace(/^ws:\/\//, 'http://');
 
       const egressClient = new EgressClient(host, livekitApiKey, livekitApiSecret);
-      // Testing connection by querying egress status (lightweight call)
       await egressClient.listEgress({});
-      
+
       return {
         success: true,
-        message: `Successfully connected to LiveKit WebRTC Egress & verified ${provider} storage parameters!`,
+        message: `Successfully verified S3 storage bucket "${bucket}" and connected to LiveKit WebRTC Egress!`,
         details: {
           provider,
           bucket,
@@ -141,10 +233,9 @@ const testStorageConnection = async (payload: Partial<IStorageSetting>) => {
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       debugError('[StorageSetting] Connection test failed:', errMsg);
-      // If LiveKit call fails due to invalid key
       return {
         success: false,
-        message: `LiveKit / Storage credentials verification error: ${errMsg || 'Unauthorized access'}`,
+        message: `S3 storage verified, but LiveKit Egress check returned: ${errMsg || 'Unauthorized access'}`,
       };
     }
   }
