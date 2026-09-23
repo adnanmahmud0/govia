@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import { Types } from 'mongoose';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import config from '../../../config';
 import ApiError from '../../../errors/ApiError';
 import {
@@ -18,6 +19,77 @@ import { NotificationService } from '../notification/notification.service';
 import { VaultFolder } from '../vault/vaultFolder.model';
 import { VaultItem } from '../vault/vaultItem.model';
 import { debug, debugError } from '../../../shared/debug';
+
+// ─── S3 client (used for deleting recordings when a meeting is removed) ──────
+const s3 = new S3Client({
+  region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.S3_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+const S3_BUCKET = process.env.S3_BUCKET || process.env.AWS_BUCKET || 'govia-meeting-recordings';
+
+/**
+ * Extract the S3 object key from any recording URL format:
+ *   s3://bucket/key/file.mp4        → key/file.mp4
+ *   https://bucket.s3.region.amazonaws.com/key/file.mp4 → key/file.mp4
+ *   https://s3.amazonaws.com/bucket/key/file.mp4        → key/file.mp4
+ */
+function extractS3Key(url: string): string | null {
+  try {
+    if (url.startsWith('s3://')) {
+      // s3://bucket/key → everything after the second slash
+      const withoutScheme = url.slice(5); // 'bucket/key/file.mp4'
+      const slashIdx = withoutScheme.indexOf('/');
+      return slashIdx === -1 ? null : withoutScheme.slice(slashIdx + 1);
+    }
+    const parsed = new URL(url);
+    // https://bucket.s3[.region].amazonaws.com/key
+    if (parsed.hostname.endsWith('.amazonaws.com')) {
+      const path = parsed.pathname.slice(1); // remove leading /
+      // If hostname starts with the bucket name, pathname IS the key.
+      // If it's s3.amazonaws.com/bucket/key, strip the bucket prefix.
+      if (parsed.hostname.startsWith('s3.') || parsed.hostname.startsWith('s3-')) {
+        const parts = path.split('/');
+        return parts.slice(1).join('/'); // drop bucket segment
+      }
+      return path;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Delete all S3 recording files attached to a meeting. Errors are swallowed. */
+async function deleteS3RecordingFiles(meeting: IMeeting): Promise<void> {
+  const urls: string[] = [];
+
+  if (meeting.recordingUrl) urls.push(meeting.recordingUrl);
+  if (Array.isArray(meeting.recordings)) {
+    for (const r of meeting.recordings) {
+      if (r.playUrl) urls.push(r.playUrl);
+      if (r.downloadUrl && r.downloadUrl !== r.playUrl) urls.push(r.downloadUrl);
+    }
+  }
+
+  const uniqueUrls = [...new Set(urls.filter(Boolean))];
+  if (uniqueUrls.length === 0) return;
+
+  await Promise.allSettled(
+    uniqueUrls.map(async url => {
+      const key = extractS3Key(url);
+      if (!key) return;
+      try {
+        await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+        debug(`[Meeting] 🗑 Deleted S3 object: ${key}`);
+      } catch (err) {
+        debugError(`[Meeting] S3 delete failed for key "${key}":`, (err as Error)?.message);
+      }
+    })
+  );
+}
 
 const createInstantMeeting = async (
   userId: string,
@@ -744,6 +816,9 @@ const deleteMeeting = async (userId: string, meetingId: string) => {
     { meetingId: meeting._id },
     { isDeleted: true, text: 'This meeting was deleted' }
   );
+
+  // Delete any recording files from S3 before removing the DB record
+  await deleteS3RecordingFiles(meeting);
 
   await Meeting.findByIdAndDelete(meetingId);
 

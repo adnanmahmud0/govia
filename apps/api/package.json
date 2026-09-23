@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "@aws-sdk/client-s3": "^3.1138.0",
     "@repo/types": "*",
     "@repo/validators": "*",
     "bcrypt": "^5.1.1",

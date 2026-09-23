@@ -105,12 +105,14 @@ class _LiveCallViewState extends State<LiveCallView> {
                   ),
                 ),
 
-                // ─── 2.5 Live Location Floating Pill (Interactive Google Maps) ──
+                // ─── 2.5 Live Location Floating Pill (host-only, Interactive Google Maps) ──
                 Positioned(
                   top: 72.h,
                   left: 16.w,
                   child: Obx(() {
-                    if (!controller.hasLiveLocation) {
+                    // Only the host can see the location pill — guests must not
+                    // see the host's GPS coordinates.
+                    if (!controller.isHost.value || !controller.hasLiveLocation) {
                       return const SizedBox.shrink();
                     }
                     final locationText = controller.currentLocationText;
@@ -239,12 +241,11 @@ class _LiveCallViewState extends State<LiveCallView> {
     MeetingEndDialog.show(
       title: isHost ? 'End Session for Everyone?' : 'Leave Govia Session?',
       message: isHost
-          ? 'Ending the session will conclude the meeting and save recordings to your Vault.\n\nYou can also leave temporarily — if you don\'t rejoin within 5 minutes, it will auto-end.'
+          ? 'Ending the session will conclude the meeting and save recordings to your Vault.'
           : 'You will leave the session. The meeting and recording will continue for the host and other participants.',
       confirmLabel: isHost ? 'End for Everyone' : 'Leave Meeting',
       onConfirmEnd: () => isHost ? controller.endMeeting() : controller.leaveMeeting(),
-      secondaryActionLabel: isHost ? 'Leave Temporarily (5 min grace)' : null,
-      onSecondaryAction: isHost ? () => controller.leaveMeeting() : null,
+      // "Leave Temporarily" removed — host must explicitly end for everyone.
     );
   }
 }
