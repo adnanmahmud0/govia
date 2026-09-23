@@ -240,6 +240,20 @@ const createInstantMeeting = async (
       socketHelper.broadcast('emergency_meeting_created', meetingResult);
     }
 
+    // Auto-start cloud Egress recording in background if storage is configured
+    try {
+      startLiveKitRecording(roomName).then(async (egressInfo) => {
+        if (egressInfo?.egressId) {
+          await Meeting.findByIdAndUpdate(newMeeting._id, {
+            egressId: String(egressInfo.egressId),
+          });
+          debug(`[Meeting] Auto-started egress ${egressInfo.egressId} for meeting ${newMeeting._id}`);
+        }
+      }).catch(err => {
+        debugError('[Meeting] Auto-recording background start notice:', err instanceof Error ? err.message : String(err));
+      });
+    } catch (_) {}
+
     return meetingResult;
   } catch (error: unknown) {
     if (error instanceof ApiError) throw error;
@@ -862,14 +876,79 @@ const endMeeting = async (userId: string, meetingId: string) => {
 
   meeting.status = 'COMPLETED';
   meeting.endedAt = new Date();
+
+  // ── Stop Egress and poll for S3 file URL ────────────────────────────────
+  // LiveKit Cloud cannot reach a private IP to deliver webhooks, so we poll
+  // the Egress API directly after stopping to get the recording S3 URL.
   if (meeting.egressId) {
-    stopLiveKitRecording(meeting.egressId).catch(err => {
-      debugError(
-        '[Meeting] Error stopping LiveKit egress on meeting end:',
-        err?.message || err
-      );
-    });
+    try {
+      await stopLiveKitRecording(meeting.egressId);
+      debug(`[Meeting] Stopped Egress ${meeting.egressId}. Polling for S3 file URL...`);
+
+      // Poll up to 30 seconds (6 × 5s) waiting for the egress to reach COMPLETE state
+      let dbSetting, apiKey, apiSecret, livekitUrl;
+      try {
+        dbSetting = await import('../storageSetting/storageSetting.model').then(m => m.StorageSetting.findOne().sort({ updatedAt: -1 }));
+        apiKey = dbSetting?.livekitApiKey || config.livekit.apiKey;
+        apiSecret = dbSetting?.livekitApiSecret || config.livekit.apiSecret;
+        livekitUrl = dbSetting?.livekitUrl || config.livekit.url;
+      } catch (_) {
+        apiKey = config.livekit.apiKey;
+        apiSecret = config.livekit.apiSecret;
+        livekitUrl = config.livekit.url;
+      }
+
+      const { EgressClient } = await import('livekit-server-sdk');
+      const host = livekitUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://');
+      const egressClient = new EgressClient(host, apiKey, apiSecret);
+
+      // Poll for up to 30 seconds
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise(r => setTimeout(r, 5000));
+        try {
+          const egressList = await egressClient.listEgress({ egressId: meeting.egressId });
+          const egress = egressList[0];
+          if (egress?.fileResults && egress.fileResults.length > 0) {
+            const fileLocation = egress.fileResults[0].location || '';
+            const fileSize = Number(egress.fileResults[0].size || 0);
+            if (fileLocation) {
+              meeting.recordingUrl = fileLocation;
+              const recordingStart = egress.startedAt
+                ? new Date(Number(egress.startedAt) / 1000000).toISOString()
+                : (meeting.createdAt?.toISOString() || new Date().toISOString());
+              const recordingEnd = egress.endedAt
+                ? new Date(Number(egress.endedAt) / 1000000).toISOString()
+                : new Date().toISOString();
+              meeting.recordings = [{
+                id: meeting.egressId!,
+                fileType: 'mp4',
+                fileExtension: 'mp4',
+                fileSize,
+                playUrl: fileLocation,
+                downloadUrl: fileLocation,
+                recordingType: 'livekit_egress',
+                recordingStart,
+                recordingEnd,
+              }];
+              debug(`[Meeting] ✅ Recording S3 URL captured: ${fileLocation}`);
+              // Auto-save to Evidence Vault
+              autoSaveMeetingToVault(meeting, fileLocation, fileSize).catch(() => {});
+              break;
+            }
+          }
+          // EgressStatus: 0=EGRESS_STARTING, 1=EGRESS_ACTIVE, 2=EGRESS_ENDING, 3=EGRESS_COMPLETE, 4=EGRESS_ABORTED, 5=EGRESS_FAILED
+          const status = Number(egress?.status ?? -1);
+          if (status >= 3) break; // COMPLETE, ABORTED, or FAILED — stop polling
+        } catch (pollErr) {
+          debugError('[Meeting] Egress poll error:', pollErr instanceof Error ? pollErr.message : String(pollErr));
+          break;
+        }
+      }
+    } catch (err) {
+      debugError('[Meeting] Error stopping LiveKit egress on meeting end:', (err as Error)?.message || err);
+    }
   }
+
   await meeting.save();
 
   await Message.updateMany(
@@ -892,6 +971,13 @@ const endMeeting = async (userId: string, meetingId: string) => {
       'meeting_ended',
       populatedMeeting
     );
+    if (meeting.recordingUrl) {
+      socketHelper.emitToConversation(
+        meeting.conversationId.toString(),
+        'meeting_recording_ready',
+        { meetingId: meeting._id, recordingUrl: meeting.recordingUrl }
+      );
+    }
   }
 
   socketHelper.emitToUser(
@@ -932,6 +1018,8 @@ const endMeeting = async (userId: string, meetingId: string) => {
 
   return populatedMeeting;
 };
+
+
 
 const cancelMeeting = async (userId: string, meetingId: string) => {
   const meeting = await Meeting.findById(meetingId);

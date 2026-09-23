@@ -2,6 +2,7 @@ import {
   AccessToken,
   EgressClient,
   EncodedFileOutput,
+  RoomServiceClient,
   S3Upload,
   WebhookReceiver,
 } from 'livekit-server-sdk';
@@ -112,6 +113,18 @@ export const startLiveKitRecording = async (
   }
 
   try {
+    // 1. Ensure the room exists on LiveKit Cloud before starting egress
+    // (LiveKit returns 'requested room does not exist' if egress is started before any peer connects)
+    try {
+      const roomService = new RoomServiceClient(host, apiKey, apiSecret);
+      await roomService.createRoom({ name: roomName, emptyTimeout: 300 });
+      debug(`[LiveKit] Verified/created room ${roomName} prior to starting Egress`);
+    } catch (roomErr) {
+      debug(
+        `[LiveKit] Room check notice: ${roomErr instanceof Error ? roomErr.message : String(roomErr)}`
+      );
+    }
+
     const egressClient = new EgressClient(host, apiKey, apiSecret);
     const s3Upload = new S3Upload({
       bucket: s3Bucket,

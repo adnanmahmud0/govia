@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/module/attorney/live_call/controller/attorney_live_call_controller.dart';
@@ -117,7 +118,96 @@ class AttorneyLiveCallView extends GetView<AttorneyLiveCallController> {
                   ),
                 ),
 
-                // ─── 3. Local Camera Floating Picture-in-Picture ──────────────
+                // ─── 3. Citizen Live Location Pill ─────────────────────────────────
+                Positioned(
+                  top: 72.h,
+                  left: 16.w,
+                  child: Obx(() {
+                    if (!controller.hasLiveLocation) {
+                      return const SizedBox.shrink();
+                    }
+                    final locationText = controller.currentLocationText;
+                    return GestureDetector(
+                      onTap: () => controller.openLiveGoogleMaps(),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 10.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(20.r),
+                          border: Border.all(
+                            color: const Color(0xFF38BDF8)
+                                .withValues(alpha: 0.6),
+                            width: 1.w,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8.r,
+                              height: 8.r,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            SizedBox(width: 6.w),
+                            Icon(
+                              Icons.location_on_rounded,
+                              size: 13.sp,
+                              color: const Color(0xFF38BDF8),
+                            ),
+                            SizedBox(width: 4.w),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: 160.w),
+                              child: Text(
+                                locationText.isNotEmpty
+                                    ? locationText
+                                    : 'Citizen GPS Active',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 6.w),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 5.w, vertical: 1.5.h),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF38BDF8)
+                                    .withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6.r),
+                              ),
+                              child: Text(
+                                'Maps ↗',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF38BDF8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+
+                // ─── 4. Local Camera Floating Picture-in-Picture ──────────────────
                 Positioned(
                   top: 72.h,
                   right: 16.w,

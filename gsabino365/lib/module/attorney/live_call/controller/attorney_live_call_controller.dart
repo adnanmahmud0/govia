@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/core/services/call_background_service.dart';
+import 'package:gsabino365/core/services/location_service.dart';
 import 'package:gsabino365/core/services/wakelock_service.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
@@ -38,6 +39,45 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   final Rxn<VideoTrack> remoteVideoTrack = Rxn<VideoTrack>();
   final RxString remoteParticipantName = 'Citizen Caller'.obs;
 
+  // ─── Live Location State ─────────────────────────────────────────────
+  final RxnDouble liveLatitude = RxnDouble();
+  final RxnDouble liveLongitude = RxnDouble();
+  final RxString liveLocationAddress = ''.obs;
+
+  bool get hasLiveLocation =>
+      (liveLatitude.value != null && liveLongitude.value != null) ||
+      (meeting?.latitude != null && meeting?.longitude != null) ||
+      liveLocationAddress.value.isNotEmpty ||
+      (meeting?.locationAddress != null &&
+          meeting!.locationAddress!.isNotEmpty);
+
+  double? get currentLat => liveLatitude.value ?? meeting?.latitude;
+  double? get currentLng => liveLongitude.value ?? meeting?.longitude;
+
+  String get currentLocationText {
+    if (liveLocationAddress.value.isNotEmpty) return liveLocationAddress.value;
+    if (meeting?.locationAddress != null &&
+        meeting!.locationAddress!.isNotEmpty) {
+      return meeting!.locationAddress!;
+    }
+    final lat = currentLat;
+    final lng = currentLng;
+    if (lat != null && lng != null) {
+      return LocationService.formatCoordinates(lat, lng);
+    }
+    return '';
+  }
+
+  void openLiveGoogleMaps() {
+    final lat = currentLat;
+    final lng = currentLng;
+    if (lat != null && lng != null) {
+      LocationService.openGoogleMaps(latitude: lat, longitude: lng);
+    } else if (currentLocationText.isNotEmpty) {
+      LocationService.openGoogleMapsByQuery(currentLocationText);
+    }
+  }
+
   // ─── Phone Lock / Background State ───────────────────────────────────
   final RxBool isRemotePhoneLocked = false.obs;
   bool _wasCameraActiveBeforeLock = false;
@@ -52,6 +92,12 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   final RxInt duration = 0.obs;
   Timer? _timer;
   Timer? _retryPoller;
+
+  // ─── Reconnect State ─────────────────────────────────────────────────
+  String? _lastLivekitUrl;
+  String? _lastLivekitToken;
+  bool _isReconnecting = false;
+  int _reconnectAttempts = 0;
 
   String get formattedTime {
     final minutes = (duration.value / 60).floor();
@@ -93,10 +139,16 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       if (args.callerName != null && args.callerName!.isNotEmpty) {
         remoteParticipantName.value = args.callerName!;
       }
+      // ── Extract live location from meeting ──
+      if (args.latitude != null) liveLatitude.value = args.latitude;
+      if (args.longitude != null) liveLongitude.value = args.longitude;
+      if (args.locationAddress != null && args.locationAddress!.isNotEmpty) {
+        liveLocationAddress.value = args.locationAddress!;
+      }
     } else if (args is Map) {
-      final m = (args.containsKey('meeting') && args['meeting'] is Map)
-          ? args['meeting'] as Map
-          : args;
+      // Meeting may be nested under 'meeting' key
+      final rawMeeting = args.containsKey('meeting') ? args['meeting'] : null;
+      final m = (rawMeeting is Map) ? rawMeeting : args;
       meetingId = m['_id']?.toString() ?? m['meetingId']?.toString() ?? m['id']?.toString();
       roomName = m['roomName']?.toString() ??
           m['sessionName']?.toString() ??
@@ -105,6 +157,24 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
         remoteParticipantName.value = m['callerName'].toString();
       } else if (m['topic'] != null) {
         remoteParticipantName.value = m['topic'].toString();
+      }
+      // ── Extract live location from map args ──
+      final latVal = args['latitude'] ?? m['latitude'];
+      final lngVal = args['longitude'] ?? m['longitude'];
+      final locAddrVal = args['locationAddress'] ?? m['locationAddress'];
+      if (latVal != null) liveLatitude.value = double.tryParse(latVal.toString());
+      if (lngVal != null) liveLongitude.value = double.tryParse(lngVal.toString());
+      if (locAddrVal != null && locAddrVal.toString().isNotEmpty) {
+        liveLocationAddress.value = locAddrVal.toString();
+      }
+      // If MeetingModel was passed under 'meeting' key
+      if (rawMeeting is MeetingModel) {
+        meeting = rawMeeting;
+        if (rawMeeting.latitude != null) liveLatitude.value = rawMeeting.latitude;
+        if (rawMeeting.longitude != null) liveLongitude.value = rawMeeting.longitude;
+        if (rawMeeting.locationAddress != null && rawMeeting.locationAddress!.isNotEmpty) {
+          liveLocationAddress.value = rawMeeting.locationAddress!;
+        }
       }
     }
   }
@@ -202,6 +272,10 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   Future<void> _connectLiveKit(String url, String token) async {
     await _cleanupRoom();
 
+    // Store last connection params for auto-reconnect
+    _lastLivekitUrl = url;
+    _lastLivekitToken = token;
+
     final room = Room(
       roomOptions: const RoomOptions(
         // ── Low-Latency Configuration ──────────────────────────────────────
@@ -246,6 +320,10 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       ),
     );
 
+    // Reset reconnect counter on successful connection
+    _reconnectAttempts = 0;
+    _isReconnecting = false;
+
     // Publish local camera at 540p@30fps for instant, low-latency streaming.
     await room.localParticipant?.setCameraEnabled(
       true,
@@ -274,10 +352,42 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   void _setupLiveKitListeners(EventsListener<RoomEvent> listener, Room room) {
     listener
       ..on<RoomDisconnectedEvent>((event) {
-        debugPrint('🔴 Attorney LiveKit RoomDisconnected');
+        debugPrint('🔴 Attorney LiveKit RoomDisconnected: ${event.reason}');
         isSessionJoined.value = false;
         localVideoTrack.value = null;
         remoteVideoTrack.value = null;
+
+        // Auto-reconnect on unexpected network drops (EOF / signal close)
+        final reason = event.reason;
+        final isUserInitiated = reason == DisconnectReason.clientInitiated ||
+            reason == DisconnectReason.participantRemoved ||
+            reason == DisconnectReason.roomDeleted ||
+            reason == DisconnectReason.roomClosed;
+
+        if (!isUserInitiated &&
+            !_isReconnecting &&
+            _reconnectAttempts < 3 &&
+            _lastLivekitUrl != null &&
+            _lastLivekitToken != null) {
+          _isReconnecting = true;
+          _reconnectAttempts++;
+          final delaySeconds = _reconnectAttempts * 2;
+          debugPrint('🔄 Attorney auto-reconnect in ${delaySeconds}s (attempt $_reconnectAttempts/3)...');
+          Future.delayed(Duration(seconds: delaySeconds), () async {
+            // Abort if user explicitly cleaned up the room
+            if (_lastLivekitUrl == null) {
+              _isReconnecting = false;
+              return;
+            }
+            try {
+              await _connectLiveKit(_lastLivekitUrl!, _lastLivekitToken!);
+              debugPrint('✅ Attorney LiveKit reconnected successfully');
+            } catch (e) {
+              debugPrint('⚠️ Attorney reconnect attempt $_reconnectAttempts failed: $e');
+              _isReconnecting = false;
+            }
+          });
+        }
       })
       ..on<ParticipantConnectedEvent>((event) {
         debugPrint('👤 LiveKit ParticipantConnected: ${event.participant.identity}');
@@ -495,6 +605,10 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     CallBackgroundService.stop();
     _retryPoller?.cancel();
     _retryPoller = null;
+    // Clear reconnect params so any pending timer won't fire after intentional leave
+    _lastLivekitUrl = null;
+    _lastLivekitToken = null;
+    _isReconnecting = false;
     try {
       await _listener?.dispose();
       _listener = null;

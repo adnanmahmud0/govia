@@ -100,6 +100,12 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   Timer? _timer;
   Timer? _retryPoller;
 
+  // ─── Reconnect State ─────────────────────────────────────────────────
+  String? _lastLivekitUrl;
+  String? _lastLivekitToken;
+  bool _isReconnecting = false;
+  int _reconnectAttempts = 0;
+
   String get formattedTime {
     final m = (callSeconds.value ~/ 60).toString().padLeft(2, '0');
     final s = (callSeconds.value % 60).toString().padLeft(2, '0');
@@ -287,6 +293,12 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       await _connectLiveKit(livekitUrl, token);
       isLoading.value = false;
       _startTimer();
+
+      // Auto-start cloud Egress recording if this device is the call host
+      if (isHost.value) {
+        debugPrint('⏺ Host starting recording in joinIncomingOrExistingMeeting for meeting: $mId');
+        _startRecording();
+      }
     } catch (e) {
       debugPrint('⚠️ Error joining LiveKit session: $e');
       isLoading.value = false;
@@ -366,6 +378,9 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
+    // ── Mark this device as the call HOST immediately after creation ──
+    isHost.value = true;
+
     currentMeeting.value = meeting;
     activeMeetingId = meeting.id;
 
@@ -424,8 +439,10 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     isLoading.value = false;
     _startTimer();
 
-    // Auto-start recording if this citizen is the host
+    // Auto-start cloud Egress recording. Only the host triggers this so
+    // there is exactly one Egress per room (prevents duplicate recordings).
     if (isHost.value) {
+      debugPrint('⏺ Host starting recording for meeting: ${meeting.id}');
       _startRecording();
     }
   }
@@ -433,6 +450,10 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   Future<void> _connectLiveKit(String url, String token) async {
     // Clean up previous room if any
     await _cleanupRoom();
+
+    // Store last connection params for auto-reconnect
+    _lastLivekitUrl = url;
+    _lastLivekitToken = token;
 
     final room = Room(
       roomOptions: const RoomOptions(
@@ -478,6 +499,10 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       ),
     );
 
+    // Reset reconnect counter on successful connection
+    _reconnectAttempts = 0;
+    _isReconnecting = false;
+
     // Cancel 5-min leave timer if host is re-entering
     final mId = currentMeeting.value?.id ?? activeMeetingId;
     if (isHost.value && mId != null && mId.isNotEmpty) {
@@ -512,10 +537,42 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   void _setupLiveKitListeners(EventsListener<RoomEvent> listener, Room room) {
     listener
       ..on<RoomDisconnectedEvent>((event) {
-        debugPrint('🔴 LiveKit RoomDisconnected');
+        debugPrint('🔴 LiveKit RoomDisconnected: ${event.reason}');
         isSessionJoined.value = false;
         localVideoTrack.value = null;
         remoteVideoTrack.value = null;
+
+        // Auto-reconnect on unexpected network drops (EOF / signal close)
+        // Hosts and guests can both benefit from this.
+        final reason = event.reason;
+        final isUserInitiated = reason == DisconnectReason.clientInitiated ||
+            reason == DisconnectReason.participantRemoved ||
+            reason == DisconnectReason.roomDeleted ||
+            reason == DisconnectReason.roomClosed;
+
+        if (!isUserInitiated &&
+            !_isReconnecting &&
+            _reconnectAttempts < 3 &&
+            _lastLivekitUrl != null &&
+            _lastLivekitToken != null) {
+          _isReconnecting = true;
+          _reconnectAttempts++;
+          final delaySeconds = _reconnectAttempts * 2;
+          debugPrint('🔄 Citizen auto-reconnect in ${delaySeconds}s (attempt $_reconnectAttempts/3)...');
+          Future.delayed(Duration(seconds: delaySeconds), () async {
+            if (_lastLivekitUrl == null) {
+              _isReconnecting = false;
+              return;
+            }
+            try {
+              await _connectLiveKit(_lastLivekitUrl!, _lastLivekitToken!);
+              debugPrint('✅ Citizen LiveKit reconnected successfully');
+            } catch (e) {
+              debugPrint('⚠️ Citizen reconnect attempt $_reconnectAttempts failed: $e');
+              _isReconnecting = false;
+            }
+          });
+        }
       })
       ..on<ParticipantConnectedEvent>((event) {
         debugPrint('👤 LiveKit ParticipantConnected: ${event.participant.identity}');
@@ -666,12 +723,11 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   // ─── Recording ───────────────────────────────────────────────────────
   void _startRecording() {
     isRecording.value = true;
-    debugPrint('⏺ Recording started for meeting: ${currentMeeting.value?.id}');
-    // Attempt backend recording start (best-effort, non-blocking)
     final mId = currentMeeting.value?.id;
+    debugPrint('⏺ Starting cloud Egress recording for meeting: $mId');
     if (mId != null && mId.isNotEmpty) {
-      meetingRepo.startRecording(mId).then((_) {
-        debugPrint('✅ Backend recording started');
+      meetingRepo.startRecording(mId).then((ok) {
+        debugPrint(ok ? '✅ Egress recording started on LiveKit Cloud' : '⚠️ Egress start returned false — S3 credentials may be missing');
       }).catchError((e) {
         debugPrint('⚠️ Backend recording start failed (continuing anyway): $e');
       });
@@ -745,19 +801,32 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   Future<void> endMeeting() async {
     _timer?.cancel();
 
-    // If host: broadcast 'meeting_ended' to all guests first
-    if (isHost.value) {
-      await _broadcastMeetingEnded();
-    }
-
-    // Leave LiveKit room
-    await _cleanupRoom();
-
-    // Notify backend to mark COMPLETED
     final idToEnd = currentMeeting.value?.id.isNotEmpty == true
         ? currentMeeting.value!.id
         : (activeMeetingId ?? '');
 
+    // Step 1: Stop the Egress recording so LiveKit flushes the MP4 to S3.
+    // Do this BEFORE disconnecting so LiveKit knows the room is still valid.
+    if (isHost.value && isRecording.value && idToEnd.isNotEmpty) {
+      try {
+        await meetingRepo.stopRecording(idToEnd);
+        debugPrint('⏹ Egress recording stop requested for: $idToEnd');
+      } catch (e) {
+        debugPrint('⚠️ stopRecording error (non-fatal): $e');
+      }
+      // Short wait so LiveKit processes the stop before we disconnect
+      await Future.delayed(const Duration(milliseconds: 800));
+    }
+
+    // Step 2: If host — broadcast 'meeting_ended' to all guests
+    if (isHost.value) {
+      await _broadcastMeetingEnded();
+    }
+
+    // Step 3: Leave LiveKit room
+    await _cleanupRoom();
+
+    // Step 4: Notify backend to mark COMPLETED & trigger S3 URL attachment
     if (idToEnd.isNotEmpty) {
       try {
         final ok = await meetingRepo.endMeeting(idToEnd);
@@ -820,6 +889,10 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     CallBackgroundService.stop();
     _retryPoller?.cancel();
     _retryPoller = null;
+    // Clear reconnect params so any pending timer won't fire after intentional leave
+    _lastLivekitUrl = null;
+    _lastLivekitToken = null;
+    _isReconnecting = false;
     try {
       await _listener?.dispose();
       _listener = null;

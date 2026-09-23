@@ -139,6 +139,17 @@ jobs:
           LIVEKIT_URL=wss://govia-0f13ke90.livekit.cloud
           LIVEKIT_API_KEY=API6NLt8C36WoQ8
           LIVEKIT_API_SECRET=hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY
+
+          S3_BUCKET=${{ secrets.AWS_BUCKET || 'govia-meeting-recordings' }}
+          S3_REGION=${{ secrets.AWS_REGION || 'us-east-1' }}
+          S3_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY_ID }}
+          S3_SECRET_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}
+
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_BUCKET=${{ secrets.AWS_BUCKET || 'govia-meeting-recordings' }}
+          AWS_REGION=${{ secrets.AWS_REGION || 'us-east-1' }}
           EOF
 
           cp docker-compose.prod.yml deploy-payload/

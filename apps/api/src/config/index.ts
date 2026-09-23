@@ -45,10 +45,10 @@ export default {
   },
   s3: {
     // Cloud storage for LiveKit Egress recordings (AWS S3, Cloudflare R2, or MinIO)
-    bucket: process.env.S3_BUCKET || '',
-    region: process.env.S3_REGION || 'us-east-1',
-    accessKey: process.env.S3_ACCESS_KEY || '',
-    secretKey: process.env.S3_SECRET_KEY || '',
+    bucket: process.env.S3_BUCKET || process.env.AWS_BUCKET || '',
+    region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
+    accessKey: process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || '',
+    secretKey: process.env.S3_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || '',
     endpoint: process.env.S3_ENDPOINT || '',
   },
   ai: {
