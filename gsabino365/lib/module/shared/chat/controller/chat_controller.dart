@@ -16,6 +16,7 @@ import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
+import 'package:gsabino365/core/widgets/govia_video_player_view.dart';
 
 class ChatController extends GetxController {
   ApiClient get _apiClient => Get.find<ApiClient>();
@@ -1162,11 +1163,15 @@ class ChatController extends GetxController {
   }
 
   void playOrCopyRecording(String recordingUrl) {
-    Clipboard.setData(ClipboardData(text: recordingUrl));
+    if (recordingUrl.trim().isEmpty) {
+      Helpers.showError('Recording URL is not available yet');
+      return;
+    }
     HapticFeedback.mediumImpact();
-    Helpers.showCustomSnackBar(
-      'Recording URL copied: $recordingUrl',
-      type: SnackBarType.success,
+    GoviaVideoPlayerView.open(
+      url: recordingUrl,
+      title: 'Consultation Recording',
+      subtitle: 'Encrypted Incident Evidence',
     );
   }
 

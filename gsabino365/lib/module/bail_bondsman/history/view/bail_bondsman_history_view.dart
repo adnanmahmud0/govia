@@ -186,7 +186,7 @@ class BailBondsmanHistoryView extends GetView<BailBondsmanHistoryController> {
                               children: [
                                 // Play/Pause icon
                                 GestureDetector(
-                                  onTap: () => controller.togglePlay(),
+                                  onTap: () => controller.watchRecording(),
                                   child: Icon(
                                     controller.isPlaying.value
                                         ? Icons.pause_rounded

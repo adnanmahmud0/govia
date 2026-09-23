@@ -10,6 +10,7 @@ import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
+import 'package:gsabino365/core/widgets/govia_video_player_view.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
 import 'package:gsabino365/data/repositories/meeting_repository.dart';
 import 'package:gsabino365/module/citizen/vault/controller/citizen_vault_controller.dart';
@@ -696,15 +697,37 @@ class CommonScheduleController extends GetxController {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Get.back();
+                      GoviaVideoPlayerView.open(
+                        url: recordingUrl,
+                        title: topic,
+                        subtitle: 'Session Recording',
+                      );
+                    },
+                    icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
+                    label: Text('Watch Recording', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.5.sp)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Get.back();
                       Clipboard.setData(ClipboardData(text: recordingUrl));
                       Helpers.showSuccess('Recording link copied to clipboard!');
                     },
-                    icon: const Icon(Icons.copy_rounded, size: 18),
-                    label: Text('Copy Recording Link', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.sp)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1550A6),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    label: Text('Copy Recording Link', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12.5.sp)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1550A6),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                     ),
                   ),

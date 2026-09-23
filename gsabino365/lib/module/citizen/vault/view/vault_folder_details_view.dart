@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
+import 'package:gsabino365/core/widgets/govia_video_player_view.dart';
 import 'package:gsabino365/module/citizen/vault/controller/citizen_vault_controller.dart';
 import 'package:gsabino365/module/citizen/vault/model/vault_models.dart';
 import 'package:image_picker/image_picker.dart';
@@ -851,6 +852,27 @@ class _VaultFolderDetailsViewState extends State<VaultFolderDetailsView> {
   void _playMedia(VaultItemModel item) async {
     final fullUrl = item.fullUrl;
     if (fullUrl.isEmpty) return;
+
+    final lower = fullUrl.toLowerCase();
+    final isVideo = lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.m4v') ||
+        item.fileType.toLowerCase().contains('video') ||
+        item.category.toUpperCase() == 'RECORDING' ||
+        item.category.toUpperCase() == 'VIDEO';
+
+    if (isVideo) {
+      GoviaVideoPlayerView.open(
+        url: fullUrl,
+        title: item.title,
+        subtitle: item.category,
+        date: item.createdAt?.toString(),
+      );
+      return;
+    }
+
     try {
       final uri = Uri.parse(fullUrl);
       if (await canLaunchUrl(uri)) {

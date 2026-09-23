@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
+import 'package:gsabino365/core/widgets/govia_video_player_view.dart';
 
 class BailBondsmanHistoryController extends GetxController {
   ApiClient get _apiClient => Get.find<ApiClient>();
@@ -130,6 +131,23 @@ class BailBondsmanHistoryController extends GetxController {
       selectedIndex.value = index;
       isPlaying.value = false;
       currentPosition.value = ((recordings[index]['durationSeconds'] as double?) ?? 300.0) * 0.5;
+    }
+  }
+
+  void watchRecording() {
+    if (recordings.isEmpty) return;
+    final cur = recordings[selectedIndex.value];
+    final url = cur['recordingUrl']?.toString() ?? '';
+    final title = cur['title']?.toString() ?? 'Session Recording';
+    if (url.isNotEmpty) {
+      GoviaVideoPlayerView.open(
+        url: url,
+        title: title,
+        subtitle: 'Bail Bondsman Consultation Evidence',
+        date: cur['date']?.toString(),
+      );
+    } else {
+      Helpers.showCustomSnackBar('No cloud recording URL is attached to this session.', type: SnackBarType.info);
     }
   }
 

@@ -4,10 +4,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
+import 'package:gsabino365/core/widgets/govia_video_player_view.dart';
 import 'package:gsabino365/module/citizen/vault/controller/citizen_vault_controller.dart';
 import 'package:gsabino365/module/citizen/vault/model/vault_models.dart';
 import 'package:gsabino365/module/citizen/vault/widgets/vault_share_modal.dart';
@@ -1075,6 +1075,17 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
     final title = (rec['topic'] ?? rec['title'] ?? 'Meeting Recording').toString();
     final url = (rec['recordingUrl'] ?? rec['fileUrl'] ?? '').toString();
 
+    if (url.isNotEmpty) {
+      // Directly launch the resilient native in-app Video Player
+      GoviaVideoPlayerView.open(
+        url: url,
+        title: title,
+        subtitle: 'Tamper-Proof Encrypted Session Recording',
+        date: rec['createdAt']?.toString(),
+      );
+      return;
+    }
+
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
@@ -1087,10 +1098,10 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
                 width: 56.r,
                 height: 56.r,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFECFDF5),
+                  color: Color(0xFFFEF3C7),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.videocam_rounded, color: const Color(0xFF059669), size: 30.sp),
+                child: Icon(Icons.hourglass_top_rounded, color: const Color(0xFFD97706), size: 30.sp),
               ),
               SizedBox(height: 16.h),
               Text(
@@ -1100,87 +1111,27 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
               ),
               SizedBox(height: 8.h),
               Text(
-                'Tamper-Proof Encrypted Session Recording',
-                style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF059669), fontWeight: FontWeight.w600),
+                'Cloud Recording Processing',
+                style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFD97706), fontWeight: FontWeight.w600),
               ),
               SizedBox(height: 16.h),
-              if (url.isNotEmpty) ...[
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+              Text(
+                'Your session recording is finalizing in secure cloud storage. It will be playable here shortly.',
+                style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF64748B)),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 20.h),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1550A6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.link_rounded, color: Color(0xFF1550A6), size: 20),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Text(
-                          url,
-                          style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF1550A6)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: Text('OK', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
                 ),
-                SizedBox(height: 16.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      Get.back();
-                      final uri = Uri.tryParse(url);
-                      if (uri != null && await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      } else {
-                        Clipboard.setData(ClipboardData(text: url));
-                        Helpers.showSuccess('Recording link copied to clipboard');
-                      }
-                    },
-                    icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                    label: Text('Open Video Player', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.sp)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF059669),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Get.back();
-                      Clipboard.setData(ClipboardData(text: url));
-                      Helpers.showSuccess('Link copied to clipboard');
-                    },
-                    icon: const Icon(Icons.copy_rounded, size: 16),
-                    label: Text('Copy Video Link', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1550A6),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  'Recording is processing in cloud storage. It will be ready shortly.',
-                  style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF64748B)),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              SizedBox(height: 10.h),
-              TextButton(
-                onPressed: () => Get.back(),
-                child: Text('Close', style: GoogleFonts.inter(color: const Color(0xFF64748B))),
               ),
             ],
           ),
