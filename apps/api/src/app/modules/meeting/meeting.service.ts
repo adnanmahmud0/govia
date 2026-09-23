@@ -19,6 +19,7 @@ import { NotificationService } from '../notification/notification.service';
 import { VaultFolder } from '../vault/vaultFolder.model';
 import { VaultItem } from '../vault/vaultItem.model';
 import { debug, debugError } from '../../../shared/debug';
+import { USER_ROLES } from '../../../enums/user';
 
 // ─── S3 client (used for deleting recordings when a meeting is removed) ──────
 const s3 = new S3Client({
@@ -802,12 +803,17 @@ const deleteMeeting = async (userId: string, meetingId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
   }
 
+  const user = await User.findById(userId);
+  const isAdmin =
+    user &&
+    (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPER_ADMIN);
+
   const userObjectId = new Types.ObjectId(userId);
   const isHost = meeting.userId.equals(userObjectId);
   const isParticipant =
     meeting.participantId && meeting.participantId.equals(userObjectId);
 
-  if (!isHost && !isParticipant) {
+  if (!isHost && !isParticipant && !isAdmin) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
       'You do not have permission to delete this meeting'
