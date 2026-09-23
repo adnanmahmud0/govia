@@ -324,7 +324,9 @@ const createInstantMeeting = async (
       }).catch(err => {
         debugError('[Meeting] Auto-recording background start notice:', err instanceof Error ? err.message : String(err));
       });
-    } catch (_) {}
+    } catch (err) {
+      debugError('[Meeting] Auto-recording synchronous start error:', err instanceof Error ? err.message : String(err));
+    }
 
     return meetingResult;
   } catch (error: unknown) {
