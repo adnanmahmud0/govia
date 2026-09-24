@@ -8,6 +8,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      build_flutter:
+        description: '📱 Build Flutter Android Release APK?'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: production-deployment
@@ -150,7 +156,7 @@ jobs:
   build-flutter:
     name: 📱 Build Flutter Android Release APK
     needs: quality-gate
-    if: github.event_name != 'pull_request'
+    if: ${{ github.event.inputs.build_flutter == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
