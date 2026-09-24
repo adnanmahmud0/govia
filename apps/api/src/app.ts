@@ -52,6 +52,15 @@ app.use('/api/v1', DocsRoutes);
 app.use('/api', router);
 app.use('/api/v1', V1Routes);
 
+// Lightweight Docker & reverse proxy health check
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(StatusCodes.OK).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Live server status screen (Matrix animation)
 app.get('/', (_req: Request, res: Response) => {
   res.send(

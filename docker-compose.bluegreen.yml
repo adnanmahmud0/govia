@@ -1,0 +1,152 @@
+# ==============================================================================
+# Govia Zero-Downtime Blue/Green Docker Compose (docker-compose.bluegreen.yml)
+# ==============================================================================
+name: govia-production
+
+services:
+  # ----------------------------------------------------------------------------
+  # Shared Persistent MongoDB (Internal Isolated Network)
+  # ----------------------------------------------------------------------------
+  adnan-govia-mongo:
+    image: mongo:7.0
+    container_name: adnan-govia-mongo
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-govia-db}
+    volumes:
+      - govia_mongodb_data:/data/db
+    networks:
+      - govia_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ============================================================================
+  # BLUE ENVIRONMENT (Ports: API 9777 | Admin 8777)
+  # ============================================================================
+  adnan-govia-api-blue:
+    image: ghcr.io/${GH_REPO_OWNER:-adnanmahmud0}/govia-api:latest
+    container_name: adnan-govia-api-blue
+    restart: always
+    profiles: ["blue"]
+    env_file:
+      - .env
+    ports:
+      - "9777:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      IP_ADDRESS: 0.0.0.0
+      PROJECT_NAME: ${PROJECT_NAME:-Govia}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+      DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}:${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/${MONGO_INITDB_DATABASE:-govia-db}?authSource=admin}
+    volumes:
+      - govia_uploads:/app/apps/api/uploads
+      - govia_logs:/app/apps/api/winston
+    depends_on:
+      adnan-govia-mongo:
+        condition: service_healthy
+    networks:
+      - govia_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  adnan-govia-admin-blue:
+    image: ghcr.io/${GH_REPO_OWNER:-adnanmahmud0}/govia-admin:latest
+    container_name: adnan-govia-admin-blue
+    restart: always
+    profiles: ["blue"]
+    env_file:
+      - .env
+    ports:
+      - "8777:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - adnan-govia-api-blue
+    networks:
+      - govia_network
+
+  # ============================================================================
+  # GREEN ENVIRONMENT (Ports: API 9778 | Admin 8778)
+  # ============================================================================
+  adnan-govia-api-green:
+    image: ghcr.io/${GH_REPO_OWNER:-adnanmahmud0}/govia-api:latest
+    container_name: adnan-govia-api-green
+    restart: always
+    profiles: ["green"]
+    env_file:
+      - .env
+    ports:
+      - "9778:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      IP_ADDRESS: 0.0.0.0
+      PROJECT_NAME: ${PROJECT_NAME:-Govia}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+      DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}:${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/${MONGO_INITDB_DATABASE:-govia-db}?authSource=admin}
+    volumes:
+      - govia_uploads:/app/apps/api/uploads
+      - govia_logs:/app/apps/api/winston
+    depends_on:
+      adnan-govia-mongo:
+        condition: service_healthy
+    networks:
+      - govia_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  adnan-govia-admin-green:
+    image: ghcr.io/${GH_REPO_OWNER:-adnanmahmud0}/govia-admin:latest
+    container_name: adnan-govia-admin-green
+    restart: always
+    profiles: ["green"]
+    env_file:
+      - .env
+    ports:
+      - "8778:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - adnan-govia-api-green
+    networks:
+      - govia_network
+
+# ------------------------------------------------------------------------------
+# Persistent Monorepo Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  govia_mongodb_data:
+    name: adnan_govia_mongodb_data
+  govia_uploads:
+    name: adnan_govia_uploads
+  govia_logs:
+    name: adnan_govia_logs
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  govia_network:
+    name: adnan_govia_network
+    driver: bridge

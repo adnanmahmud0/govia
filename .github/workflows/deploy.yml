@@ -1,4 +1,4 @@
-name: Build Docker Images & Deploy to Server
+name: Govia Production CI/CD (Quality Gate, Docker, Flutter & Zero-Downtime Deploy)
 
 on:
   push:
@@ -16,12 +16,40 @@ permissions:
 
 jobs:
   # ============================================================================
-  # Stage 1: Build Docker Images in GitHub and Push to GitHub Container Registry
+  # Stage 1: Quality Gate (Linting & TypeScript Verification across Monorepo)
   # ============================================================================
-  build-and-push:
-    name: Build & Push Docker Images
+  quality-gate:
+    name: 🛡️ Monorepo Quality Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript Compilation Check
+        run: npm run typecheck
+
+  # ============================================================================
+  # Stage 2A: Build API Docker Image & Push to GHCR
+  # ============================================================================
+  build-api:
+    name: 🐳 Build & Push API Image
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Code
@@ -49,14 +77,61 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ============================================================================
+  # Stage 2B: Build Admin Dashboard Docker Image & Push to GHCR
+  # ============================================================================
+  build-admin:
+    name: 🌐 Build & Push Admin Dashboard Image
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Unpack Environment for Build Args
+        run: |
+          if [ -n "${{ secrets.PROD_ENV }}" ]; then
+            echo "${{ secrets.PROD_ENV }}" > .env
+          elif [ -n "${{ secrets.ENV_FILE }}" ]; then
+            echo "${{ secrets.ENV_FILE }}" > .env
+          else
+            cp .env.example .env
+          fi
+
+          get_val() {
+            local key="$1"
+            local fallback="$2"
+            local val
+            val=$(grep -E "^${key}=" .env | cut -d'=' -f2- | tr -d '\r' | tr -d '"' | tr -d "'" | head -n 1)
+            echo "${val:-$fallback}"
+          }
+
+          API_URL=$(get_val "NEXT_PUBLIC_API_URL" "http://172.252.13.197:9777/api/v1")
+          SOCKET_URL=$(get_val "NEXT_PUBLIC_SOCKET_URL" "http://172.252.13.197:9777")
+
+          echo "NEXT_PUBLIC_API_URL=${API_URL}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SOCKET_URL=${SOCKET_URL}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push Admin Dashboard image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: apps/admin/Dockerfile
           build-args: |
-            NEXT_PUBLIC_API_URL=http://${{ secrets.SERVER_HOST || '172.252.13.197' }}:9777/api/v1
-            NEXT_PUBLIC_SOCKET_URL=http://${{ secrets.SERVER_HOST || '172.252.13.197' }}:9777
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SOCKET_URL=${{ env.NEXT_PUBLIC_SOCKET_URL }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/govia-admin:latest
@@ -65,121 +140,125 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ============================================================================
-  # Stage 2: Deploy to Remote Server via SSH & Launch Stack
+  # Stage 2C: Build Flutter Android Release APK
   # ============================================================================
-  deploy:
-    name: Deploy to Server
-    needs: build-and-push
+  build-flutter:
+    name: 📱 Build Flutter Android Release APK
+    needs: quality-gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Generate Production Configuration
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST || '172.252.13.197' }}
-          MONGO_PASS: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-          SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
-          ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
-          ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
-          ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Prepare Flutter .env
         run: |
-          mkdir -p deploy-payload
+          if [ -n "${{ secrets.PROD_ENV }}" ]; then
+            echo "${{ secrets.PROD_ENV }}" > gsabino365/.env
+          elif [ -n "${{ secrets.ENV_FILE }}" ]; then
+            echo "${{ secrets.ENV_FILE }}" > gsabino365/.env
+          else
+            cp gsabino365/.env.example gsabino365/.env 2>/dev/null || cp .env.example gsabino365/.env
+          fi
 
-          cat << EOF > deploy-payload/.env
-          NODE_ENV=production
-          PROJECT_NAME=Govia
-          ENABLE_API_DOCS=true
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+        working-directory: gsabino365
 
-          PORT=5000
-          IP_ADDRESS=0.0.0.0
+      - name: Build Android Release APK
+        run: flutter build apk --release
+        working-directory: gsabino365
 
-          HOST_API_PORT=9777
-          HOST_ADMIN_PORT=8777
+      - name: Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: govia-android-release-apk
+          path: gsabino365/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
 
-          MONGO_INITDB_ROOT_USERNAME=goviaAdmin
-          MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
-          MONGO_INITDB_DATABASE=govia-db
+  # ============================================================================
+  # Stage 3: Zero-Downtime Blue/Green Deployment to Production Server
+  # ============================================================================
+  deploy:
+    name: 🚀 Zero-Downtime Blue/Green Deploy
+    needs: [build-api, build-admin]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-          DATABASE_URL=mongodb://goviaAdmin:${MONGO_PASS}@adnan-govia-mongo:27017/govia-db?authSource=admin
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-          BCRYPT_SALT_ROUNDS=10
-          JWT_SECRET=${JWT_SECRET}
-          JWT_EXPIRE_IN=1h
+      - name: Prepare Payload & Extract Connection Parameters
+        run: |
+          mkdir -p deploy-payload/scripts/server
 
-          JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-          JWT_REFRESH_EXPIRE_IN=7d
+          # Unpack unified environment configuration
+          if [ -n "${{ secrets.PROD_ENV }}" ]; then
+            echo "${{ secrets.PROD_ENV }}" > deploy-payload/.env
+          elif [ -n "${{ secrets.ENV_FILE }}" ]; then
+            echo "${{ secrets.ENV_FILE }}" > deploy-payload/.env
+          else
+            cp .env.example deploy-payload/.env
+          fi
 
-          SUPER_ADMIN_EMAIL=admin@govia.com
-          SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD}
+          # Helper to read .env values
+          get_val() {
+            local key="$1"
+            local fallback="$2"
+            local val
+            val=$(grep -E "^${key}=" deploy-payload/.env | cut -d'=' -f2- | tr -d '\r' | tr -d '"' | tr -d "'" | head -n 1)
+            echo "${val:-$fallback}"
+          }
 
-          ZOOM_ACCOUNT_ID=${ZOOM_ACCOUNT_ID}
-          ZOOM_CLIENT_ID=${ZOOM_CLIENT_ID}
-          ZOOM_CLIENT_SECRET=${ZOOM_CLIENT_SECRET}
+          TARGET_HOST=$(get_val "SERVER_HOST" "${{ secrets.SERVER_HOST || '172.252.13.197' }}")
+          TARGET_USER=$(get_val "SERVER_USER" "${{ secrets.SERVER_USER || 'root' }}")
+          TARGET_PASS=$(get_val "SERVER_PASSWORD" "${{ secrets.SERVER_PASSWORD }}")
+          TARGET_PORT=$(get_val "SERVER_SSH_PORT" "${{ secrets.SERVER_SSH_PORT || '22' }}")
+          DOMAIN_NAME=$(get_val "DOMAIN_NAME" "")
 
-          AI_PROVIDER_BASE_URL=https://openrouter.ai/api/v1
-          AI_API_KEY=${AI_API_KEY}
-          AI_MODEL_NAME=openrouter/free
+          echo "SERVER_HOST=${TARGET_HOST}" >> $GITHUB_ENV
+          echo "SERVER_USER=${TARGET_USER}" >> $GITHUB_ENV
+          echo "SERVER_PASS=${TARGET_PASS}" >> $GITHUB_ENV
+          echo "SERVER_PORT=${TARGET_PORT}" >> $GITHUB_ENV
+          echo "DOMAIN_NAME=${DOMAIN_NAME}" >> $GITHUB_ENV
 
-          EMAIL_FROM=adnan99mahmud@gmail.com
-          EMAIL_USER=adnan99mahmud@gmail.com
-          EMAIL_PORT=587
-          EMAIL_HOST=smtp.gmail.com
-          EMAIL_PASS="${EMAIL_PASS}"
-
-          NEXT_PUBLIC_API_URL=http://${SERVER_HOST}:9777/api/v1
-          NEXT_PUBLIC_SOCKET_URL=http://${SERVER_HOST}:9777
-
-          LIVEKIT_URL=wss://govia-0f13ke90.livekit.cloud
-          LIVEKIT_API_KEY=API6NLt8C36WoQ8
-          LIVEKIT_API_SECRET=hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY
-
-          S3_BUCKET=${{ secrets.AWS_BUCKET || 'govia-meeting-recordings' }}
-          S3_REGION=${{ secrets.AWS_REGION || 'us-east-1' }}
-          S3_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY_ID }}
-          S3_SECRET_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}
-
-          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_BUCKET=${{ secrets.AWS_BUCKET || 'govia-meeting-recordings' }}
-          AWS_REGION=${{ secrets.AWS_REGION || 'us-east-1' }}
-          EOF
-
+          # Copy compose files and server scripts
+          cp docker-compose.bluegreen.yml deploy-payload/
           cp docker-compose.prod.yml deploy-payload/
+          cp scripts/server/* deploy-payload/scripts/server/
 
-      - name: Deploy to Server via SSH
+      - name: Deploy to Remote Server via SSH
         env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST || '172.252.13.197' }}
-          SERVER_USER: ${{ secrets.SERVER_USER || 'root' }}
-          SERVER_PASS: ${{ secrets.SERVER_PASSWORD }}
-          SERVER_PORT: ${{ secrets.SERVER_SSH_PORT || '22' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           set -e
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
-          TARGET_HOST="${SERVER_HOST:-172.252.13.197}"
-          TARGET_USER="${SERVER_USER:-root}"
-          TARGET_PORT="${SERVER_PORT:-22}"
-          if [ -z "$TARGET_PORT" ]; then TARGET_PORT=22; fi
-
           export SSHPASS="$SERVER_PASS"
 
           if [ -z "$SSHPASS" ]; then
-            echo "❌ ERROR: SERVER_PASSWORD secret is not configured or is empty in GitHub repository secrets!" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "❌ ERROR: SERVER_PASSWORD is not configured in PROD_ENV or GitHub secrets!" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
-          echo "🚀 Testing SSH connection to ${TARGET_USER}@${TARGET_HOST}:${TARGET_PORT}..."
-          if ! sshpass -e ssh -v -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$TARGET_PORT" "${TARGET_USER}@${TARGET_HOST}" "echo '✅ SSH connection successful! Host: \$(hostname)'" > /tmp/ssh_test.log 2>&1; then
+          echo "🚀 Testing SSH connection to ${SERVER_USER}@${SERVER_HOST}:${SERVER_PORT}..."
+          if ! sshpass -e ssh -v -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$SERVER_PORT" "${SERVER_USER}@${SERVER_HOST}" "echo '✅ SSH connection successful! Host: \$(hostname)'" > /tmp/ssh_test.log 2>&1; then
             echo "### ❌ SSH Connection / Authentication Failed" >> "$GITHUB_STEP_SUMMARY"
             echo '```text' >> "$GITHUB_STEP_SUMMARY"
             tail -n 35 /tmp/ssh_test.log >> "$GITHUB_STEP_SUMMARY"
@@ -189,10 +268,10 @@ jobs:
           fi
           echo "✅ SSH connection verified!"
 
-          # 1. Create target directory and ensure Docker is installed
-          echo "📦 Verifying Docker on server..."
-          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$TARGET_PORT" "${TARGET_USER}@${TARGET_HOST}" "
-            mkdir -p /adnan/govia
+          # 1. Ensure /adnan/govia exists on server
+          echo "📦 Verifying directories on server..."
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$SERVER_PORT" "${SERVER_USER}@${SERVER_HOST}" "
+            mkdir -p /adnan/govia/scripts/server
             if ! command -v docker &>/dev/null; then
               echo '📦 Installing Docker...'
               curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
@@ -200,58 +279,35 @@ jobs:
             fi
           "
 
-          # 2. Upload .env and docker-compose.prod.yml
-          echo "📤 Uploading production configuration to /adnan/govia..."
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P "$TARGET_PORT" deploy-payload/.env deploy-payload/docker-compose.prod.yml "${TARGET_USER}@${TARGET_HOST}:/adnan/govia/"
+          # 2. Upload configuration, compose manifests, and server scripts
+          echo "📤 Uploading configuration and scripts to /adnan/govia..."
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P "$SERVER_PORT" deploy-payload/.env deploy-payload/docker-compose.bluegreen.yml deploy-payload/docker-compose.prod.yml "${SERVER_USER}@${SERVER_HOST}:/adnan/govia/"
+          sshpass -e scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P "$SERVER_PORT" deploy-payload/scripts/server/* "${SERVER_USER}@${SERVER_HOST}:/adnan/govia/scripts/server/"
 
-          # 3. Pull latest images and launch stack
-          echo "🐳 Pulling latest Docker images and starting services..."
-          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$TARGET_PORT" "${TARGET_USER}@${TARGET_HOST}" "
+          # 3. Execute Server Bootstrap & Blue/Green Deployment
+          echo "🚀 Executing automated server bootstrap and Blue/Green deployment..."
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$SERVER_PORT" "${SERVER_USER}@${SERVER_HOST}" "
             set -e
             cd /adnan/govia
             chmod 600 .env
-
-            # Open firewall ports
-            if command -v ufw &>/dev/null; then
-              echo '🔓 Opening firewall ports for Govia (9777, 8777)...'
-              ufw allow 22/tcp || true
-              ufw allow 80/tcp || true
-              ufw allow 443/tcp || true
-              ufw allow 9777/tcp || true
-              ufw allow 8777/tcp || true
-              ufw reload || true
-            fi
-
-            echo '📥 Pre-pulling official MongoDB 7.0...'
-            docker pull mongo:7.0
+            chmod +x scripts/server/*.sh
 
             echo '🔐 Authenticating with GitHub Container Registry...'
             echo \"$GH_TOKEN\" | docker login ghcr.io -u \"$GH_ACTOR\" --password-stdin
 
-            echo '📥 Pulling images from GitHub Container Registry...'
-            docker compose -f docker-compose.prod.yml pull
+            echo '🔧 Running idempotent server bootstrap (swap, Nginx, cron)...'
+            GH_REPO_OWNER=\"$REPO_OWNER\" ./scripts/server/bootstrap.sh
 
-            echo '🚀 Starting containers...'
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-            docker image prune -f
+            echo '🔄 Executing zero-downtime Blue/Green deployment...'
+            GH_REPO_OWNER=\"$REPO_OWNER\" ./scripts/server/deploy-bluegreen.sh
 
-            echo '⏳ Waiting for containers to initialize (15s)...'
-            sleep 15
-
-            echo '📊 Container status:'
-            docker compose -f docker-compose.prod.yml ps
-
-            echo '📋 API Logs:'
-            docker compose -f docker-compose.prod.yml logs --tail 20 adnan-govia-api || true
-
-            echo '📋 Admin Dashboard Logs:'
-            docker compose -f docker-compose.prod.yml logs --tail 20 adnan-govia-admin || true
-
-            echo '🌐 Testing local response:'
-            curl -I -s --connect-timeout 5 http://127.0.0.1:9777/api/v1/docs | head -n 5 || true
-            curl -I -s --connect-timeout 5 http://127.0.0.1:8777/ | head -n 5 || true
+            # Optional Let's Encrypt SSL if DOMAIN_NAME is set
+            if [ -n \"$DOMAIN_NAME\" ]; then
+              echo \"🔒 Setting up Let's Encrypt SSL for $DOMAIN_NAME...\"
+              certbot --nginx -d \"$DOMAIN_NAME\" -d \"api.$DOMAIN_NAME\" -d \"admin.$DOMAIN_NAME\" --non-interactive --agree-tos --register-unsafely-without-email || true
+            fi
           "
 
-          echo "🎉 Govia deployment successfully completed on ${TARGET_HOST}!"
-          echo "👉 Frontend: http://${TARGET_HOST}:8777"
-          echo "👉 Backend:  http://${TARGET_HOST}:9777/api/v1/docs"
+          echo "🎉 Govia Blue/Green deployment successfully completed on ${SERVER_HOST}!"
+          echo "👉 Frontend Admin: http://${SERVER_HOST}:8777"
+          echo "👉 Backend API:    http://${SERVER_HOST}:9777/api/v1/docs"

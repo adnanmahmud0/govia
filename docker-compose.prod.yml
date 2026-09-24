@@ -17,6 +17,8 @@ services:
     image: mongo:7.0
     container_name: adnan-govia-mongo
     restart: always
+    env_file:
+      - .env
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}
@@ -42,6 +44,8 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: adnan-govia-api
     restart: always
+    env_file:
+      - .env
     ports:
       - "${HOST_API_PORT:-9777}:5000"
     environment:
@@ -90,11 +94,11 @@ services:
     networks:
       - govia_network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/', (res) => { if (res.statusCode !== 200) process.exit(1); })"]
-      interval: 15s
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 15s
 
   # ----------------------------------------------------------------------------
   # 3. Next.js Admin Dashboard
@@ -109,6 +113,8 @@ services:
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://172.252.13.197:9777}
     container_name: adnan-govia-admin
     restart: always
+    env_file:
+      - .env
     ports:
       - "${HOST_ADMIN_PORT:-8777}:3000"
     environment:
