@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
@@ -38,8 +39,14 @@ class MeetingRepository {
       if (data == null) return null;
 
       return MeetingModel.fromJson(data as Map<String, dynamic>);
-    } catch (e) {
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message']?.toString();
+      if (msg != null && msg.isNotEmpty) {
+        throw Exception(msg);
+      }
       return null;
+    } catch (e) {
+      rethrow;
     }
   }
 

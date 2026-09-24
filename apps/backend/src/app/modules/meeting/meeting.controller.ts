@@ -105,8 +105,9 @@ const endMeeting = catchAsync(async (req: Request, res: Response) => {
 });
 
 const syncRecording = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
   const { id } = req.params;
-  const result = await MeetingService.syncMeetingRecordings(id);
+  const result = await MeetingService.syncMeetingRecordings(id, userId);
 
   sendResponse(res, {
     success: true,
@@ -130,8 +131,9 @@ const cancelMeeting = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getRecordings = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
   const { meetingId } = req.params;
-  const result = await MeetingService.syncMeetingRecordings(meetingId);
+  const result = await MeetingService.syncMeetingRecordings(meetingId, userId);
 
   sendResponse(res, {
     success: true,

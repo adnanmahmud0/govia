@@ -20,6 +20,7 @@ import { VaultFolder } from '../vault/vaultFolder.model';
 import { VaultItem } from '../vault/vaultItem.model';
 import { debug, debugError } from '../../../shared/debug';
 import { USER_ROLES } from '../../../enums/user';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 // ─── S3 client (used for deleting recordings when a meeting is removed) ──────
 const s3 = new S3Client({
@@ -127,6 +128,24 @@ const createInstantMeeting = async (
     }
   }
 
+  const hostUser = await User.findById(userId);
+  if (!hostUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Host user not found');
+  }
+
+  // Quota enforcement: ONLY apply to Citizen role. Professional roles are completely exempt.
+  const quotaCheck = await SubscriptionService.checkCitizenMeetingQuota(
+    userId,
+    hostUser.role
+  );
+  if (!quotaCheck.allowed) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      quotaCheck.reason ||
+        'You have reached your limit of 3 free emergency/Govia meetings this month. Upgrade to Premium for unlimited emergency protection.'
+    );
+  }
+
   const roomName = `govia_${Date.now()}_${userId.slice(-6)}`;
 
   // Retire any prior active meetings for this host so stale duplicate live incidents do not linger
@@ -155,13 +174,18 @@ const createInstantMeeting = async (
       locationAddress,
     });
 
+    // Atomically increment monthly meeting quota count for citizens
+    await SubscriptionService.incrementCitizenMeetingCount(
+      userId,
+      hostUser.role
+    );
+
     const populatedMeeting = await Meeting.findById(newMeeting._id)
       .populate('userId', 'name email role image phoneNumber')
       .populate('participantId', 'name email role image phoneNumber')
       .populate('vaultFolderId', 'name description category')
       .populate('conversationId');
 
-    const hostUser = await User.findById(userId);
     const livekitToken = await createLiveKitToken({
       roomName,
       participantIdentity: userId,
@@ -389,6 +413,38 @@ const scheduleMeeting = async (
     }
   }
 
+  const hostUser = await User.findById(userId);
+  const isCitizen =
+    hostUser?.role === USER_ROLES.CITIZEN || hostUser?.role === USER_ROLES.USER;
+  if (isCitizen) {
+    let isDoctorConsultation = false;
+    if (participantObjectId) {
+      const participant = await User.findById(participantObjectId);
+      if (
+        participant?.role === USER_ROLES.MENTAL_HEALTH_PROFESSIONAL ||
+        (participant?.role as string) === 'DOCTOR'
+      ) {
+        isDoctorConsultation = true;
+      }
+    }
+    if (topic && /mental health|therapy|doctor|psychiat|counsel/i.test(topic)) {
+      isDoctorConsultation = true;
+    }
+
+    if (isDoctorConsultation) {
+      const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+        userId,
+        hostUser?.role
+      );
+      if (!subStatus.features.hasDoctorSupport) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'Mental health support and doctor appointments require Govia Premium. Please upgrade your subscription.'
+        );
+      }
+    }
+  }
+
   const roomName = `govia_scheduled_${Date.now()}_${userId.slice(-6)}`;
 
   try {
@@ -610,7 +666,34 @@ const getUserMeetings = async (
     meetingQuery = meetingQuery.skip(skip).limit(limit);
   }
 
-  const meetings = await meetingQuery.lean();
+  const rawMeetings = await meetingQuery.lean();
+
+  const user = await User.findById(userId);
+  const isCitizen =
+    user?.role === USER_ROLES.CITIZEN || user?.role === USER_ROLES.USER;
+  let canViewRecordings = true;
+  if (isCitizen) {
+    const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+      userId,
+      user?.role
+    );
+    canViewRecordings = subStatus.features.canViewRecordings;
+  }
+
+  const meetings = rawMeetings.map((m: Record<string, unknown>) => {
+    if (isCitizen && !canViewRecordings) {
+      return {
+        ...m,
+        recordingUrl: null,
+        recordings: [],
+        isRecordingLocked: true,
+      };
+    }
+    return {
+      ...m,
+      isRecordingLocked: false,
+    };
+  });
 
   if (query.page && query.limit) {
     const total = await Meeting.countDocuments(filter);
@@ -1139,7 +1222,7 @@ const cancelMeeting = async (userId: string, meetingId: string) => {
   return meeting;
 };
 
-const getMeetingRecordings = async (meetingId: string) => {
+const getMeetingRecordings = async (meetingId: string, userId?: string) => {
   const meeting = Types.ObjectId.isValid(meetingId)
     ? await Meeting.findById(meetingId)
     : await Meeting.findOne({ roomName: meetingId });
@@ -1148,16 +1231,52 @@ const getMeetingRecordings = async (meetingId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
   }
 
+  if (userId) {
+    const user = await User.findById(userId);
+    const isCitizen =
+      user?.role === USER_ROLES.CITIZEN || user?.role === USER_ROLES.USER;
+    if (isCitizen) {
+      const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+        userId,
+        user?.role
+      );
+      if (!subStatus.features.canViewRecordings) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'Cloud recordings and video playback require Govia Premium. Please upgrade your subscription.'
+        );
+      }
+    }
+  }
+
   return {
     share_url: meeting.recordingUrl || '',
     recording_files: meeting.recordings || [],
   };
 };
 
-const syncMeetingRecordings = async (meetingId: string) => {
+const syncMeetingRecordings = async (meetingId: string, userId?: string) => {
   const meeting = Types.ObjectId.isValid(meetingId)
     ? await Meeting.findById(meetingId)
     : await Meeting.findOne({ roomName: meetingId });
+
+  if (userId) {
+    const user = await User.findById(userId);
+    const isCitizen =
+      user?.role === USER_ROLES.CITIZEN || user?.role === USER_ROLES.USER;
+    if (isCitizen) {
+      const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+        userId,
+        user?.role
+      );
+      if (!subStatus.features.canViewRecordings) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'Cloud recordings and video playback require Govia Premium. Please upgrade your subscription.'
+        );
+      }
+    }
+  }
 
   return {
     meeting,

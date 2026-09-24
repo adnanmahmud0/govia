@@ -5,6 +5,8 @@ import { socketHelper } from '../../../helpers/socketHelper';
 import { User } from '../user/user.model';
 import { Conversation } from './conversation.model';
 import { Message } from '../message/message.model';
+import { USER_ROLES } from '../../../enums/user';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 const createOrGetConversation = async (
   currentUserId: string,
@@ -31,6 +33,30 @@ const createOrGetConversation = async (
       StatusCodes.NOT_FOUND,
       'Participant user not found or inactive'
     );
+  }
+
+  // Doctor / Mental Health Professional communication guard for Free Citizens
+  const isTargetDoctorOrMhp =
+    participantUser.role === USER_ROLES.MENTAL_HEALTH_PROFESSIONAL ||
+    (participantUser.role as string) === 'DOCTOR';
+
+  if (isTargetDoctorOrMhp) {
+    const currentUser = await User.findById(currentUserId);
+    const isCitizen =
+      currentUser?.role === USER_ROLES.CITIZEN ||
+      currentUser?.role === USER_ROLES.USER;
+    if (isCitizen) {
+      const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+        currentUserId,
+        currentUser?.role
+      );
+      if (!subStatus.features.hasDoctorSupport) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'Direct communication with doctors and mental health specialists requires Govia Premium. Please upgrade your subscription.'
+        );
+      }
+    }
   }
 
   const user1 = new Types.ObjectId(currentUserId);

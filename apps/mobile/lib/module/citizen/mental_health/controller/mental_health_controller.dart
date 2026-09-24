@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
+import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/module/shared/chat/controller/chat_controller.dart';
@@ -174,8 +175,109 @@ class MentalHealthController extends GetxController {
     }).toList();
   }
 
+  /// Show modern paywall prompt when free citizen attempts restricted doctor action
+  void _showUpgradePrompt({required String title, required String message}) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1550A6).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.lock_rounded,
+                  color: Color(0xFF1550A6),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1550A6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.subscription);
+                  },
+                  child: const Text(
+                    'View Premium Plans',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text(
+                  'Maybe Later',
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Start direct messaging with doctor
   Future<void> openChatWithDoctor(Map<String, dynamic> doctor) async {
+    // Check Citizen subscription
+    try {
+      final statusRes = await _apiClient.getData('/subscriptions/my-status');
+      if (statusRes.statusCode == 200 && statusRes.data != null) {
+        final data = statusRes.data['data'] ?? statusRes.data;
+        if (data is Map && data['isCitizen'] == true && data['isPremium'] != true) {
+          _showUpgradePrompt(
+            title: 'Govia Premium Feature',
+            message: 'Direct messaging with licensed doctors and therapists requires Govia Premium. Upgrade now for 24/7 confidential healthcare access.',
+          );
+          return;
+        }
+      }
+    } catch (_) {}
+
     final chatCtrl = Get.isRegistered<ChatController>()
         ? Get.find<ChatController>()
         : Get.put(ChatController());
@@ -194,6 +296,21 @@ class MentalHealthController extends GetxController {
 
   /// Schedule appointment modal and backend dispatch
   Future<void> openBookingSheet(Map<String, dynamic> doctor) async {
+    // Check Citizen subscription
+    try {
+      final statusRes = await _apiClient.getData('/subscriptions/my-status');
+      if (statusRes.statusCode == 200 && statusRes.data != null) {
+        final data = statusRes.data['data'] ?? statusRes.data;
+        if (data is Map && data['isCitizen'] == true && data['isPremium'] != true) {
+          _showUpgradePrompt(
+            title: 'Doctor Appointments Locked',
+            message: 'Scheduling consultations with licensed physicians requires Govia Premium. Upgrade today to unlock confidential telehealth appointments.',
+          );
+          return;
+        }
+      }
+    } catch (_) {}
+
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
     String selectedTime = '10:00 AM';
     String sessionType = 'Video Call';

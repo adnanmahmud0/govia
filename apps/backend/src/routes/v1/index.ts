@@ -11,6 +11,7 @@ import { MessageRoutes } from '../../app/modules/message/message.route';
 import { VaultRoutes } from '../../app/modules/vault/vault.route';
 import { NotificationRoutes } from '../../app/modules/notification/notification.route';
 import { StorageSettingRoutes } from '../../app/modules/storageSetting/storageSetting.route';
+import { SubscriptionRoutes } from '../../app/modules/subscription/subscription.route';
 
 const router = express.Router();
 
@@ -74,6 +75,14 @@ const apiRoutes = [
   {
     path: '/storage-settings',
     route: StorageSettingRoutes,
+  },
+  {
+    path: '/subscription',
+    route: SubscriptionRoutes,
+  },
+  {
+    path: '/subscriptions',
+    route: SubscriptionRoutes,
   },
 ];
 

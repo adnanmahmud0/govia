@@ -6,6 +6,22 @@ import fs from 'fs';
 import path from 'path';
 import { AiChat } from './aiChat.model';
 import { Types } from 'mongoose';
+import { USER_ROLES } from '../../../enums/user';
+import { SubscriptionService } from '../subscription/subscription.service';
+
+const FREE_OPENROUTER_MODELS = [
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
+  'deepseek/deepseek-r1:free',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'mistralai/mistral-small-24b-instruct-2501:free',
+  'openrouter/free',
+];
+
+const getRandomFreeModel = (): string => {
+  const index = Math.floor(Math.random() * FREE_OPENROUTER_MODELS.length);
+  return FREE_OPENROUTER_MODELS[index];
+};
 
 // Initialize the OpenAI client pointing to the provider URL (OpenRouter or OpenAI)
 const openai = new OpenAI({
@@ -161,19 +177,56 @@ At the end of your guidance, include a brief one-line note:
     { role: 'user', content: prompt },
   ];
 
+  // Determine model based on role and subscription tier
+  const isCitizen =
+    !userRole ||
+    userRole === USER_ROLES.CITIZEN ||
+    userRole === USER_ROLES.USER;
+  let targetModel = config.ai.modelName as string;
+
+  if (isCitizen) {
+    const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+      userId,
+      userRole
+    );
+    if (!subStatus.features.hasPremiumAI) {
+      targetModel = getRandomFreeModel();
+      console.log(
+        `[GoVia AI] 🤖 Free Citizen query routed to random free OpenRouter model: ${targetModel}`
+      );
+    } else {
+      console.log(
+        `[GoVia AI] ⭐ Premium Citizen query routed to high-tier model: ${targetModel}`
+      );
+    }
+  }
+
   try {
-    const response = await openai.chat.completions.create({
-      model: config.ai.modelName as string,
-      messages,
-      temperature: 0.5,
-    });
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: targetModel,
+        messages,
+        temperature: 0.5,
+      });
+    } catch (modelError) {
+      console.warn(
+        `[GoVia AI] Failed calling model ${targetModel}, falling back to default model:`,
+        modelError
+      );
+      response = await openai.chat.completions.create({
+        model: (config.ai.modelName as string) || 'openrouter/free',
+        messages,
+        temperature: 0.5,
+      });
+    }
 
     let aiMessageContent = response.choices[0]?.message?.content || '';
 
     // Guard against rare models returning only safety classifications
     if (aiMessageContent.toLowerCase().includes('user safety:') || aiMessageContent.trim().length < 40) {
       const retryResponse = await openai.chat.completions.create({
-        model: config.ai.modelName as string,
+        model: targetModel,
         messages: [
           ...messages,
           { role: 'user', content: 'Please give a detailed, substantive explanation of my legal rights and steps to take.' }

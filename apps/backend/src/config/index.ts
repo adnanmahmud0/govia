@@ -56,4 +56,16 @@ export default {
     apiKey: process.env.AI_API_KEY,
     modelName: process.env.AI_MODEL_NAME || 'gpt-3.5-turbo',
   },
+  iap: {
+    apple: {
+      bundleId: process.env.APPLE_BUNDLE_ID || 'com.govia.app',
+      sharedSecret: process.env.APPLE_SHARED_SECRET || '',
+      environment: process.env.APPLE_ENVIRONMENT || 'sandbox',
+    },
+    google: {
+      packageName: process.env.GOOGLE_PACKAGE_NAME || 'com.govia.app',
+      serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '',
+      serviceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '',
+    },
+  },
 };

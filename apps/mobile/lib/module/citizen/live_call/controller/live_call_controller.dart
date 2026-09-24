@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -363,12 +363,30 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     } catch (_) {}
 
     // 3. Call API to create session & retrieve room name & token
-    final meeting = await meetingRepo.startGovia(
-      topic: 'Govia Consultation',
-      latitude: pos?.latitude,
-      longitude: pos?.longitude,
-      locationAddress: liveLocationAddress.value.isNotEmpty ? liveLocationAddress.value : null,
-    );
+    MeetingModel? meeting;
+    try {
+      meeting = await meetingRepo.startGovia(
+        topic: 'Govia Consultation',
+        latitude: pos?.latitude,
+        longitude: pos?.longitude,
+        locationAddress: liveLocationAddress.value.isNotEmpty ? liveLocationAddress.value : null,
+      );
+    } catch (e) {
+      isLoading.value = false;
+      hasError.value = true;
+      final err = e.toString();
+      if (err.toLowerCase().contains('limit') ||
+          err.toLowerCase().contains('quota') ||
+          err.toLowerCase().contains('free citizen') ||
+          err.toLowerCase().contains('subscription')) {
+        errorMessage.value = 'Monthly emergency meeting limit reached (3/month on Free tier).';
+        _showQuotaUpgradeModal();
+        return;
+      }
+      errorMessage.value =
+          'Failed to create session. Please check your connection and try again.';
+      return;
+    }
 
     if (meeting == null || meeting.id.isEmpty) {
       isLoading.value = false;
@@ -1023,5 +1041,83 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
         reliable: true,
       );
     } catch (_) {}
+  }
+
+  void _showQuotaUpgradeModal() {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.lock_rounded,
+                  color: Color(0xFFDC2626),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Monthly Limit Reached',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Free Citizen tier includes 3 emergency / GoVia meetings per month. Upgrade to Govia Premium for unlimited 24/7 meetings and live incident response.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1550A6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.subscription);
+                  },
+                  child: const Text(
+                    'Upgrade to Premium',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

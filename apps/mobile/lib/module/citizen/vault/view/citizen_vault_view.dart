@@ -933,6 +933,8 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
     }
     final dateStr = createdAt != null ? DateFormat('MMM dd, yyyy • h:mm a').format(createdAt) : 'Recently Recorded';
 
+    final isLocked = rec['isRecordingLocked'] == true;
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.all(16.w),
@@ -956,10 +958,14 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
               Container(
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.08),
+                  color: (isLocked ? const Color(0xFF7C3AED) : const Color(0xFFDC2626)).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: const Icon(Icons.videocam_rounded, color: Color(0xFFDC2626), size: 24),
+                child: Icon(
+                  isLocked ? Icons.lock_outline_rounded : Icons.videocam_rounded,
+                  color: isLocked ? const Color(0xFF7C3AED) : const Color(0xFFDC2626),
+                  size: 24,
+                ),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -985,12 +991,16 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1550A6).withValues(alpha: 0.08),
+                  color: (isLocked ? const Color(0xFFDC2626) : const Color(0xFF1550A6)).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
-                  category.toUpperCase(),
-                  style: GoogleFonts.inter(fontSize: 10.sp, fontWeight: FontWeight.w700, color: const Color(0xFF1550A6)),
+                  isLocked ? 'LOCKED · PREMIUM' : category.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: isLocked ? const Color(0xFFDC2626) : const Color(0xFF1550A6),
+                  ),
                 ),
               ),
             ],
@@ -1039,10 +1049,16 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _showWatchRecordingDialog(context, rec),
-                  icon: const Icon(Icons.play_circle_fill_rounded, size: 18),
-                  label: Text('Watch', style: GoogleFonts.inter(fontSize: 12.5.sp, fontWeight: FontWeight.w700)),
+                  icon: Icon(
+                    isLocked ? Icons.lock_rounded : Icons.play_circle_fill_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    isLocked ? 'Unlock Recording' : 'Watch',
+                    style: GoogleFonts.inter(fontSize: 12.5.sp, fontWeight: FontWeight.w700),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
+                    backgroundColor: isLocked ? const Color(0xFF1550A6) : const Color(0xFF059669),
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: 10.h),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
@@ -1074,6 +1090,72 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
   void _showWatchRecordingDialog(BuildContext context, Map<String, dynamic> rec) {
     final title = (rec['topic'] ?? rec['title'] ?? 'Meeting Recording').toString();
     final url = (rec['recordingUrl'] ?? rec['fileUrl'] ?? '').toString();
+    final isLocked = rec['isRecordingLocked'] == true;
+
+    if (isLocked) {
+      Get.dialog(
+        Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+          child: Padding(
+            padding: EdgeInsets.all(22.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56.r,
+                  height: 56.r,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFEF2F2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.lock_rounded, color: const Color(0xFFDC2626), size: 30.sp),
+                ),
+                SizedBox(height: 16.h),
+                Text(
+                  'Cloud Recording Locked',
+                  style: GoogleFonts.inter(fontSize: 17.sp, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A)),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  'Govia Premium Feature',
+                  style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFDC2626), fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 14.h),
+                Text(
+                  'Incident recordings and video playback are reserved for Govia Premium citizens. Upgrade to unlock encrypted cloud recordings, unlimited emergency meetings, and doctor telehealth.',
+                  style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF64748B), height: 1.4),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Get.back();
+                      Get.toNamed(AppRoutes.subscription);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1550A6),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                    ),
+                    child: Text('Upgrade to Premium', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('Maybe Later', style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF64748B))),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return;
+    }
 
     if (url.isNotEmpty) {
       // Directly launch the resilient native in-app Video Player

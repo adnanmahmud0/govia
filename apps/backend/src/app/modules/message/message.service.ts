@@ -7,6 +7,8 @@ import { Conversation } from '../conversation/conversation.model';
 import { NotificationService } from '../notification/notification.service';
 import { IMessage } from './message.interface';
 import { Message } from './message.model';
+import { USER_ROLES } from '../../../enums/user';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 const sendMessage = async (
   senderId: string,
@@ -59,6 +61,30 @@ const sendMessage = async (
       StatusCodes.BAD_REQUEST,
       'No recipient found for this conversation'
     );
+  }
+
+  // Doctor / Mental Health Professional communication guard for Free Citizens
+  const senderUser = await User.findById(senderId);
+  const isCitizen =
+    senderUser?.role === USER_ROLES.CITIZEN ||
+    senderUser?.role === USER_ROLES.USER;
+  if (isCitizen) {
+    const receiverUser = await User.findById(receiverObjectId);
+    const isTargetDoctorOrMhp =
+      receiverUser?.role === USER_ROLES.MENTAL_HEALTH_PROFESSIONAL ||
+      (receiverUser?.role as string) === 'DOCTOR';
+    if (isTargetDoctorOrMhp) {
+      const subStatus = await SubscriptionService.getUserSubscriptionStatus(
+        senderId,
+        senderUser?.role
+      );
+      if (!subStatus.features.hasDoctorSupport) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'Messaging doctors and mental health specialists requires Govia Premium. Please upgrade your subscription.'
+        );
+      }
+    }
   }
 
   const resolvedMessageType =

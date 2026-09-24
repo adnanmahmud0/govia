@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
+import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/module/citizen/mental_health/controller/mental_health_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -192,6 +193,84 @@ class MentalHealthView extends GetView<MentalHealthController> {
                 child: ListView(
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                   children: [
+                    // Govia Premium Telehealth Banner
+                    GestureDetector(
+                      onTap: () => Get.toNamed(AppRoutes.subscription),
+                      child: Container(
+                        margin: EdgeInsets.only(bottom: 12.h),
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0F172A), Color(0xFF1550A6)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1550A6).withValues(alpha: 0.18),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(7.r),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.lock_rounded,
+                                color: const Color(0xFFF59E0B),
+                                size: 16.sp,
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '24/7 Licensed Doctors & Specialists',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Doctor chat & appointments require Govia Premium',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10.5.sp,
+                                      color: Colors.white.withValues(alpha: 0.82),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: Text(
+                                'Upgrade',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF78350F),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                     // Emergency Crisis Hotline Banner
                     _buildCrisisBanner(),
                     SizedBox(height: 16.h),
