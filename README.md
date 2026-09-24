@@ -1,114 +1,130 @@
-# Project Name
+# 🛡️ Govia Monorepo
 
-This is a template project for backend development using Typescript, Node.js, Express, Mongoose, Bcrypt, JWT, NodeMailer, Multer, ESLint, and Prettier. The aim is to reduce setup time for new backend projects.
+> **Production-grade multi-platform system featuring Next.js 15 Admin Portal, Node.js/Express Backend, and Flutter Mobile Application with zero-downtime Blue/Green CI/CD deployment.**
 
-## Features
+---
 
-- **Authentication API:** Complete authentication system using JWT for secure token-based authentication and bcrypt for password hashing.
-- **File Upload:** Implemented using Multer with efficient file handling and short-term storage.
-- **Data Validation:** Robust data validation using Zod and Mongoose schemas.
-- **Code Quality:** Ensured code readability and quality with ESLint and Prettier.
-- **Email Service:** Sending emails through NodeMailer.
-- **File Handling:** Efficient file deletion using `fs.unlink`.
-- **Environment Configuration:** Easy configuration using a `.env` file.
-- **Logging:** Logging with Winston and file rotation using DailyRotateFile.
-- **API Request Logging:** Logging API requests using Morgan.
+## 📁 Repository Structure
 
-## Tech Stack
+```text
+govia/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml              # 🚀 5-Stage Zero-Downtime Blue/Green CI/CD Pipeline
+├── apps/
+│   ├── admin/                      # 🖥️ Next.js 15 Standalone Admin Portal (Host Port: 8777)
+│   │   ├── public/                 # Static assets & dashboard icons
+│   │   ├── src/                    # App Router & Dashboard views
+│   │   ├── Dockerfile              # Multi-stage standalone production container
+│   │   ├── next.config.ts          # Standalone bundle config
+│   │   └── package.json            # @repo/admin
+│   │
+│   ├── backend/                    # ⚙️ Express & Socket.IO Real-Time API (Host Port: 9777)
+│   │   ├── ai-data/                # Legal knowledge base & RAG documents
+│   │   ├── src/                    # Controllers, services, models, middlewares
+│   │   ├── uploads/                # User media & document storage
+│   │   ├── winston/                # Automated rotating daily log files
+│   │   ├── Dockerfile              # Multi-stage Node 20 production container
+│   │   └── package.json            # @repo/backend
+│   │
+│   └── mobile/                     # 📱 Flutter Cross-Platform Mobile App (iOS & Android)
+│       ├── android/                # Native Android Gradle configuration
+│       ├── ios/                    # Native iOS Xcode workspace & Podfile
+│       ├── assets/                 # Brand assets, vectors, and bundled fonts
+│       ├── lib/                    # GetX modular architecture & in-app video player
+│       │   ├── config/             # Routes, constants, API base URLs
+│       │   ├── core/               # Widgets, services (LiveKit, FCM, Dio), helpers
+│       │   └── module/             # Feature domain views & controllers
+│       │       ├── citizen/        # Citizen dashboard, vault, SOS, booking
+│       │       ├── attorney/       # Attorney portal & consultation hub
+│       │       ├── doctor/         # Medical provider workflows
+│       │       ├── police/         # Law enforcement directory & verification
+│       │       └── shared/         # Authentication, chat, video calling, settings
+│       ├── pubspec.yaml            # Flutter dependencies & assets registry
+│       └── .env                    # Mobile client runtime environment
+│
+├── packages/                       # 📦 Shared Monorepo Tooling
+│   ├── eslint-config/              # Shared ESLint configuration
+│   ├── tsconfig/                   # Shared TypeScript compiler options
+│   ├── types/                      # Universal TypeScript domain interfaces
+│   ├── ui/                         # Shared UI tokens & primitive components
+│   └── validators/                 # Shared Zod validation schemas
+│
+├── scripts/                        # 🛠️ Server & Deployment Utilities
+│   └── server/
+│       ├── bootstrap.sh            # Idempotent VPS bootstrap (2GB swap, Nginx, UFW, Cron)
+│       ├── backup-mongo.sh         # Daily automated MongoDB backups (7-day retention)
+│       ├── deploy-bluegreen.sh     # Zero-downtime container swapping engine
+│       └── nginx-govia.conf        # Production Nginx reverse proxy configuration
+│
+├── docker-compose.prod.yml         # Standard production multi-container manifest
+├── docker-compose.bluegreen.yml    # Blue/Green dual-profile deployment manifest
+├── .env.example                    # 4-section environment configuration template
+├── .env                            # Active environment configuration (git-ignored)
+├── package.json                    # Monorepo root workspace manifest
+└── turbo.json                      # Turborepo task pipeline (build, lint, typecheck)
+```
 
-- Typescript
-- Node.js
-- Express
-- Mongoose
-- Bcrypt
-- JWT
-- NodeMailer
-- Multer
-- ESLint
-- Prettier
-- Winston
-- Daily-winston-rotate-file
-- Morgen
-- Socket
+---
 
-## Getting Started
+## 🌐 Workspaces at a Glance
 
-Follow these steps to set up and run the project locally.
+| Component | Technology | Internal Port | Host Port / Route | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **`apps/admin`** | Next.js 15, Tailwind, Lucide | `3000` | `:8777` (or `/`) | Web Admin & Telemetry Dashboard |
+| **`apps/backend`** | Express, Node 20, Socket.IO, Mongoose | `5000` | `:9777` (or `/api`) | RESTful API, WebSockets & LiveKit Egress |
+| **`apps/mobile`** | Flutter 3.x, GetX, Dio, Chewie | Client | iOS & Android APK | Cross-platform mobile client |
+| **`MongoDB`** | Mongo 7.0 (Official Docker Image) | `27017` | Isolated bridge | Database (never exposed publicly) |
+| **`Nginx`** | Nginx Reverse Proxy | `80 / 443` | Host Reverse Proxy | Zero-downtime Blue/Green traffic switcher |
 
-### Prerequisites
+---
 
-Ensure you have the following installed:
+## 🚀 Quick Start (Local Development)
 
-- Node.js
-- npm or yarn
+### 1. Install Dependencies
+```bash
+npm install
+```
 
-### Installation
+### 2. Configure Environment
+Copy `.env.example` to `.env` and fill in your local or remote database keys:
+```bash
+cp .env.example .env
+```
 
-1. **Clone the repository:**
+### 3. Run Development Servers
+```bash
+# Run both Backend & Admin concurrently:
+npm run dev
 
-   ```bash
-   git clone https://github.com/yourusername/your-repository.git
-   cd your-repository
-   ```
+# Or run individually:
+npm run dev:backend   # Starts Express API at http://localhost:5000
+npm run dev:admin     # Starts Next.js Admin at http://localhost:3000
+```
 
-2. **Install dependencies:**
+### 4. Run Mobile App
+```bash
+cd apps/mobile
+flutter pub get
+flutter run
+```
 
-   Using npm:
+---
 
-   ```bash
-   npm install
-   ```
-
-   Using yarn:
-
-   ```bash
-   yarn install
-   ```
-
-3. **Create a `.env` file:**
-
-   In the root directory of the project, create a `.env` file and add the following variables. Adjust the values according to your setup.
-
-   ```env
-   # Basic
-   NODE_ENV=development
-   DATABASE_URL=mongodb://127.0.0.1:27017/project_name
-   IP_ADDRESS=192.0.0.0
-   PORT=5000
-
-   # Bcrypt
-   BCRYPT_SALT_ROUNDS=12
-
-   # JWT
-   JWT_SECRET=jwt_secret
-   JWT_EXPIRE_IN=1d
-
-   # Email
-   EMAIL_FROM=email@gmail.com
-   EMAIL_USER=email@gmail.com
-   EMAIL_PASS=mkqcfjeqloothyax
-   EMAIL_PORT=587
-   EMAIL_HOST=smtp.gmail.com
-   ```
-
-4. **Run the project:**
-
-   Using npm:
-
-   ```bash
-   npm run dev
-   ```
-
-   Using yarn:
-
-   ```bash
-   yarn run dev
-   ```
-
-### Running the Tests
-
-Explain how to run the automated tests for this system.
+## 🛡️ Quality Assurance & Checks
 
 ```bash
-npm test
+npm run lint         # Runs ESLint across all monorepo packages
+npm run typecheck    # Validates TypeScript compilation across all workspaces
+npm run build        # Compiles all packages for production
 ```
+
+---
+
+## 🚢 Production Deployment
+
+Govia uses a **Zero-Manual-SSH Blue/Green CI/CD Pipeline** running in GitHub Actions:
+- **Single Secret (`PROD_ENV`):** All configurations across backend, frontend, server connection, and mobile app originate from one unified secret.
+- **Zero Downtime:** Standby containers boot and pass rigorous health checks before Nginx smoothly switches upstream traffic without dropping active calls or WebSocket streams.
+- **Automated Backups:** Daily MongoDB database backups are compressed and retained for 7 days via automated server cron.
+- **Cloud-Built APKs:** Every push automatically compiles a fresh Android release APK attached as a downloadable GitHub Actions artifact.

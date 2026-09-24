@@ -1,5 +1,5 @@
 {
-  "name": "@repo/api",
+  "name": "@repo/backend",
   "version": "1.0.0",
   "description": "Govia Express.js & Mongoose Backend with OpenAPI & Socket.IO",
   "main": "dist/server.js",

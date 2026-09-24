@@ -41,7 +41,7 @@ services:
     image: ghcr.io/adnanmahmud0/govia-api:latest
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: apps/backend/Dockerfile
     container_name: adnan-govia-api
     restart: always
     env_file:
@@ -86,8 +86,8 @@ services:
       AWS_BUCKET: ${AWS_BUCKET:-govia-meeting-recordings}
       AWS_REGION: ${AWS_REGION:-us-east-1}
     volumes:
-      - govia_uploads:/app/apps/api/uploads
-      - govia_logs:/app/apps/api/winston
+      - govia_uploads:/app/apps/backend/uploads
+      - govia_logs:/app/apps/backend/winston
     depends_on:
       adnan-govia-mongo:
         condition: service_healthy

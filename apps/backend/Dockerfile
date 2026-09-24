@@ -14,11 +14,11 @@ WORKDIR /app
 # Copy repository monorepo manifests & source
 COPY package.json package-lock.json turbo.json ./
 COPY packages ./packages
-COPY apps/api ./apps/api
+COPY apps/backend ./apps/backend
 
 # Install dependencies and build TypeScript to dist/
 RUN npm ci
-RUN npm run build --workspace=@repo/api
+RUN npm run build --workspace=@repo/backend
 
 # ------------------------------------------------------------------------------
 # Stage 2: Production Runner
@@ -37,21 +37,21 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy dependency manifests and install production dependencies only
 COPY package.json package-lock.json ./
 COPY packages ./packages
-COPY apps/api/package.json ./apps/api/
+COPY apps/backend/package.json ./apps/backend/
 RUN npm ci --omit=dev
 
 # Copy compiled distribution and AI legal knowledge base
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/ai-data ./apps/api/ai-data
-COPY --from=builder /app/apps/api/src/docs/openapi.json ./apps/api/src/docs/openapi.json
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder /app/apps/backend/ai-data ./apps/backend/ai-data
+COPY --from=builder /app/apps/backend/src/docs/openapi.json ./apps/backend/src/docs/openapi.json
 
 # Create media uploads and winston log folders with non-root ownership
-RUN mkdir -p ./apps/api/uploads ./apps/api/winston && \
+RUN mkdir -p ./apps/backend/uploads ./apps/backend/winston && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
 
-WORKDIR /app/apps/api
+WORKDIR /app/apps/backend
 
 EXPOSE 5000
 

@@ -48,8 +48,8 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
       DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}:${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/${MONGO_INITDB_DATABASE:-govia-db}?authSource=admin}
     volumes:
-      - govia_uploads:/app/apps/api/uploads
-      - govia_logs:/app/apps/api/winston
+      - govia_uploads:/app/apps/backend/uploads
+      - govia_logs:/app/apps/backend/winston
     depends_on:
       adnan-govia-mongo:
         condition: service_healthy
@@ -100,8 +100,8 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
       DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_INITDB_ROOT_USERNAME:-goviaAdmin}:${MONGO_INITDB_ROOT_PASSWORD:-GoviaMongoSecurePass2026!}@adnan-govia-mongo:27017/${MONGO_INITDB_DATABASE:-govia-db}?authSource=admin}
     volumes:
-      - govia_uploads:/app/apps/api/uploads
-      - govia_logs:/app/apps/api/winston
+      - govia_uploads:/app/apps/backend/uploads
+      - govia_logs:/app/apps/backend/winston
     depends_on:
       adnan-govia-mongo:
         condition: service_healthy

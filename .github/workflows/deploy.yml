@@ -69,7 +69,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: apps/api/Dockerfile
+          file: apps/backend/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/govia-api:latest
@@ -167,26 +167,26 @@ jobs:
       - name: Prepare Flutter .env
         run: |
           if [ -n "${{ secrets.PROD_ENV }}" ]; then
-            echo "${{ secrets.PROD_ENV }}" > gsabino365/.env
+            echo "${{ secrets.PROD_ENV }}" > apps/mobile/.env
           elif [ -n "${{ secrets.ENV_FILE }}" ]; then
-            echo "${{ secrets.ENV_FILE }}" > gsabino365/.env
+            echo "${{ secrets.ENV_FILE }}" > apps/mobile/.env
           else
-            cp gsabino365/.env.example gsabino365/.env 2>/dev/null || cp .env.example gsabino365/.env
+            cp apps/mobile/.env.example apps/mobile/.env 2>/dev/null || cp .env.example apps/mobile/.env
           fi
 
       - name: Install Flutter Dependencies
         run: flutter pub get
-        working-directory: gsabino365
+        working-directory: apps/mobile
 
       - name: Build Android Release APK
         run: flutter build apk --release
-        working-directory: gsabino365
+        working-directory: apps/mobile
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: govia-android-release-apk
-          path: gsabino365/build/app/outputs/flutter-apk/app-release.apk
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
   # ============================================================================
