@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -48,6 +51,7 @@ jobs:
   build-api:
     name: 🐳 Build & Push API Image
     needs: quality-gate
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -83,6 +87,7 @@ jobs:
   build-admin:
     name: 🌐 Build & Push Admin Dashboard Image
     needs: quality-gate
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -145,6 +150,7 @@ jobs:
   build-flutter:
     name: 📱 Build Flutter Android Release APK
     needs: quality-gate
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -195,6 +201,7 @@ jobs:
   deploy:
     name: 🚀 Zero-Downtime Blue/Green Deploy
     needs: [build-api, build-admin]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
