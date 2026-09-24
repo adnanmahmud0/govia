@@ -250,45 +250,7 @@ class CitizenProfileView extends GetView<CitizenProfileController> {
                                           ),
                                           SizedBox(width: 3.w),
                                           Text(
-                                            'QR',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10.sp,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 6.w),
-                                  GestureDetector(
-                                    onTap: controller.openQrScanner,
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 6.w,
-                                        vertical: 2.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.22),
-                                        borderRadius: BorderRadius.circular(6.r),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.4),
-                                          width: 0.8.w,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.qr_code_scanner_rounded,
-                                            size: 13.sp,
-                                            color: Colors.white,
-                                          ),
-                                          SizedBox(width: 3.w),
-                                          Text(
-                                            'Scan',
+                                            'QR Card',
                                             style: GoogleFonts.inter(
                                               fontSize: 10.sp,
                                               fontWeight: FontWeight.w700,
@@ -312,12 +274,16 @@ class CitizenProfileView extends GetView<CitizenProfileController> {
                                   size: 13.sp,
                                 ),
                                 SizedBox(width: 4.w),
-                                Text(
-                                  'Speaks: ${controller.languages.value}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.5.sp,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white.withValues(alpha: 0.85),
+                                Expanded(
+                                  child: Text(
+                                    'Speaks: ${controller.languages.value}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.5.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withValues(alpha: 0.85),
+                                    ),
                                   ),
                                 ),
                               ],

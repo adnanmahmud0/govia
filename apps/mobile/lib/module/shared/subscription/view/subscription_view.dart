@@ -379,8 +379,7 @@ class SubscriptionView extends GetView<SubscriptionController> {
       final isYearly = controller.selectedBillingCycle.value == 'yearly';
       final price = isYearly ? '\$79.99' : '\$9.99';
       final interval = isYearly ? '/ year' : '/ month';
-      final monthlyEq = isYearly ? '(\$6.67/month equivalent • Save \$40)' : 'Billed monthly • Cancel anytime';
-
+      
       return Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -431,40 +430,43 @@ class SubscriptionView extends GetView<SubscriptionController> {
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Govia Premium',
-                            style: GoogleFonts.outfit(
-                              fontSize: 22.sp,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0F172A),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Govia Premium',
+                              style: GoogleFonts.outfit(
+                                fontSize: 22.sp,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF0F172A),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            'Complete Legal & Telehealth Suite',
-                            style: GoogleFonts.inter(
-                              fontSize: 12.sp,
-                              color: const Color(0xFF64748B),
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Complete Legal & Telehealth Suite',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF64748B),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      SizedBox(width: 8.w),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 price,
                                 style: GoogleFonts.outfit(
-                                  fontSize: 26.sp,
+                                  fontSize: 24.sp,
                                   fontWeight: FontWeight.w800,
                                   color: const Color(0xFF1550A6),
                                 ),
@@ -472,26 +474,47 @@ class SubscriptionView extends GetView<SubscriptionController> {
                               Text(
                                 interval,
                                 style: GoogleFonts.inter(
-                                  fontSize: 13.sp,
+                                  fontSize: 12.5.sp,
                                   fontWeight: FontWeight.w600,
                                   color: const Color(0xFF64748B),
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            monthlyEq,
-                            style: GoogleFonts.inter(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF059669),
+                          SizedBox(height: 3.h),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: isYearly ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                            child: Text(
+                              isYearly ? 'Save \$40 / year' : 'Billed monthly',
+                              style: GoogleFonts.inter(
+                                fontSize: 10.5.sp,
+                                fontWeight: FontWeight.w700,
+                                color: isYearly ? const Color(0xFF15803D) : const Color(0xFF475569),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
+                  if (isYearly) ...[
+                    SizedBox(height: 4.h),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '(\$6.67/month equivalent)',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ],
 
                   SizedBox(height: 20.h),
                   const Divider(color: Color(0xFFF1F5F9), thickness: 1),
@@ -663,16 +686,20 @@ class SubscriptionView extends GetView<SubscriptionController> {
 
   /// Trust & Security Signals
   Widget _buildTrustBadges() {
-    final storeName = Platform.isIOS ? 'Apple App Store' : 'Google Play';
+    final storeName = Platform.isIOS ? 'App Store' : 'Google Play';
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(14.r),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12.w,
+        runSpacing: 6.h,
         children: [
           _buildTrustItem(Icons.verified_user_rounded, 'Verified by $storeName'),
           _buildTrustItem(Icons.bolt_rounded, 'Instant Activation'),
@@ -684,9 +711,10 @@ class SubscriptionView extends GetView<SubscriptionController> {
 
   Widget _buildTrustItem(IconData icon, String text) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14.sp, color: const Color(0xFF1550A6)),
-        SizedBox(width: 5.w),
+        Icon(icon, size: 13.5.sp, color: const Color(0xFF1550A6)),
+        SizedBox(width: 4.w),
         Text(
           text,
           style: GoogleFonts.inter(

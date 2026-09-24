@@ -197,7 +197,7 @@ class CitizenHomeView extends GetView<CitizenHomeController> {
                       ],
                     ),
                     SizedBox(height: 12.h),
-                    // Action Bar: ID Chip + Show QR Pill + Scan QR Pill (Overflow-safe scroll)
+                    // Action Bar: ID Chip + Show QR Pill
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
@@ -275,44 +275,6 @@ class CitizenHomeView extends GetView<CitizenHomeController> {
                                     SizedBox(width: 4.w),
                                     Text(
                                       'QR Card',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10.5.sp,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 8.w),
-                            GestureDetector(
-                              onTap: controller.openQrScanner,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w,
-                                  vertical: 3.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(6.r),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.4),
-                                    width: 0.8.w,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.qr_code_scanner_rounded,
-                                      size: 13.sp,
-                                      color: Colors.white,
-                                    ),
-                                    SizedBox(width: 4.w),
-                                    Text(
-                                      'Scan QR',
                                       style: GoogleFonts.inter(
                                         fontSize: 10.5.sp,
                                         fontWeight: FontWeight.w700,
