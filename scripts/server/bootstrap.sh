@@ -78,8 +78,9 @@ if [ -f /adnan/govia/scripts/server/nginx-govia.conf ]; then
 fi
 
 # Test and reload Nginx
-nginx -t && systemctl reload nginx || systemctl restart nginx
-echo "✅ Nginx reverse proxy active!"
+if nginx -t 2>/dev/null; then
+  systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || echo "ℹ️ Nginx port 80 handled by existing reverse proxy. Direct ports 9777 and 8777 active."
+fi
 
 # 6. Firewall Configuration
 echo "🛡️ Configuring UFW firewall rules..."

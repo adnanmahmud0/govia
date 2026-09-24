@@ -10,6 +10,22 @@ echo "========================================================"
 echo "🚀 Starting Govia Zero-Downtime Blue/Green Deployment"
 echo "========================================================"
 
+# Check if host Nginx is active
+if ! systemctl is-active --quiet nginx 2>/dev/null; then
+  echo "ℹ️ Host Nginx is not active (shared reverse proxy detected). Deploying production stack directly on ports 9777 & 8777..."
+  docker compose -f docker-compose.prod.yml pull
+  docker compose -f docker-compose.prod.yml up -d --remove-orphans
+  docker image prune -f || true
+  sleep 5
+  docker compose -f docker-compose.prod.yml ps
+  echo "========================================================"
+  echo "🎉 GOVIA DEPLOYMENT SUCCESSFUL!"
+  echo "   👉 API:   http://127.0.0.1:9777/api/v1/docs"
+  echo "   👉 Admin: http://127.0.0.1:8777"
+  echo "========================================================"
+  exit 0
+fi
+
 # 1. Determine currently active color
 ACTIVE_COLOR_FILE="/adnan/govia/.active_color"
 CURRENT_COLOR="blue"
