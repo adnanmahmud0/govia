@@ -40,51 +40,28 @@ class BailBondsmanProfileView extends GetView<BailBondsmanProfileController> {
               ),
               child: Row(
                 children: [
-                  // Profile image with QR trigger
-                  GestureDetector(
-                    onTap: controller.openQrDialog,
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 68.r,
-                          height: 68.r,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2.w),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(34.r),
-                            child: Obx(() {
-                              final url = controller.avatarUrl.value;
-                              if (url.isNotEmpty) {
-                                return Image.network(
-                                  url,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      _buildAvatarFallback(),
-                                );
-                              }
-                              return _buildAvatarFallback();
-                            }),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(4.r),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.qr_code_2_rounded,
-                              color: const Color(0xFF114FA8),
-                              size: 14.sp,
-                            ),
-                          ),
-                        ),
-                      ],
+                  // Profile image
+                  Container(
+                    width: 68.r,
+                    height: 68.r,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.w),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(34.r),
+                      child: Obx(() {
+                        final url = controller.avatarUrl.value;
+                        if (url.isNotEmpty) {
+                          return Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildAvatarFallback(),
+                          );
+                        }
+                        return _buildAvatarFallback();
+                      }),
                     ),
                   ),
                   SizedBox(width: 16.w),
@@ -249,29 +226,6 @@ class BailBondsmanProfileView extends GetView<BailBondsmanProfileController> {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  GestureDetector(
-                    onTap: controller.openQrScanner,
-                    child: Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          width: 1.w,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: Colors.white,
-                          size: 20.sp,
-                        ),
-                      ),
                     ),
                   ),
                 ],

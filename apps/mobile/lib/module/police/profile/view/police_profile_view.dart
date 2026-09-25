@@ -250,56 +250,28 @@ class PoliceProfileView extends GetView<PoliceProfileController> {
                     ),
                     SizedBox(width: 8.w),
 
-                    // Top right actions: QR Scanner circular button + Settings button
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: controller.openQrScanner,
-                          child: Container(
-                            width: 38.w,
-                            height: 38.w,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                width: 1.w,
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.qr_code_scanner_rounded,
-                                color: Colors.white,
-                                size: 19.sp,
-                              ),
-                            ),
+                    // Top right action: Settings button
+                    GestureDetector(
+                      onTap: () => Get.toNamed(AppRoutes.policeSettings),
+                      child: Container(
+                        width: 38.w,
+                        height: 38.w,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1.w,
                           ),
                         ),
-                        SizedBox(width: 6.w),
-                        GestureDetector(
-                          onTap: () => Get.toNamed(AppRoutes.policeSettings),
-                          child: Container(
-                            width: 38.w,
-                            height: 38.w,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                width: 1.w,
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.settings_outlined,
-                                color: Colors.white,
-                                size: 19.sp,
-                              ),
-                            ),
+                        child: Center(
+                          child: Icon(
+                            Icons.settings_outlined,
+                            color: Colors.white,
+                            size: 19.sp,
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),

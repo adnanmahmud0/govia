@@ -140,81 +140,53 @@ class PoliceHomeView extends GetView<PoliceHomeController> {
                           ),
                           SizedBox(width: 10.w),
 
-                          // Top Right Actions: QR Scanner & Notification Bell
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GestureDetector(
-                                onTap: controller.openQrScanner,
-                                child: Container(
-                                  width: 42.r,
-                                  height: 42.r,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.25),
-                                      width: 1.w,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.qr_code_scanner_rounded,
-                                      color: Colors.white,
-                                      size: 21.sp,
-                                    ),
-                                  ),
+                          // Top Right Action: Notification Bell
+                          GestureDetector(
+                            onTap: () => controller.openNotifications(),
+                            child: Container(
+                              width: 42.r,
+                              height: 42.r,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                  width: 1.w,
                                 ),
                               ),
-                              SizedBox(width: 8.w),
-                              GestureDetector(
-                                onTap: () => controller.openNotifications(),
-                                child: Container(
-                                  width: 42.r,
-                                  height: 42.r,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.25),
-                                      width: 1.w,
+                              child: Center(
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Icon(
+                                      Icons.notifications_none_rounded,
+                                      color: Colors.white,
+                                      size: 23.sp,
                                     ),
-                                  ),
-                                  child: Center(
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        Icon(
-                                          Icons.notifications_none_rounded,
-                                          color: Colors.white,
-                                          size: 23.sp,
-                                        ),
-                                        if (controller.unreadNotifications.value > 0)
-                                          Positioned(
-                                            top: -2.r,
-                                            right: -2.r,
-                                            child: Container(
-                                              padding: EdgeInsets.all(4.r),
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFFEF4444),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Text(
-                                                '${controller.unreadNotifications.value}',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 9.sp,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
+                                    if (controller.unreadNotifications.value > 0)
+                                      Positioned(
+                                        top: -2.r,
+                                        right: -2.r,
+                                        child: Container(
+                                          padding: EdgeInsets.all(4.r),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFEF4444),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Text(
+                                            '${controller.unreadNotifications.value}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 9.sp,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                  ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ],
                       ),

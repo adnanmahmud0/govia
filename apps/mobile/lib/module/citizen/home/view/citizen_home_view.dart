@@ -123,76 +123,48 @@ class CitizenHomeView extends GetView<CitizenHomeController> {
                           ),
                         ),
                         SizedBox(width: 10.w),
-                        // Top Right Actions: QR Scanner & Notification Bell
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GestureDetector(
-                              onTap: controller.openQrScanner,
-                              child: Container(
-                                width: 42.r,
-                                height: 42.r,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.25),
-                                    width: 1.w,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.qr_code_scanner_rounded,
-                                    color: Colors.white,
-                                    size: 21.sp,
-                                  ),
-                                ),
+                        // Top Right Action: Notification Bell
+                        GestureDetector(
+                          onTap: () => Get.toNamed(AppRoutes.citizenNotification),
+                          child: Container(
+                            width: 42.r,
+                            height: 42.r,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                                width: 1.w,
                               ),
                             ),
-                            SizedBox(width: 8.w),
-                            GestureDetector(
-                              onTap: () => Get.toNamed(AppRoutes.citizenNotification),
-                              child: Container(
-                                width: 42.r,
-                                height: 42.r,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.25),
-                                    width: 1.w,
-                                  ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: Colors.white,
+                                  size: 23.sp,
                                 ),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.notifications_none_rounded,
-                                      color: Colors.white,
-                                      size: 23.sp,
-                                    ),
-                                    Obx(() {
-                                      if (controller.unreadNotificationCount.value > 0) {
-                                        return Positioned(
-                                          top: 10.h,
-                                          right: 10.w,
-                                          child: Container(
-                                            width: 8.r,
-                                            height: 8.r,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFEF4444), // Crimson Alert Dot
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    }),
-                                  ],
-                                ),
-                              ),
+                                Obx(() {
+                                  if (controller.unreadNotificationCount.value > 0) {
+                                    return Positioned(
+                                      top: 10.h,
+                                      right: 10.w,
+                                      child: Container(
+                                        width: 8.r,
+                                        height: 8.r,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFEF4444), // Crimson Alert Dot
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                }),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),

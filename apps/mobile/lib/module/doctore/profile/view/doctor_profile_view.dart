@@ -281,29 +281,6 @@ class DoctorProfileView extends GetView<DoctorProfileController> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 8.w),
-                    GestureDetector(
-                      onTap: controller.openQrScanner,
-                      child: Container(
-                        width: 40.w,
-                        height: 40.w,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            width: 1.w,
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.qr_code_scanner_rounded,
-                            color: Colors.white,
-                            size: 20.sp,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

@@ -119,84 +119,56 @@ class DoctorHomeView extends GetView<DoctorHomeController> {
                             ),
                             SizedBox(width: 10.w),
 
-                            // Top Right Actions: QR Scanner & Notification Bell
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                GestureDetector(
-                                  onTap: controller.openQrScanner,
-                                  child: Container(
-                                    width: 42.r,
-                                    height: 42.r,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.15),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.25),
-                                        width: 1.w,
+                            // Top Right Action: Notification Bell
+                            GestureDetector(
+                              onTap: () => controller.openNotifications(),
+                              child: Obx(() {
+                                final unread = controller.unreadNotifications.value;
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 42.r,
+                                      height: 42.r,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.15),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.25),
+                                          width: 1.w,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.notifications_none_rounded,
+                                          color: Colors.white,
+                                          size: 23.sp,
+                                        ),
                                       ),
                                     ),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.qr_code_scanner_rounded,
-                                        color: Colors.white,
-                                        size: 21.sp,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 8.w),
-                                GestureDetector(
-                                  onTap: () => controller.openNotifications(),
-                                  child: Obx(() {
-                                    final unread = controller.unreadNotifications.value;
-                                    return Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        Container(
-                                          width: 42.r,
-                                          height: 42.r,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.15),
+                                    if (unread > 0)
+                                      Positioned(
+                                        top: -2.r,
+                                        right: -2.r,
+                                        child: Container(
+                                          padding: EdgeInsets.all(4.r),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFEF4444),
                                             shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.white.withValues(alpha: 0.25),
-                                              width: 1.w,
-                                            ),
                                           ),
-                                          child: Center(
-                                            child: Icon(
-                                              Icons.notifications_none_rounded,
+                                          child: Text(
+                                            unread > 9 ? '9+' : '$unread',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 9.sp,
+                                              fontWeight: FontWeight.w800,
                                               color: Colors.white,
-                                              size: 23.sp,
                                             ),
                                           ),
                                         ),
-                                        if (unread > 0)
-                                          Positioned(
-                                            top: -2.r,
-                                            right: -2.r,
-                                            child: Container(
-                                              padding: EdgeInsets.all(4.r),
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFFEF4444),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Text(
-                                                unread > 9 ? '9+' : '$unread',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 9.sp,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    );
-                                  }),
-                                ),
-                              ],
+                                      ),
+                                  ],
+                                );
+                              }),
                             ),
                           ],
                         ),
