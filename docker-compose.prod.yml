@@ -85,6 +85,15 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_BUCKET: ${AWS_BUCKET:-govia-meeting-recordings}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-com.govia.app}
+      APPLE_SHARED_SECRET: ${APPLE_SHARED_SECRET:-}
+      APPLE_ENVIRONMENT: ${APPLE_ENVIRONMENT:-sandbox}
+      GOOGLE_PACKAGE_NAME: ${GOOGLE_PACKAGE_NAME:-com.govia.app}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:-}
     volumes:
       - govia_uploads:/app/apps/backend/uploads
       - govia_logs:/app/apps/backend/winston
