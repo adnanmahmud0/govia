@@ -338,8 +338,7 @@ const redeemGiftCode = async (
 
   const recipientName = recipientDoc.name || 'Govia Citizen';
   const recipientEmail = recipientDoc.email || '';
-  const recipientAvatar =
-    (recipientDoc as any).image || (recipientDoc as any).profilePicture || '';
+  const recipientAvatar = recipientDoc.image || '';
 
   // Atomic find and update: ONLY succeed if code is AVAILABLE and not expired
   const updatedCode = await GiftCode.findOneAndUpdate(

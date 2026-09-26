@@ -17,26 +17,28 @@ class MyGiftedCodesList extends GetView<GiftingController> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Gifted Codes & Tracking',
-                  style: GoogleFonts.inter(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My Gifted Codes & Tracking',
+                    style: GoogleFonts.inter(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
                   ),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  'Track unclaimed codes and who redeemed each pass.',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5.sp,
-                    color: const Color(0xFF64748B),
+                  SizedBox(height: 4.h),
+                  Text(
+                    'Track unclaimed codes and who redeemed each pass.',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5.sp,
+                      color: const Color(0xFF64748B),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.refresh_rounded, color: Color(0xFF1550A6)),

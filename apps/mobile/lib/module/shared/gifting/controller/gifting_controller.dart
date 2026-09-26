@@ -19,8 +19,13 @@ class GiftingController extends GetxController {
   final RxInt selectedTab = 0.obs;
 
   // Packages State
-  final RxList<GiftPackageModel> packages = <GiftPackageModel>[].obs;
-  final Rxn<GiftPackageModel> selectedPackage = Rxn<GiftPackageModel>();
+  final RxList<GiftPackageModel> packages =
+      <GiftPackageModel>[...GiftPackageModel.defaultPackages].obs;
+  final Rxn<GiftPackageModel> selectedPackage = Rxn<GiftPackageModel>(
+    GiftPackageModel.defaultPackages.isNotEmpty
+        ? GiftPackageModel.defaultPackages.first
+        : null,
+  );
   final RxBool isLoadingPackages = false.obs;
   final RxBool isPurchasing = false.obs;
 
@@ -147,8 +152,13 @@ class GiftingController extends GetxController {
       final items = await _apiService.fetchGiftPackages();
       if (items.isNotEmpty) {
         packages.assignAll(items);
-        selectedPackage.value = items.first;
+        if (selectedPackage.value == null ||
+            !packages.any((p) => p.productId == selectedPackage.value?.productId)) {
+          selectedPackage.value = items.first;
+        }
       }
+    } catch (_) {
+      // Maintain default packages on error
     } finally {
       isLoadingPackages.value = false;
     }

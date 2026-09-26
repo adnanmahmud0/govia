@@ -202,7 +202,10 @@ class GiftPackageSelector extends GetView<GiftingController> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6.w,
+                          runSpacing: 4.h,
                           children: [
                             Text(
                               pkg.title,
@@ -212,8 +215,7 @@ class GiftPackageSelector extends GetView<GiftingController> {
                                 color: const Color(0xFF0F172A),
                               ),
                             ),
-                            if (pkg.badge != null) ...[
-                              SizedBox(width: 8.w),
+                            if (pkg.badge != null)
                               Container(
                                 padding: EdgeInsets.symmetric(
                                     horizontal: 8.w, vertical: 2.h),
@@ -234,7 +236,6 @@ class GiftPackageSelector extends GetView<GiftingController> {
                                   ),
                                 ),
                               ),
-                            ],
                           ],
                         ),
                         SizedBox(height: 4.h),

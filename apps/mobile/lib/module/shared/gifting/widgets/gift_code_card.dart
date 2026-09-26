@@ -46,26 +46,33 @@ class GiftCodeCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    codeItem.plan.contains('YEARLY')
-                        ? Icons.verified_rounded
-                        : Icons.shield_rounded,
-                    color: const Color(0xFF1550A6),
-                    size: 16.sp,
-                  ),
-                  SizedBox(width: 6.w),
-                  Text(
-                    codeItem.formattedPlanTitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0F172A),
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      codeItem.plan.contains('YEARLY')
+                          ? Icons.verified_rounded
+                          : Icons.shield_rounded,
+                      color: const Color(0xFF1550A6),
+                      size: 16.sp,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        codeItem.formattedPlanTitle,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              SizedBox(width: 8.w),
 
               // Status Pill
               Container(
