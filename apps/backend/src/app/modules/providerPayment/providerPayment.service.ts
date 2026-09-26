@@ -602,14 +602,46 @@ const processEncounterAutoPayout = async (
 const handleStripeWebhook = async (signature: string, rawBody: Buffer | string) => {
   const stripe = getStripe();
   const webhookSecret = config.stripe.webhookSecret;
+  const connectWebhookSecret = config.stripe.connectWebhookSecret;
 
-  let event: Stripe.Event;
+  let event: Stripe.Event | null = null;
 
-  if (webhookSecret) {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  if (webhookSecret || connectWebhookSecret) {
+    if (webhookSecret) {
+      try {
+        event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      } catch (err: unknown) {
+        if (connectWebhookSecret) {
+          try {
+            event = stripe.webhooks.constructEvent(rawBody, signature, connectWebhookSecret);
+          } catch {
+            logger.error('⚠️ Stripe Webhook signature verification failed for both account and connect secrets.');
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid webhook signature.');
+          }
+        } else {
+          logger.error('⚠️ Stripe Webhook signature verification failed:', err);
+          throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid webhook signature.');
+        }
+      }
+    } else if (connectWebhookSecret) {
+      try {
+        event = stripe.webhooks.constructEvent(rawBody, signature, connectWebhookSecret);
+      } catch (err: unknown) {
+        logger.error('⚠️ Stripe Connect Webhook signature verification failed:', err);
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid connect webhook signature.');
+      }
+    }
   } else {
-    // If webhook secret not configured yet, parse body safely for test mode
-    event = JSON.parse(rawBody.toString()) as Stripe.Event;
+    // If webhook secrets not configured yet, parse body safely for test mode
+    try {
+      event = JSON.parse(rawBody.toString()) as Stripe.Event;
+    } catch {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid webhook payload.');
+    }
+  }
+
+  if (!event) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Stripe event not recognized.');
   }
 
   switch (event.type) {
@@ -638,6 +670,18 @@ const handleStripeWebhook = async (signature: string, rawBody: Buffer | string) 
           logger.info(`Updated Stripe status for provider ${user.name}: ${user.stripeAccountStatus}`);
         }
       }
+      break;
+    }
+
+    case 'payout.paid': {
+      const payout = event.data.object as Stripe.Payout;
+      logger.info(`💰 Stripe Express Payout successfully deposited: $${((payout.amount || 0) / 100).toFixed(2)} (${payout.id})`);
+      break;
+    }
+
+    case 'payout.failed': {
+      const payout = event.data.object as Stripe.Payout;
+      logger.warn(`⚠️ Stripe Express Payout failed: $${((payout.amount || 0) / 100).toFixed(2)} (${payout.id}): ${payout.failure_message}`);
       break;
     }
 
