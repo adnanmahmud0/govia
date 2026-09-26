@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/core/services/call_background_service.dart';
 import 'package:gsabino365/core/services/wakelock_service.dart';
@@ -154,6 +155,22 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       return;
     }
 
+    if (meeting != null) {
+      final st = meeting!.status.toUpperCase();
+      if (st == 'COMPLETED' || st == 'CANCELLED' || meeting!.endedAt != null) {
+        isLoading.value = false;
+        hasError.value = true;
+        errorMessage.value = 'This consultation session has already ended.';
+        Helpers.showWarning('This consultation session has already ended.');
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.currentRoute == AppRoutes.doctorLiveCall) {
+            Get.back();
+          }
+        });
+        return;
+      }
+    }
+
     // 2. Resolve LiveKit URL & Token
     String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-0f13ke90.livekit.cloud';
     String? token;
@@ -179,6 +196,18 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       final tokenData = await meetingRepo.getMeetingToken(meetingId!);
       if (tokenData != null) {
         token = tokenData['token']?.toString() ?? tokenData['livekitToken']?.toString();
+      } else {
+        final err = meetingRepo.lastErrorMessage ?? 'This consultation session has ended and is no longer available to join.';
+        isLoading.value = false;
+        hasError.value = true;
+        errorMessage.value = err;
+        Helpers.showWarning(err);
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.currentRoute == AppRoutes.doctorLiveCall) {
+            Get.back();
+          }
+        });
+        return;
       }
     }
 
@@ -186,6 +215,19 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
     final apiKey = dotenv.env['LIVEKIT_API_KEY'] ?? 'API6NLt8C36WoQ8';
     final apiSecret = dotenv.env['LIVEKIT_API_SECRET'] ?? 'hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY';
     if (token == null || token.isEmpty) {
+      if (meetingId != null && meetingId!.isNotEmpty) {
+        final err = meetingRepo.lastErrorMessage ?? 'This consultation session has ended and is no longer available to join.';
+        isLoading.value = false;
+        hasError.value = true;
+        errorMessage.value = err;
+        Helpers.showWarning(err);
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.currentRoute == AppRoutes.doctorLiveCall) {
+            Get.back();
+          }
+        });
+        return;
+      }
       String doctorName = 'Doctor';
       String doctorId = 'doctor_${DateTime.now().millisecondsSinceEpoch}';
       if (Get.isRegistered<AuthService>()) {
@@ -478,7 +520,15 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
     try {
       final map = jsonDecode(jsonPayload) as Map<String, dynamic>;
       if (map['type'] != 'meeting_join') return;
-      meetingId = map['meetingId']?.toString();
+      final mId = map['meetingId']?.toString();
+      if (mId != null && mId.isNotEmpty) {
+        final tokenData = await meetingRepo.getMeetingToken(mId);
+        if (tokenData == null) {
+          Helpers.showWarning('This consultation session has already ended.');
+          return;
+        }
+      }
+      meetingId = mId;
       roomName = map['roomName']?.toString() ?? 'govia_$meetingId';
       final token = map['token']?.toString();
       final url = map['livekitUrl']?.toString() ??

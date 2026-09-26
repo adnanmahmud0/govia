@@ -6,6 +6,7 @@ import 'package:gsabino365/config/constants/api_constants.dart';
 import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
+import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/core/widgets/user_qr_card_dialog.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
 import 'package:gsabino365/data/models/user_model.dart';
@@ -150,6 +151,10 @@ class DoctorHomeController extends GetxController {
   /// Direct 1-tap join of an active crisis session
   void joinActiveCrisis(MeetingModel meeting) {
     HapticFeedback.mediumImpact();
+    if (meeting.status == 'COMPLETED' || meeting.status == 'CANCELLED' || meeting.endedAt != null) {
+      Helpers.showWarning('This session has already ended.');
+      return;
+    }
     Get.toNamed(
       AppRoutes.doctorLiveCall,
       arguments: meeting,

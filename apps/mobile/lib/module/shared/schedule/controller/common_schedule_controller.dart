@@ -176,8 +176,12 @@ class CommonScheduleController extends GetxController {
     final topic = meeting['topic']?.toString() ?? 'Consultation Session';
     final meetingId = meeting['_id']?.toString() ?? meeting['id']?.toString() ?? '';
 
-    if (status == 'COMPLETED') {
-      showRecordingDialog(meeting);
+    if (status == 'COMPLETED' || status == 'CANCELLED' || meeting['endedAt'] != null) {
+      if (meeting['recordingUrl'] != null && meeting['recordingUrl'].toString().isNotEmpty) {
+        showRecordingDialog(meeting);
+      } else {
+        Helpers.showWarning('This meeting has already ended.');
+      }
       return;
     }
 
@@ -221,32 +225,30 @@ class CommonScheduleController extends GetxController {
     }
 
     // Join meeting via repository if ID exists
+    if (meetingId.isEmpty) {
+      Helpers.showWarning('Invalid meeting identifier.');
+      return;
+    }
+
     MeetingModel? meetingModel;
     try {
-      if (meetingId.isNotEmpty) {
-        meetingModel = await _meetingRepo.joinMeeting(meetingId);
-      }
+      meetingModel = await _meetingRepo.joinMeeting(meetingId);
     } catch (_) {}
 
-    meetingModel ??= MeetingModel(
-      id: meetingId,
-      roomName: meeting['roomName']?.toString() ?? 'room_$meetingId',
-      topic: topic,
-      status: 'ACTIVE',
-      meetingType: meetingType,
-      hostId: meeting['hostId']?.toString(),
-      callerName: meeting['callerName']?.toString() ?? 'Client',
-      callerAvatar: meeting['callerAvatar']?.toString(),
-      createdAt: DateTime.now(),
-    );
+    if (meetingModel == null) {
+      final errorMsg = _meetingRepo.lastErrorMessage ?? 'This meeting has ended and is no longer available to join.';
+      Helpers.showWarning(errorMsg);
+      fetchMyMeetings();
+      return;
+    }
 
     // Route to live call screen depending on current user role
     if (userRole == 'MENTAL_HEALTH_PROFESSIONAL' || userRole == 'DOCTOR') {
       Get.toNamed(AppRoutes.doctorLiveCall, arguments: meetingModel);
     } else if (userRole == 'ATTORNEY' || userRole == 'POLICE' || userRole == 'BAIL_BONDSMAN') {
-      Get.toNamed(AppRoutes.attorneyLiveCall, arguments: {'meeting': meeting});
+      Get.toNamed(AppRoutes.attorneyLiveCall, arguments: {'meeting': meetingModel.toJson()});
     } else {
-      Get.toNamed(AppRoutes.citizenLiveCall, arguments: {'meeting': meeting});
+      Get.toNamed(AppRoutes.citizenLiveCall, arguments: {'meeting': meetingModel.toJson()});
     }
   }
 

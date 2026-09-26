@@ -17,6 +17,7 @@ import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/core/widgets/govia_video_player_view.dart';
+import 'package:gsabino365/data/repositories/meeting_repository.dart';
 
 class ChatController extends GetxController {
   ApiClient get _apiClient => Get.find<ApiClient>();
@@ -881,7 +882,7 @@ class ChatController extends GetxController {
     }
   }
 
-  void joinMeetingFromChat(Map<String, dynamic> meetingData) {
+  Future<void> joinMeetingFromChat(Map<String, dynamic> meetingData) async {
     HapticFeedback.mediumImpact();
 
     final status = meetingData['status']?.toString().toUpperCase() ?? 'ACTIVE';
@@ -889,9 +890,13 @@ class ChatController extends GetxController {
     final startTimeRaw = meetingData['startTime'];
     final durationMinutes = int.tryParse(meetingData['durationMinutes']?.toString() ?? '30') ?? 30;
     final topic = meetingData['topic']?.toString() ?? 'Consultation Meeting';
+    final meetingId = meetingData['_id']?.toString() ??
+        meetingData['id']?.toString() ??
+        meetingData['meetingId']?.toString() ??
+        '';
 
     // If meeting is completed or recording is ready
-    if (status == 'COMPLETED') {
+    if (status == 'COMPLETED' || status == 'CANCELLED' || meetingData['endedAt'] != null) {
       showMeetingEndedDialog(meetingData);
       return;
     }
@@ -938,6 +943,18 @@ class ChatController extends GetxController {
         }
       } catch (e) {
         debugPrint('Error parsing scheduled meeting time: $e');
+      }
+    }
+
+    // Verify with backend that meeting is still open
+    if (meetingId.isNotEmpty) {
+      final meetingRepo = Get.isRegistered<MeetingRepository>()
+          ? Get.find<MeetingRepository>()
+          : MeetingRepository(apiClient: Get.find<ApiClient>());
+      final joined = await meetingRepo.joinMeeting(meetingId);
+      if (joined == null) {
+        Helpers.showWarning('This meeting has ended and is no longer available to join.');
+        return;
       }
     }
 

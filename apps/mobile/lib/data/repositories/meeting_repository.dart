@@ -98,17 +98,25 @@ class MeetingRepository {
     }
   }
 
+  String? lastErrorMessage;
+
   /// GET /meetings/:id/token
   /// Fetches a fresh LiveKit room token for a meeting session.
   Future<Map<String, dynamic>?> getMeetingToken(String meetingId) async {
     try {
+      lastErrorMessage = null;
       final response = await apiClient.getData(ApiConstants.meetingToken(meetingId));
+      if (response.statusCode != 200) {
+        lastErrorMessage = response.data?['message']?.toString() ?? 'Meeting has ended';
+        return null;
+      }
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) {
         return data;
       }
       return null;
     } catch (e) {
+      lastErrorMessage = e.toString();
       return null;
     }
   }
@@ -141,10 +149,15 @@ class MeetingRepository {
   /// Attorney joins an active meeting session and gets LiveKit credentials.
   Future<MeetingModel?> joinMeeting(String meetingId) async {
     try {
+      lastErrorMessage = null;
       final response = await apiClient.postData(
         ApiConstants.joinMeeting(meetingId),
         {},
       );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        lastErrorMessage = response.data?['message']?.toString() ?? 'This meeting has ended and is no longer available to join.';
+        return null;
+      }
       final responseData = response.data;
       if (responseData == null) return null;
 
@@ -154,6 +167,7 @@ class MeetingRepository {
       }
       return null;
     } catch (e) {
+      lastErrorMessage = e.toString();
       return null;
     }
   }

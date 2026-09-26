@@ -236,7 +236,7 @@ const leaveMeeting = catchAsync(async (req: Request, res: Response) => {
 const rejoinMeeting = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { id } = req.params;
-  MeetingService.hostRejoinedMeeting(id, userId);
+  await MeetingService.hostRejoinedMeeting(id, userId);
 
   sendResponse(res, {
     success: true,

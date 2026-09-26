@@ -87,31 +87,44 @@ class BailBondsmanActiveRequestsController extends GetxController {
     final meetingId = item['id']?.toString() ?? '';
     final meetingObj = item['meeting'];
 
+    if (meetingId.isEmpty) {
+      Helpers.showWarning('Invalid encounter ID.');
+      return;
+    }
+
     MeetingModel? meetingModel;
     if (meetingObj is MeetingModel) {
+      if (meetingObj.status == 'COMPLETED' || meetingObj.status == 'CANCELLED' || meetingObj.endedAt != null) {
+        Helpers.showWarning('This encounter has already ended.');
+        requests.removeWhere((r) => r['id'] == meetingId);
+        return;
+      }
       meetingModel = meetingObj;
     }
 
     try {
-      if (_meetingRepo != null && meetingId.isNotEmpty) {
+      if (_meetingRepo != null) {
         final joined = await _meetingRepo!.joinMeeting(meetingId);
-        if (joined != null) {
-          meetingModel = joined;
+        if (joined == null) {
+          final msg = _meetingRepo!.lastErrorMessage ?? 'This encounter has already ended.';
+          Helpers.showWarning(msg);
+          requests.removeWhere((r) => r['id'] == meetingId);
+          return;
         }
+        meetingModel = joined;
       }
     } catch (e) {
       debugPrint('Note: Join participant registration returned: $e');
+      Helpers.showWarning('This encounter has ended or is unavailable.');
+      requests.removeWhere((r) => r['id'] == meetingId);
+      return;
     }
 
-    meetingModel ??= MeetingModel(
-      id: meetingId,
-      roomName: item['code']?.toString() ?? 'govia_$meetingId',
-      topic: item['location']?.toString() ?? 'Bail Assistance',
-      status: 'ACTIVE',
-      meetingType: 'EMERGENCY',
-      callerName: item['name']?.toString() ?? 'Citizen Caller',
-      createdAt: DateTime.now(),
-    );
+    if (meetingModel == null) {
+      Helpers.showWarning('This encounter is unavailable.');
+      requests.removeWhere((r) => r['id'] == meetingId);
+      return;
+    }
 
     Get.toNamed(
       AppRoutes.attorneyLiveCall,

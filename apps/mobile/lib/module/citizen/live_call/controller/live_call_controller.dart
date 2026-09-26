@@ -258,6 +258,22 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       }
     }
 
+    if (currentMeeting.value != null) {
+      final st = currentMeeting.value!.status.toUpperCase();
+      if (st == 'COMPLETED' || st == 'CANCELLED' || currentMeeting.value!.endedAt != null) {
+        isLoading.value = false;
+        hasError.value = true;
+        errorMessage.value = 'This meeting has ended and is no longer available to join.';
+        Helpers.showWarning('This meeting has ended and is no longer available to join.');
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.currentRoute == AppRoutes.citizenLiveCall) {
+            Get.back();
+          }
+        });
+        return;
+      }
+    }
+
     if (isHost.value && liveLatitude.value == null) {
       _syncHostLocationInBackground();
     }
@@ -267,14 +283,40 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       if (tokenData != null) {
         token = tokenData['token']?.toString() ??
             tokenData['livekitToken']?.toString();
+      } else {
+        final err = meetingRepo.lastErrorMessage ?? 'This meeting has ended and is no longer available to join.';
+        isLoading.value = false;
+        hasError.value = true;
+        errorMessage.value = err;
+        Helpers.showWarning(err);
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.currentRoute == AppRoutes.citizenLiveCall) {
+            Get.back();
+          }
+        });
+        return;
       }
     }
 
-    final apiKey = dotenv.env['LIVEKIT_API_KEY'] ?? 'API6NLt8C36WoQ8';
-    final apiSecret = dotenv.env['LIVEKIT_API_SECRET'] ?? 'hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY';
     if (token == null || token.isEmpty) {
+      if (mId != null && mId.isNotEmpty) {
+        final err = meetingRepo.lastErrorMessage ?? 'This meeting has ended and is no longer available to join.';
+        isLoading.value = false;
+        hasError.value = true;
+        errorMessage.value = err;
+        Helpers.showWarning(err);
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.currentRoute == AppRoutes.citizenLiveCall) {
+            Get.back();
+          }
+        });
+        return;
+      }
+
+      final apiKey = dotenv.env['LIVEKIT_API_KEY'] ?? 'API6NLt8C36WoQ8';
+      final apiSecret = dotenv.env['LIVEKIT_API_SECRET'] ?? 'hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY';
       String userName = 'Citizen User';
-      String userId = mId ?? 'citizen_${DateTime.now().millisecondsSinceEpoch}';
+      String userId = 'citizen_${DateTime.now().millisecondsSinceEpoch}';
       if (Get.isRegistered<AuthService>()) {
         final auth = Get.find<AuthService>();
         userName = auth.currentUser.value?.name ?? 'Citizen User';

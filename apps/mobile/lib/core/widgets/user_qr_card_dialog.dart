@@ -16,6 +16,7 @@ import 'package:gsabino365/config/constants/api_constants.dart';
 import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
+import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
 import 'package:gsabino365/data/repositories/meeting_repository.dart';
 import 'package:gsabino365/module/citizen/live_call/controller/live_call_controller.dart';
@@ -901,9 +902,23 @@ class _UserQrCardDialogState extends State<UserQrCardDialog>
               height: 48.h,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  Get.back();
                   final meetingId = data['meetingId']?.toString() ?? '';
                   final activeMeeting = data['activeMeeting'];
+
+                  if (activeMeeting is MeetingModel) {
+                    if (activeMeeting.status == 'COMPLETED' || activeMeeting.status == 'CANCELLED' || activeMeeting.endedAt != null) {
+                      Get.back();
+                      Helpers.showWarning('This encounter has already ended.');
+                      return;
+                    }
+                  } else if (activeMeeting is Map<String, dynamic>) {
+                    final st = activeMeeting['status']?.toString().toUpperCase();
+                    if (st == 'COMPLETED' || st == 'CANCELLED' || activeMeeting['endedAt'] != null) {
+                      Get.back();
+                      Helpers.showWarning('This encounter has already ended.');
+                      return;
+                    }
+                  }
 
                   MeetingModel? joinedMeeting;
                   if (meetingId.isNotEmpty) {
@@ -912,9 +927,20 @@ class _UserQrCardDialogState extends State<UserQrCardDialog>
                           ? Get.find<MeetingRepository>()
                           : MeetingRepository(apiClient: Get.find<ApiClient>());
                       joinedMeeting = await meetingRepo.joinMeeting(meetingId);
-                    } catch (_) {}
+                      if (joinedMeeting == null) {
+                        Get.back();
+                        final msg = meetingRepo.lastErrorMessage ?? 'This encounter has already ended.';
+                        Helpers.showWarning(msg);
+                        return;
+                      }
+                    } catch (_) {
+                      Get.back();
+                      Helpers.showWarning('This encounter has ended or is unavailable.');
+                      return;
+                    }
                   }
 
+                  Get.back();
                   final meetingArgs = joinedMeeting ?? activeMeeting ?? data;
 
                   if (currentRole == 'ATTORNEY' || currentRole == 'POLICE' || currentRole == 'BAIL_BONDSMAN') {

@@ -789,12 +789,24 @@ const joinMeeting = async (meetingId: string, userId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
   }
 
+  // Reject immediately if the meeting was already ended or cancelled
+  if (
+    meeting.status === 'COMPLETED' ||
+    meeting.status === 'CANCELLED' ||
+    meeting.endedAt
+  ) {
+    throw new ApiError(
+      StatusCodes.GONE,
+      'This meeting has ended and is no longer available to join.'
+    );
+  }
+
   const user = await User.findById(userId);
   const userObjectId = new Types.ObjectId(userId);
 
   // If host joins / rejoins, cancel any pending 5-minute auto-end timer
   if (meeting.userId.toString() === userId) {
-    hostRejoinedMeeting(meetingId, userId);
+    await hostRejoinedMeeting(meetingId, userId);
   }
 
   // If joiner is not the creator, register them as joined participant
@@ -1029,7 +1041,22 @@ const hostLeaveMeeting = async (meetingId: string, userId: string) => {
   }
 };
 
-const hostRejoinedMeeting = (meetingId: string, userId: string) => {
+const hostRejoinedMeeting = async (meetingId: string, userId: string) => {
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+  if (
+    meeting.status === 'COMPLETED' ||
+    meeting.status === 'CANCELLED' ||
+    meeting.endedAt
+  ) {
+    throw new ApiError(
+      StatusCodes.GONE,
+      'This meeting has ended and cannot be rejoined.'
+    );
+  }
+
   if (hostLeaveTimers.has(meetingId)) {
     clearTimeout(hostLeaveTimers.get(meetingId)!);
     hostLeaveTimers.delete(meetingId);
@@ -1188,6 +1215,30 @@ const endMeeting = async (userId: string, meetingId: string) => {
   }
 
   await meeting.save();
+
+  // Close the LiveKit room so all active participants are disconnected and no one can join
+  try {
+    let dbSetting, apiKey, apiSecret, livekitUrl;
+    try {
+      dbSetting = await import('../storageSetting/storageSetting.model').then(m => m.StorageSetting.findOne().sort({ updatedAt: -1 }));
+      apiKey = dbSetting?.livekitApiKey || config.livekit.apiKey;
+      apiSecret = dbSetting?.livekitApiSecret || config.livekit.apiSecret;
+      livekitUrl = dbSetting?.livekitUrl || config.livekit.url;
+    } catch (_) {
+      apiKey = config.livekit.apiKey;
+      apiSecret = config.livekit.apiSecret;
+      livekitUrl = config.livekit.url;
+    }
+
+    const { RoomServiceClient } = await import('livekit-server-sdk');
+    const host = livekitUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://');
+    const roomService = new RoomServiceClient(host, apiKey, apiSecret);
+    const roomName = meeting.roomName || meeting.sessionName || `govia_${meeting._id}`;
+    await roomService.deleteRoom(roomName);
+    debug(`[Meeting] ✅ Closed LiveKit room "${roomName}" so no one can join.`);
+  } catch (err) {
+    debugError('[Meeting] Error deleting LiveKit room on end:', (err as Error)?.message || err);
+  }
 
   await Message.updateMany(
     { meetingId: meeting._id },
@@ -1381,6 +1432,18 @@ const getMeetingSdkToken = async (meetingId: string, userId: string) => {
   const meeting = await Meeting.findById(meetingId);
   if (!meeting) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting not found');
+  }
+
+  // Reject token request if meeting has ended
+  if (
+    meeting.status === 'COMPLETED' ||
+    meeting.status === 'CANCELLED' ||
+    meeting.endedAt
+  ) {
+    throw new ApiError(
+      StatusCodes.GONE,
+      'This meeting has ended and is no longer available to join.'
+    );
   }
 
   const user = await User.findById(userId);

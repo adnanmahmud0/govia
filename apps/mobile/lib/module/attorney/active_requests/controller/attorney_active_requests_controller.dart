@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
 import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/location_service.dart';
+import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
 import 'package:gsabino365/data/repositories/meeting_repository.dart';
 import 'package:gsabino365/module/attorney/profile/controller/attorney_profile_controller.dart';
@@ -155,65 +156,59 @@ class AttorneyActiveRequestsController extends GetxController {
     final meeting = request['meeting'];
     final meetingId = request['id']?.toString() ?? (meeting is MeetingModel ? meeting.id : '');
 
-    if (meeting is MeetingModel) {
-      isJoining.value = true;
-      joiningMeetingId.value = meeting.id;
+    if (meetingId.isEmpty) {
+      Helpers.showWarning('Invalid encounter ID.');
+      return;
+    }
 
-      try {
-        final joined = await meetingRepo.joinMeeting(meeting.id);
-        isJoining.value = false;
-        joiningMeetingId.value = '';
+    isJoining.value = true;
+    joiningMeetingId.value = meetingId;
 
-        // Merge meeting metadata so the live call view has complete citizen name, avatar, start time, and fresh token
-        final effectiveMeeting = MeetingModel(
+    try {
+      final joined = await meetingRepo.joinMeeting(meetingId);
+      isJoining.value = false;
+      joiningMeetingId.value = '';
+
+      if (joined == null) {
+        final msg = meetingRepo.lastErrorMessage ?? 'This encounter has already ended.';
+        Helpers.showWarning(msg);
+        activeRequests.removeWhere((r) =>
+            r['id'] == meetingId ||
+            (r['meeting'] is MeetingModel && (r['meeting'] as MeetingModel).id == meetingId));
+        return;
+      }
+
+      MeetingModel effectiveMeeting;
+      if (meeting is MeetingModel) {
+        effectiveMeeting = MeetingModel(
           id: meeting.id,
-          roomName: (joined != null && joined.roomName.isNotEmpty)
-              ? joined.roomName
-              : meeting.roomName,
+          roomName: joined.roomName.isNotEmpty ? joined.roomName : meeting.roomName,
           topic: meeting.topic,
-          status: meeting.status,
+          status: joined.status,
           meetingType: meeting.meetingType,
-          token: joined?.token ?? meeting.token,
-          livekitUrl: joined?.livekitUrl ?? meeting.livekitUrl,
-          sessionName: joined?.sessionName ?? meeting.sessionName,
-          callerName: meeting.callerName ?? joined?.callerName,
-          callerPhone: meeting.callerPhone ?? joined?.callerPhone,
-          callerAvatar: meeting.callerAvatar ?? joined?.callerAvatar,
-          userId: meeting.userId ?? joined?.userId,
-          hostId: meeting.hostId ?? joined?.hostId,
-          createdAt: meeting.createdAt ?? joined?.createdAt,
+          token: joined.token ?? meeting.token,
+          livekitUrl: joined.livekitUrl ?? meeting.livekitUrl,
+          sessionName: joined.sessionName ?? meeting.sessionName,
+          callerName: meeting.callerName ?? joined.callerName,
+          callerPhone: meeting.callerPhone ?? joined.callerPhone,
+          callerAvatar: meeting.callerAvatar ?? joined.callerAvatar,
+          userId: meeting.userId ?? joined.userId,
+          hostId: meeting.hostId ?? joined.hostId,
+          createdAt: meeting.createdAt ?? joined.createdAt,
         );
+      } else {
+        effectiveMeeting = joined;
+      }
 
-        Get.toNamed(
-          AppRoutes.attorneyLiveCall,
-          arguments: effectiveMeeting,
-        );
-      } catch (e) {
-        isJoining.value = false;
-        joiningMeetingId.value = '';
-        Get.toNamed(
-          AppRoutes.attorneyLiveCall,
-          arguments: meeting,
-        );
-      }
-    } else if (meetingId.isNotEmpty) {
-      isJoining.value = true;
-      joiningMeetingId.value = meetingId;
-      try {
-        final joined = await meetingRepo.joinMeeting(meetingId);
-        isJoining.value = false;
-        joiningMeetingId.value = '';
-        Get.toNamed(
-          AppRoutes.attorneyLiveCall,
-          arguments: joined ?? request,
-        );
-      } catch (_) {
-        isJoining.value = false;
-        joiningMeetingId.value = '';
-        Get.toNamed(AppRoutes.attorneyLiveCall, arguments: request);
-      }
-    } else {
-      Get.toNamed(AppRoutes.attorneyLiveCall);
+      Get.toNamed(
+        AppRoutes.attorneyLiveCall,
+        arguments: effectiveMeeting,
+      );
+    } catch (e) {
+      isJoining.value = false;
+      joiningMeetingId.value = '';
+      Helpers.showWarning('This encounter has ended or is unavailable.');
+      activeRequests.removeWhere((r) => r['id'] == meetingId);
     }
   }
 

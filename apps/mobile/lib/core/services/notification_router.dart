@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
+import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/notification_model.dart';
 import 'package:gsabino365/module/citizen/vault/controller/citizen_vault_controller.dart';
 import 'package:gsabino365/module/citizen/vault/model/vault_models.dart';
@@ -106,6 +107,14 @@ class NotificationRouter {
   }
 
   static void _routeIncident(NotificationModel notif, String role) {
+    final status = notif.metadata?['status']?.toString().toUpperCase();
+    final isLive = notif.metadata?['isLive'];
+    if (isLive == false || status == 'COMPLETED' || status == 'CANCELLED' || notif.metadata?['endedAt'] != null) {
+      Helpers.showWarning('This encounter has already ended.');
+      _routeRecording(notif, role);
+      return;
+    }
+
     final meetingId = notif.resourceId.isNotEmpty
         ? notif.resourceId
         : (notif.metadata?['meetingId']?.toString() ?? '');
@@ -117,6 +126,7 @@ class NotificationRouter {
       'topic': notif.topic ?? notif.title,
       'isHost': role == 'CITIZEN',
       'category': 'EMERGENCY',
+      'status': status,
     };
 
     if (role == 'ATTORNEY' || role == 'POLICE' || role == 'BAIL_BONDSMAN') {
