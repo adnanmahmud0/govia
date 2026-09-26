@@ -6,7 +6,6 @@ import ApiError from '../../../errors/ApiError';
 import { logger } from '../../../shared/logger';
 import { User } from '../user/user.model';
 import { CommissionSetting, ProviderTransaction } from './providerPayment.model';
-import { IProviderTransaction } from './providerPayment.interface';
 import { USER_ROLES } from '../../../enums/user';
 import { NotificationService } from '../notification/notification.service';
 import { socketHelper } from '../../../helpers/socketHelper';
@@ -21,9 +20,7 @@ const getStripe = (): Stripe => {
         'Stripe secret key is not configured.'
       );
     }
-    stripeClient = new Stripe(config.stripe.secretKey, {
-      apiVersion: '2024-06-20' as any,
-    });
+    stripeClient = new Stripe(config.stripe.secretKey);
   }
   return stripeClient;
 };
@@ -154,7 +151,7 @@ const getStripeAccountStatus = async (userId: string) => {
       status: user.stripeAccountStatus,
       defaultCurrency: account.default_currency || 'usd',
     };
-  } catch (e: any) {
+  } catch (e: unknown) {
     logger.error('Error fetching Stripe account status:', e);
     return {
       hasAccount: true,
@@ -192,7 +189,7 @@ const getProviderDirectory = async (query: {
   const limit = Number(query.limit) || 20;
   const skip = (page - 1) * limit;
 
-  const filter: Record<string, any> = {
+  const filter: Record<string, unknown> = {
     status: 'active',
   };
 
@@ -469,9 +466,9 @@ const verifyAndActivateSession = async (citizenId: string, sessionId: string) =>
         },
       });
       transaction.stripeTransferId = transfer.id;
-    } catch (transferErr: any) {
+    } catch (transferErr: unknown) {
       logger.error('⚠️ Stripe Connect Transfer error for retainer:', transferErr);
-      transaction.failureReason = transferErr?.message || 'Transfer failed';
+      transaction.failureReason = transferErr instanceof Error ? transferErr.message : 'Transfer failed';
     }
   }
 
@@ -574,7 +571,7 @@ const processEncounterAutoPayout = async (
       meetingId: new Types.ObjectId(meetingId),
     });
 
-    logger.info(`✅ Auto-payout transferred $${providerAmount} to ${provider.name} for meeting ${meetingId}`);
+    logger.info(`✅ Auto-payout transferred $${providerAmount} to ${provider.name} for meeting ${meetingId} (tx: ${transaction.transactionId})`);
 
     // Notify provider
     await NotificationService.createNotification({
@@ -596,7 +593,7 @@ const processEncounterAutoPayout = async (
       amount: providerAmount,
       meetingId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('⚠️ processEncounterAutoPayout error:', error);
   }
 };
@@ -663,7 +660,7 @@ const getTransactions = async (query: {
   const limit = Number(query.limit) || 20;
   const skip = (page - 1) * limit;
 
-  const filter: Record<string, any> = {};
+  const filter: Record<string, unknown> = {};
 
   if (query.userId) {
     filter.$or = [

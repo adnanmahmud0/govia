@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   DollarSign,
   Percent,
@@ -64,12 +64,7 @@ export default function ProviderFinancePage() {
   const [filterType, setFilterType] = useState<string>("ALL");
   const [filterRole, setFilterRole] = useState<string>("ALL");
 
-  useEffect(() => {
-    fetchCommission();
-    fetchTransactions();
-  }, []);
-
-  const fetchCommission = async () => {
+  const fetchCommission = useCallback(async () => {
     try {
       const res = await api.get<CommissionSetting>(
         "/provider-payment/admin/commission"
@@ -81,9 +76,9 @@ export default function ProviderFinancePage() {
     } catch (err) {
       console.error("Error fetching commission setting:", err);
     }
-  };
+  }, []);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await api.get<{ transactions: ProviderTransaction[] }>(
@@ -97,7 +92,12 @@ export default function ProviderFinancePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchCommission();
+    fetchTransactions();
+  }, [fetchCommission, fetchTransactions]);
 
   const handleSaveCommission = async () => {
     setIsSavingCommission(true);
@@ -111,8 +111,8 @@ export default function ProviderFinancePage() {
         `Global platform commission updated to ${commission}% successfully!`
       );
       setTimeout(() => setCommissionSuccessMsg(""), 5000);
-    } catch (err: any) {
-      alert(err?.message || "Failed to update commission setting");
+    } catch (err: unknown) {
+      alert((err as Error)?.message || "Failed to update commission setting");
     } finally {
       setIsSavingCommission(false);
     }
