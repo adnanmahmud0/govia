@@ -339,6 +339,11 @@ class AttorneyProfileView extends GetView<AttorneyProfileController> {
 
               // Option list
               _buildOptionItem(
+                icon: Icons.payments_outlined,
+                title: 'Service Pricing & Stripe Payouts',
+                onTap: () => Get.toNamed(AppRoutes.providerPricingPayouts),
+              ),
+              _buildOptionItem(
                 icon: Icons.person_outline_rounded,
                 title: 'Personal Information',
                 onTap: () => Get.toNamed(AppRoutes.attorneyPersonalInfo),

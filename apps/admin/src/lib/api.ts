@@ -122,6 +122,13 @@ export const api = {
       ...options,
     }),
 
+  put: <T = any>(endpoint: string, body?: any, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    }),
+
   delete: <T = any>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { method: 'DELETE', ...options }),
 };

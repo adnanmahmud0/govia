@@ -13,6 +13,7 @@ import { NotificationRoutes } from '../../app/modules/notification/notification.
 import { StorageSettingRoutes } from '../../app/modules/storageSetting/storageSetting.route';
 import { SubscriptionRoutes } from '../../app/modules/subscription/subscription.route';
 import { GiftPlanRoutes } from '../../app/modules/giftPlan/giftPlan.route';
+import { ProviderPaymentRoutes } from '../../app/modules/providerPayment/providerPayment.route';
 
 const router = express.Router();
 
@@ -92,6 +93,14 @@ const apiRoutes = [
   {
     path: '/gift-plan',
     route: GiftPlanRoutes,
+  },
+  {
+    path: '/provider',
+    route: ProviderPaymentRoutes,
+  },
+  {
+    path: '/provider-payment',
+    route: ProviderPaymentRoutes,
   },
 ];
 

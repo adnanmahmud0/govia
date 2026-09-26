@@ -57,6 +57,8 @@ import 'package:gsabino365/module/shared/personal_infrmation/binding/personal_in
 import 'package:gsabino365/module/shared/personal_infrmation/view/personal_info_view.dart';
 import 'package:gsabino365/module/shared/preferred_providers/binding/preferred_providers_binding.dart';
 import 'package:gsabino365/module/shared/preferred_providers/view/preferred_providers_view.dart';
+import 'package:gsabino365/module/shared/provider_pricing_payouts/binding/provider_pricing_payouts_binding.dart';
+import 'package:gsabino365/module/shared/provider_pricing_payouts/view/provider_pricing_payouts_view.dart';
 import 'package:gsabino365/module/shared/settings/binding/settings_binding.dart';
 import 'package:gsabino365/module/shared/settings/view/settings_view.dart';
 import 'package:gsabino365/module/shared/settings/change_password/binding/change_password_binding.dart';
@@ -207,6 +209,7 @@ class AppRoutes {
   static const String citizenProfile = '/citizen-profile';
   static const String citizenPersonalInfo = '/citizen-personal-info';
   static const String preferredProviders = '/preferred-providers';
+  static const String providerPricingPayouts = '/provider-pricing-payouts';
   static const String citizenSettings = '/citizen-settings';
   static const String citizenEncounterHistory = '/citizen-encounter-history';
   static const String citizenIncidentLocation = '/citizen-incident-location';
@@ -360,6 +363,12 @@ final pages = [
     name: AppRoutes.preferredProviders,
     page: () => const PreferredProvidersView(),
     binding: PreferredProvidersBinding(),
+    middlewares: authGuards,
+  ),
+  GetPage(
+    name: AppRoutes.providerPricingPayouts,
+    page: () => const ProviderPricingPayoutsView(),
+    binding: ProviderPricingPayoutsBinding(),
     middlewares: authGuards,
   ),
   GetPage(

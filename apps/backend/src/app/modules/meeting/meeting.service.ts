@@ -1253,6 +1253,33 @@ const endMeeting = async (userId: string, meetingId: string) => {
     .populate('joinedAttorneys', 'name email role image')
     .populate('conversationId');
 
+  // ── Auto-payout encounter service fee to joined attorney / bail bondsman ──
+  try {
+    const hostCitizenId = meeting.userId.toString();
+    const joinedProviders: string[] = [];
+    if (meeting.joinedAttorneys?.length) {
+      joinedProviders.push(...meeting.joinedAttorneys.map(id => id.toString()));
+    }
+    if (meeting.participantId && !meeting.participantId.equals(meeting.userId)) {
+      joinedProviders.push(meeting.participantId.toString());
+    }
+
+    const uniqueProviders = [...new Set(joinedProviders)];
+    for (const provId of uniqueProviders) {
+      import('../providerPayment/providerPayment.service')
+        .then(m => {
+          m.ProviderPaymentService.processEncounterAutoPayout(
+            meeting._id.toString(),
+            hostCitizenId,
+            provId
+          );
+        })
+        .catch(() => {});
+    }
+  } catch (payoutErr) {
+    debugError('[Meeting] Error triggering encounter auto-payout:', payoutErr);
+  }
+
   // Emit real-time socket events so both in chat and schedule list, "Join Now" is replaced by recording
   if (meeting.conversationId) {
     socketHelper.emitToConversation(

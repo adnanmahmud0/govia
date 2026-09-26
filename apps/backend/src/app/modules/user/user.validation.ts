@@ -45,6 +45,9 @@ const updateUserZodSchema = z.object({
   specialization: z.string().optional(),
   companyName: z.string().optional(),
   businessAddress: z.string().optional(),
+  serviceFee: z.number().optional(),
+  monthlyServiceFee: z.number().optional(),
+  shortDescription: z.string().optional(),
 });
 
 const adminUpdateUserZodSchema = z.object({
@@ -74,6 +77,9 @@ const adminUpdateUserZodSchema = z.object({
     didCarNumberChange: z.string().optional(),
     newCarNumber: z.string().optional(),
     licenseNumber: z.string().optional(),
+    serviceFee: z.number().optional(),
+    monthlyServiceFee: z.number().optional(),
+    shortDescription: z.string().optional(),
     status: z.enum(['active', 'inactive', 'delete']).optional(),
   }),
 });

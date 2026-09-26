@@ -102,6 +102,16 @@ class ApiConstants {
   static const String communityResources = '/communityResource';
   static String communityResourceDetails(String id) =>
       '/communityResource/$id';
+
+  // ─── Provider Directory & Stripe Payment Endpoints ────────────────────────
+  static const String providerDirectory = '/provider/directory';
+  static const String providerPricingProfile = '/provider-payment/pricing-profile';
+  static const String providerPayoutAccount = '/provider-payment/payout-account';
+  static const String providerPayoutStatus = '/provider-payment/payout-status';
+  static const String providerPayoutDashboard = '/provider-payment/payout-dashboard';
+  static const String providerCheckoutSession = '/provider-payment/checkout-session';
+  static const String providerVerifySession = '/provider-payment/verify-session';
+  static const String providerTransactions = '/provider-payment/transactions';
 }
 
 

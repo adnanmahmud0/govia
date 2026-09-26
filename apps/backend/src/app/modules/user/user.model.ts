@@ -78,6 +78,18 @@ const userSchema = new Schema<IUser, UserModal>(
     didCarNumberChange: { type: String },
     newCarNumber: { type: String },
     licenseNumber: { type: String },
+    serviceFee: { type: Number, default: 0 },
+    monthlyServiceFee: { type: Number, default: 0 },
+    shortDescription: { type: String, default: '' },
+    stripeAccountId: { type: String, default: '' },
+    stripeAccountStatus: {
+      type: String,
+      enum: ['NOT_CREATED', 'PENDING', 'ACTIVE', 'RESTRICTED'],
+      default: 'NOT_CREATED',
+    },
+    payoutsEnabled: { type: Boolean, default: false },
+    preferredAttorneyActiveUntil: { type: Date },
+    preferredBailBondsmanActiveUntil: { type: Date },
   },
   {
     timestamps: true,

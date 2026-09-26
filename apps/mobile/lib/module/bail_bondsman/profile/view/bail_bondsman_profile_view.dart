@@ -256,6 +256,11 @@ class BailBondsmanProfileView extends GetView<BailBondsmanProfileController> {
                 child: Column(
                   children: [
                     _buildMenuItem(
+                      icon: Icons.payments_outlined,
+                      title: 'Service Pricing & Stripe Payouts',
+                      onTap: () => Get.toNamed(AppRoutes.providerPricingPayouts),
+                    ),
+                    _buildMenuItem(
                       icon: Icons.person_outline_rounded,
                       title: 'Personal Information',
                       onTap: () => Get.toNamed(AppRoutes.bailBondsmanPersonalInfo),

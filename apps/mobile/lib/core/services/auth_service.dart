@@ -300,6 +300,9 @@ class AuthService extends GetxService {
     return null;
   }
 
+  /// Alias for fetchProfile for backward/forward compatibility
+  Future<UserModel?> getProfile() => fetchProfile();
+
   /// Updates profile on backend and synchronizes currentUser reactive state
   Future<UserModel?> updateProfile(Map<String, dynamic> data) async {
     try {

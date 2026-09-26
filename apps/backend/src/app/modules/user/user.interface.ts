@@ -30,6 +30,14 @@ export type IUser = {
   newCarNumber?: string;
   licenseNumber?: string;
   shortHexId?: string;
+  serviceFee?: number;
+  monthlyServiceFee?: number;
+  shortDescription?: string;
+  stripeAccountId?: string;
+  stripeAccountStatus?: 'NOT_CREATED' | 'PENDING' | 'ACTIVE' | 'RESTRICTED';
+  payoutsEnabled?: boolean;
+  preferredAttorneyActiveUntil?: Date;
+  preferredBailBondsmanActiveUntil?: Date;
   authentication?: {
     isResetPassword: boolean;
     oneTimeCode: number;

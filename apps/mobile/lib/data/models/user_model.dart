@@ -34,6 +34,14 @@ class UserModel {
   final String? dateOfBirth;
   final String? profilePicture;
   final bool? isOnboardingCompleted;
+  final double? serviceFee;
+  final double? monthlyServiceFee;
+  final String? shortDescription;
+  final String? stripeAccountId;
+  final String? stripeAccountStatus;
+  final bool? payoutsEnabled;
+  final DateTime? preferredAttorneyActiveUntil;
+  final DateTime? preferredBailBondsmanActiveUntil;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -73,6 +81,14 @@ class UserModel {
     this.dateOfBirth,
     this.profilePicture,
     this.isOnboardingCompleted,
+    this.serviceFee,
+    this.monthlyServiceFee,
+    this.shortDescription,
+    this.stripeAccountId,
+    this.stripeAccountStatus,
+    this.payoutsEnabled,
+    this.preferredAttorneyActiveUntil,
+    this.preferredBailBondsmanActiveUntil,
     this.createdAt,
     this.updatedAt,
   });
@@ -123,6 +139,23 @@ class UserModel {
       dateOfBirth: json['dateOfBirth'],
       profilePicture: json['profilePicture'] ?? json['image'],
       isOnboardingCompleted: json['isOnboardingCompleted'],
+      serviceFee: (json['serviceFee'] is num)
+          ? (json['serviceFee'] as num).toDouble()
+          : double.tryParse(json['serviceFee']?.toString() ?? ''),
+      monthlyServiceFee: (json['monthlyServiceFee'] is num)
+          ? (json['monthlyServiceFee'] as num).toDouble()
+          : double.tryParse(json['monthlyServiceFee']?.toString() ?? ''),
+      shortDescription: json['shortDescription']?.toString(),
+      stripeAccountId: json['stripeAccountId']?.toString(),
+      stripeAccountStatus: json['stripeAccountStatus']?.toString(),
+      payoutsEnabled: json['payoutsEnabled'] == true,
+      preferredAttorneyActiveUntil: json['preferredAttorneyActiveUntil'] != null
+          ? DateTime.tryParse(json['preferredAttorneyActiveUntil'])
+          : null,
+      preferredBailBondsmanActiveUntil:
+          json['preferredBailBondsmanActiveUntil'] != null
+              ? DateTime.tryParse(json['preferredBailBondsmanActiveUntil'])
+              : null,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'])
           : null,
@@ -168,6 +201,16 @@ class UserModel {
       'dateOfBirth': dateOfBirth,
       'profilePicture': profilePicture,
       'isOnboardingCompleted': isOnboardingCompleted,
+      'serviceFee': serviceFee,
+      'monthlyServiceFee': monthlyServiceFee,
+      'shortDescription': shortDescription,
+      'stripeAccountId': stripeAccountId,
+      'stripeAccountStatus': stripeAccountStatus,
+      'payoutsEnabled': payoutsEnabled,
+      'preferredAttorneyActiveUntil':
+          preferredAttorneyActiveUntil?.toIso8601String(),
+      'preferredBailBondsmanActiveUntil':
+          preferredBailBondsmanActiveUntil?.toIso8601String(),
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };

@@ -162,8 +162,11 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
                             badgeColor: const Color(0xFF1550A6),
                             icon: Icons.gavel_rounded,
                             profile: controller.attorneyProfile.value,
+                            forAttorney: true,
                             helper:
                                 'Primary legal counsel notified when initiating GoVia emergency legal assistance.',
+                            onBrowseMarketplace: () =>
+                                controller.openProviderMarketplaceSheet(forAttorney: true),
                             onScanQr: () => controller.openQrScanner(forAttorney: true),
                             onLookupId: () => controller.openIdLookupDialog(forAttorney: true),
                             onFromContacts: () => controller.openRecentContactsSheet(forAttorney: true),
@@ -179,8 +182,11 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
                             badgeColor: const Color(0xFF0D9488),
                             icon: Icons.monetization_on_rounded,
                             profile: controller.bailBondsmanProfile.value,
+                            forAttorney: false,
                             helper:
                                 'Licensed bail bonds agency contacted immediately if custody or bail arrangement is required.',
+                            onBrowseMarketplace: () =>
+                                controller.openProviderMarketplaceSheet(forAttorney: false),
                             onScanQr: () => controller.openQrScanner(forAttorney: false),
                             onLookupId: () => controller.openIdLookupDialog(forAttorney: false),
                             onFromContacts: () => controller.openRecentContactsSheet(forAttorney: false),
@@ -224,7 +230,7 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Auto-Saved to Profile',
+                                    'Protection Coverage Synced',
                                     style: GoogleFonts.inter(
                                       fontSize: 13.5.sp,
                                       fontWeight: FontWeight.w700,
@@ -233,7 +239,7 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
                                   ),
                                   SizedBox(height: 2.h),
                                   Text(
-                                    'Connected providers are synced in real-time. No manual saving required.',
+                                    'Connected providers are synced in real-time. Payments secured via Stripe.',
                                     style: GoogleFonts.inter(
                                       fontSize: 11.5.sp,
                                       color: const Color(0xFF64748B),
@@ -264,7 +270,9 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
     required Color badgeColor,
     required IconData icon,
     required Map<String, dynamic>? profile,
+    required bool forAttorney,
     required String helper,
+    required VoidCallback onBrowseMarketplace,
     required VoidCallback onScanQr,
     required VoidCallback onLookupId,
     required VoidCallback onFromContacts,
@@ -349,17 +357,20 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
 
           SizedBox(height: 16.h),
 
-          // Provider Body: Connected Profile Card OR Empty Add Actions (No TextFields!)
+          // Provider Body: Connected Profile Card OR Empty Add Actions
           if (isConnected)
             _buildConnectedProfileCard(
               profile: profile,
               badgeColor: badgeColor,
-              onChange: onFromContacts,
+              forAttorney: forAttorney,
+              onChange: onBrowseMarketplace,
               onDisconnect: onDisconnect,
             )
           else
             _buildEmptyProviderPrompt(
               badgeColor: badgeColor,
+              forAttorney: forAttorney,
+              onBrowseMarketplace: onBrowseMarketplace,
               onScanQr: onScanQr,
               onLookupId: onLookupId,
               onFromContacts: onFromContacts,
@@ -384,12 +395,15 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
   Widget _buildConnectedProfileCard({
     required Map<String, dynamic> profile,
     required Color badgeColor,
+    required bool forAttorney,
     required VoidCallback onChange,
     required VoidCallback onDisconnect,
   }) {
     final name = profile['name']?.toString() ?? 'Provider';
     final role = profile['role']?.toString() ?? 'Verified Provider';
     final avatar = profile['image']?.toString() ?? profile['profilePicture']?.toString();
+    final bool isActive = controller.isCoverageActive(forAttorney: forAttorney);
+    final int remainingDays = controller.getCoverageRemainingDays(forAttorney: forAttorney);
 
     return Container(
       padding: EdgeInsets.all(14.w),
@@ -445,14 +459,16 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
                   ],
                 ),
               ),
-              // Green "Connected" Chip
+              // Status Badge
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  color: (isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20.r),
                   border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    color: (isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
+                        .withValues(alpha: 0.3),
                     width: 1.w,
                   ),
                 ),
@@ -462,18 +478,18 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
                     Container(
                       width: 6.r,
                       height: 6.r,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
+                      decoration: BoxDecoration(
+                        color: isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                         shape: BoxShape.circle,
                       ),
                     ),
                     SizedBox(width: 4.w),
                     Text(
-                      'Connected',
+                      isActive ? 'Active Protection' : 'Coverage Expired',
                       style: GoogleFonts.inter(
-                        fontSize: 10.5.sp,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF059669),
+                        color: isActive ? const Color(0xFF059669) : const Color(0xFFD97706),
                       ),
                     ),
                   ],
@@ -481,6 +497,59 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
               ),
             ],
           ),
+
+          if (isActive) ...[
+            SizedBox(height: 10.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF059669)),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      'Retainer protection active • $remainingDays days remaining',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF065F46),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            SizedBox(height: 10.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFD97706)),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      'Coverage is inactive. Renew to enable priority roadside assistance.',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF92400E),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           SizedBox(height: 12.h),
           const Divider(height: 1, color: Color(0xFFE2E8F0)),
           SizedBox(height: 8.h),
@@ -489,9 +558,9 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
             children: [
               TextButton.icon(
                 onPressed: onChange,
-                icon: Icon(Icons.swap_horiz_rounded, size: 16.sp, color: const Color(0xFF1550A6)),
+                icon: Icon(Icons.storefront_rounded, size: 16.sp, color: const Color(0xFF1550A6)),
                 label: Text(
-                  'Change',
+                  isActive ? 'Change Provider' : 'Renew / Change',
                   style: GoogleFonts.inter(
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
@@ -521,6 +590,8 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
 
   Widget _buildEmptyProviderPrompt({
     required Color badgeColor,
+    required bool forAttorney,
+    required VoidCallback onBrowseMarketplace,
     required VoidCallback onScanQr,
     required VoidCallback onLookupId,
     required VoidCallback onFromContacts,
@@ -530,28 +601,78 @@ class PreferredProvidersView extends GetView<PreferredProvidersController> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: const Color(0xFFE2E8F0), style: BorderStyle.solid),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         children: [
+          // Primary Action: Browse Verified Directory & Pricing
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1550A6),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
+              ),
+              onPressed: onBrowseMarketplace,
+              icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 20),
+              label: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          forAttorney ? 'Browse Verified Attorneys' : 'Browse Verified Bondsmen',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'View prices, short bios & activate via Stripe',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: Colors.white.withValues(alpha: 0.82),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                ],
+              ),
+            ),
+          ),
+
+          SizedBox(height: 14.h),
+
+          // Divider with "Or link directly"
           Row(
             children: [
-              Icon(Icons.person_add_alt_1_rounded, size: 20.sp, color: const Color(0xFF94A3B8)),
-              SizedBox(width: 10.w),
-              Expanded(
+              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
                 child: Text(
-                  'No provider currently linked',
+                  'Or link directly',
                   style: GoogleFonts.inter(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
+                    fontSize: 11.sp,
+                    color: const Color(0xFF94A3B8),
                   ),
                 ),
               ),
+              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
             ],
           ),
-          SizedBox(height: 14.h),
-          // Quick action buttons: Scan, ID, Contacts
+
+          SizedBox(height: 12.h),
+
+          // Secondary Quick action buttons: Scan, ID, Contacts
           Row(
             children: [
               Expanded(
