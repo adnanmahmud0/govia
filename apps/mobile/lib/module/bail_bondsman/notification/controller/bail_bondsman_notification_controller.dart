@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:get/get.dart';
 import 'package:gsabino365/core/services/api_client.dart';
+import 'package:gsabino365/core/services/notification_router.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/notification_model.dart';
 import 'package:gsabino365/data/repositories/notification_repository.dart';
@@ -66,6 +67,11 @@ class BailBondsmanNotificationController extends GetxController {
     await _repo.markAsRead(notif.id);
   }
 
+  Future<void> onNotificationTapped(NotificationModel notif) async {
+    markAsRead(notif);
+    await NotificationRouter.navigate(notif);
+  }
+
   Future<void> markAllAsRead() async {
     for (int i = 0; i < notifications.length; i++) {
       notifications[i] = notifications[i].copyWith(isRead: true, readAt: DateTime.now());
@@ -85,24 +91,34 @@ class BailBondsmanNotificationController extends GetxController {
     NotificationModel(
       id: 'bb_notif_1',
       userId: 'bb_user',
-      type: 'legal',
-      title: 'Bond Processing Update',
-      subtitle: 'Active collateral and bond permission mappings for Client #7734 have been verified.',
-      resourceType: 'bond',
-      resourceId: 'b7734',
+      type: 'incident',
+      title: 'Urgent Bail Consultation Request (Marcus Vance)',
+      subtitle: 'Citizen in holding requested emergency bail assistance & evaluation.',
+      resourceType: 'meeting',
+      resourceId: 'disp_1',
       isRead: false,
+      metadata: {
+        'callerName': 'Marcus Vance',
+        'location': 'Central Detention Center',
+        'category': 'Emergency Bail Consultation',
+        'isLive': true,
+      },
       createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
       updatedAt: DateTime.now().subtract(const Duration(minutes: 8)),
     ),
     NotificationModel(
       id: 'bb_notif_2',
       userId: 'bb_user',
-      type: 'legal',
-      title: 'Indemnitor Alert',
+      type: 'bail',
+      title: 'Indemnitor Co-Signer Submission',
       subtitle: 'New indemnitor submission from Mark Allen is awaiting co-signature review.',
       resourceType: 'indemnitor',
       resourceId: 'i102',
       isRead: false,
+      metadata: {
+        'callerName': 'Mark Allen',
+        'category': 'Surety Review',
+      },
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
     ),
@@ -110,7 +126,7 @@ class BailBondsmanNotificationController extends GetxController {
       id: 'bb_notif_3',
       userId: 'bb_user',
       type: 'system',
-      title: 'System Reconciliation',
+      title: 'Surety Reconciliation Completed',
       subtitle: 'Daily surety reconciliation report has been generated and filed successfully.',
       resourceType: 'report',
       resourceId: 'r44',
@@ -122,7 +138,7 @@ class BailBondsmanNotificationController extends GetxController {
       id: 'bb_notif_4',
       userId: 'bb_user',
       type: 'court',
-      title: 'Court Registry Alert',
+      title: 'Court Registry Alert: Case #2209',
       subtitle: 'Pre-trial appearance scheduled for Case #2209 at Ohio Municipal Court.',
       resourceType: 'court',
       resourceId: 'c2209',

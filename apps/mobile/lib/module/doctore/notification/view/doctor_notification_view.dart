@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import 'package:gsabino365/data/models/notification_model.dart';
+import 'package:gsabino365/core/widgets/common_notification_card.dart';
 import 'package:gsabino365/module/doctore/notification/controller/doctor_notification_controller.dart';
 
 class DoctorNotificationView extends GetView<DoctorNotificationController> {
@@ -172,10 +171,14 @@ class DoctorNotificationView extends GetView<DoctorNotificationController> {
                       ),
                       itemCount: controller.notifications.length,
                       separatorBuilder: (context, index) =>
-                          SizedBox(height: 10.h),
+                          SizedBox(height: 2.h),
                       itemBuilder: (context, index) {
                         final notif = controller.notifications[index];
-                        return _buildNotifCard(notif);
+                        return CommonNotificationCard(
+                          notif: notif,
+                          onTap: () => controller.onNotificationTapped(notif),
+                          isLast: index == controller.notifications.length - 1,
+                        );
                       },
                     ),
                   );
@@ -186,163 +189,5 @@ class DoctorNotificationView extends GetView<DoctorNotificationController> {
         ),
       ),
     );
-  }
-
-  Widget _buildNotifCard(NotificationModel notif) {
-    final isUnread = !notif.isRead;
-    final initials = _getInitials(notif.title);
-    final color = _getColorForType(notif.type);
-    final timeStr = _formatTimeAgo(notif.createdAt);
-
-    return InkWell(
-      onTap: () => controller.markAsRead(notif),
-      borderRadius: BorderRadius.circular(16.r),
-      child: Container(
-        padding: EdgeInsets.all(14.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(
-            color: isUnread
-                ? const Color(0xFF1550A6).withValues(alpha: 0.35)
-                : const Color(0xFFE2E8F0),
-            width: isUnread ? 1.5.w : 1.w,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isUnread
-                  ? const Color(0xFF1550A6).withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Initials Avatar
-            Container(
-              width: 44.r,
-              height: 44.r,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  initials,
-                  style: GoogleFonts.inter(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 12.w),
-
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          notif.title,
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            fontWeight:
-                                isUnread ? FontWeight.w700 : FontWeight.w600,
-                            color: const Color(0xFF0F172A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        timeStr,
-                        style: GoogleFonts.inter(
-                          fontSize: 11.sp,
-                          color: const Color(0xFF94A3B8),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    notif.subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5.sp,
-                      fontWeight:
-                          isUnread ? FontWeight.w500 : FontWeight.w400,
-                      color: isUnread
-                          ? const Color(0xFF334155)
-                          : const Color(0xFF64748B),
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            if (isUnread) ...[
-              SizedBox(width: 8.w),
-              Padding(
-                padding: EdgeInsets.only(top: 4.h),
-                child: Container(
-                  width: 8.r,
-                  height: 8.r,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1550A6),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getInitials(String title) {
-    if (title.isEmpty) return 'MHP';
-    final parts = title.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return title.substring(0, title.length >= 3 ? 3 : title.length).toUpperCase();
-  }
-
-  Color _getColorForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'dispatch':
-        return const Color(0xFFEF4444);
-      case 'assessment':
-        return const Color(0xFF1550A6);
-      case 'compliance':
-      case 'system':
-        return const Color(0xFF16A34A);
-      case 'schedule':
-        return const Color(0xFF8B5CF6);
-      default:
-        return const Color(0xFF0284C7);
-    }
-  }
-
-  String _formatTimeAgo(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inSeconds < 60) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('MMM d').format(dt);
   }
 }

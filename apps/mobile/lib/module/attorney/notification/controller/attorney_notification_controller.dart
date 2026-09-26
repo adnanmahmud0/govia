@@ -4,6 +4,7 @@ import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/notification_model.dart';
 import 'package:gsabino365/data/repositories/notification_repository.dart';
+import 'package:gsabino365/core/services/notification_router.dart';
 
 class AttorneyNotificationController extends GetxController {
   late final NotificationRepository _repo;
@@ -64,6 +65,11 @@ class AttorneyNotificationController extends GetxController {
     await _repo.markAsRead(notif.id);
   }
 
+  Future<void> onNotificationTapped(NotificationModel notif) async {
+    markAsRead(notif);
+    await NotificationRouter.navigate(notif);
+  }
+
   Future<void> markAllAsRead() async {
     for (int i = 0; i < notifications.length; i++) {
       notifications[i] = notifications[i].copyWith(isRead: true, readAt: DateTime.now());
@@ -83,23 +89,35 @@ class AttorneyNotificationController extends GetxController {
     NotificationModel(
       id: 'atty_notif_1',
       userId: 'atty_1',
-      type: 'document',
-      title: 'James Donovan',
-      subtitle: 'New client document pending identity verification — please review.',
-      resourceType: 'case_file',
-      resourceId: 'case_4821',
+      type: 'legal',
+      title: '⚖️ Emergency Defense: Marcus Vance',
+      subtitle: 'Citizen Marcus Vance requested emergency legal defense during a police stop at Elm St & Broadway. Tap to review & join call.',
+      resourceType: 'meeting',
+      resourceId: 'meeting_demo_1',
+      metadata: {
+        'callerName': 'Marcus Vance',
+        'callerRole': 'CITIZEN',
+        'location': 'Elm St & Broadway',
+        'category': 'EMERGENCY',
+        'isLive': true,
+      },
       isRead: false,
-      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-      updatedAt: DateTime.now().subtract(const Duration(minutes: 15)),
+      createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
+      updatedAt: DateTime.now().subtract(const Duration(minutes: 12)),
     ),
     NotificationModel(
       id: 'atty_notif_2',
       userId: 'atty_1',
-      type: 'case',
-      title: 'Sarah Chen',
-      subtitle: 'Attorney validation check for Case #4821 has been approved.',
-      resourceType: 'court_case',
+      type: 'consultation',
+      title: '📅 Client Legal Consultation: Sarah Jenkins',
+      subtitle: 'Pre-trial consultation scheduled with client Sarah Jenkins. Tap to view schedule details.',
+      resourceType: 'meeting',
       resourceId: 'case_4821',
+      metadata: {
+        'callerName': 'Sarah Jenkins',
+        'topic': 'Pre-trial Hearing Preparation',
+        'isLive': false,
+      },
       isRead: false,
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
@@ -107,11 +125,14 @@ class AttorneyNotificationController extends GetxController {
     NotificationModel(
       id: 'atty_notif_3',
       userId: 'atty_1',
-      type: 'deadline',
-      title: 'System Court Notice',
-      subtitle: 'Court filing deadline reminder: Case #3311 is due in 48 hours.',
-      resourceType: 'reminder',
-      resourceId: 'rem_3311',
+      type: 'vault',
+      title: '📁 Evidence Vault & Case Files',
+      subtitle: 'Review client encounter video recordings and verified witness statements in Evidence Vault.',
+      resourceType: 'vault',
+      resourceId: 'vault_case_3311',
+      metadata: {
+        'folderName': 'Client Encounter Files',
+      },
       isRead: true,
       createdAt: DateTime.now().subtract(const Duration(hours: 3)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 3)),
@@ -120,9 +141,9 @@ class AttorneyNotificationController extends GetxController {
       id: 'atty_notif_4',
       userId: 'atty_1',
       type: 'compliance',
-      title: 'Legal Review Board',
-      subtitle: 'Your annual compliance audit has been successfully submitted and verified.',
-      resourceType: 'audit',
+      title: '🏛️ Bar Defense Verification Active',
+      subtitle: 'Your active bar credentials have been verified for expedited legal representation.',
+      resourceType: 'system',
       resourceId: 'audit_2026',
       isRead: true,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),

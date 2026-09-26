@@ -23,9 +23,17 @@ const getInitialNotificationsForRole = (
       {
         userId,
         type: 'dispatch',
-        title: '🚨 Sector Dispatch Monitoring Online',
-        subtitle: `Officer ${cleanName}, unit dispatch telemetry is active for Central Metro Division.`,
-        resourceType: 'system',
+        title: '🚨 Emergency Stop Alert: Marcus Vance',
+        subtitle: `Officer ${cleanName}, citizen Marcus Vance initiated an active encounter at Elm St & Broadway. Live GPS and audio telemetry active.`,
+        resourceType: 'encounter',
+        resourceId: 'encounter_demo_1',
+        metadata: {
+          callerName: 'Marcus Vance',
+          callerRole: 'CITIZEN',
+          location: 'Elm St & Broadway',
+          category: 'EMERGENCY',
+          isLive: true,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 10 * 60 * 1000),
       },
@@ -33,8 +41,12 @@ const getInitialNotificationsForRole = (
         userId,
         type: 'duty',
         title: '📋 Department Duty Schedule',
-        subtitle: 'Duty briefings and scheduled consultations with department specialists are ready.',
+        subtitle: 'Duty briefings and scheduled consultations with department specialists are ready. Tap to view schedule.',
         resourceType: 'meeting',
+        metadata: {
+          topic: 'Department Shift Briefing',
+          isLive: false,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 45 * 60 * 1000),
       },
@@ -44,6 +56,9 @@ const getInitialNotificationsForRole = (
         title: '📹 Evidence Archiving Online',
         subtitle: 'Encounter video recordings and officer notes are automatically synced with Govia Vault.',
         resourceType: 'vault',
+        metadata: {
+          folderName: 'Encounter Archive',
+        },
         isRead: true,
         createdAt: new Date(now.getTime() - 2 * 3600 * 1000),
       },
@@ -65,9 +80,17 @@ const getInitialNotificationsForRole = (
       {
         userId,
         type: 'medical',
-        title: '🩺 Crisis De-escalation Network Online',
-        subtitle: `Dr. ${cleanName}, clinical triage channels are open for acute trauma and crisis consultations.`,
-        resourceType: 'system',
+        title: '🩺 Crisis De-escalation Alert: Marcus Vance',
+        subtitle: `Dr. ${cleanName}, urgent mental health crisis support requested for active encounter with citizen Marcus Vance at Elm St & Broadway.`,
+        resourceType: 'meeting',
+        resourceId: 'crisis_demo_1',
+        metadata: {
+          callerName: 'Marcus Vance',
+          callerRole: 'CITIZEN',
+          location: 'Elm St & Broadway',
+          category: 'EMERGENCY',
+          isLive: true,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 8 * 60 * 1000),
       },
@@ -77,6 +100,10 @@ const getInitialNotificationsForRole = (
         title: '📅 Clinical Telehealth Hub',
         subtitle: 'Consultations scheduled in chat rooms will automatically synchronize to your Schedule tab.',
         resourceType: 'meeting',
+        metadata: {
+          topic: 'Mental Health Clinical Consultation',
+          isLive: false,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 35 * 60 * 1000),
       },
@@ -106,18 +133,31 @@ const getInitialNotificationsForRole = (
       {
         userId,
         type: 'legal',
-        title: '⚖️ Emergency Defense Standby Active',
-        subtitle: 'Your legal chambers are on standby for citizen traffic stops, detentions, and encounters.',
-        resourceType: 'system',
+        title: '⚖️ Emergency Defense Dispatch: Marcus Vance',
+        subtitle: 'Citizen Marcus Vance requested emergency legal defense during a police encounter at Elm St & Broadway. Tap to review details & join call.',
+        resourceType: 'meeting',
+        resourceId: 'meeting_demo_1',
+        metadata: {
+          callerName: 'Marcus Vance',
+          callerRole: 'CITIZEN',
+          location: 'Elm St & Broadway',
+          category: 'EMERGENCY',
+          isLive: true,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 12 * 60 * 1000),
       },
       {
         userId,
         type: 'consultation',
-        title: '📅 Client Legal Consultations',
-        subtitle: 'Clients can arrange legal consultations directly via chat. Scheduled video hearings sync here.',
+        title: '📅 Client Legal Consultations: Sarah Jenkins',
+        subtitle: 'Clients can arrange legal consultations directly via chat. Scheduled video hearings sync to your Schedule tab.',
         resourceType: 'meeting',
+        metadata: {
+          callerName: 'Sarah Jenkins',
+          topic: 'Case Pre-trial Consultation',
+          isLive: false,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 50 * 60 * 1000),
       },
@@ -127,14 +167,17 @@ const getInitialNotificationsForRole = (
         title: '📁 Evidence Vault & Case Files',
         subtitle: 'Review client encounter video recordings and verified witness statements in the Evidence Vault.',
         resourceType: 'vault',
+        metadata: {
+          folderName: 'Client Encounter Files',
+        },
         isRead: true,
         createdAt: new Date(now.getTime() - 4 * 3600 * 1000),
       },
       {
         userId,
         type: 'compliance',
-        title: '🏛️ Bar Defense Verification',
-        subtitle: 'Your active bar credentials have been verified for expedited representation.',
+        title: '🏛️ Bar Defense Verification Active',
+        subtitle: 'Your active bar credentials have been verified for expedited legal representation.',
         resourceType: 'system',
         isRead: true,
         createdAt: new Date(now.getTime() - 24 * 3600 * 1000),
@@ -147,9 +190,17 @@ const getInitialNotificationsForRole = (
       {
         userId,
         type: 'bail',
-        title: '🏛️ Surety & Bail Dispatch Connected',
-        subtitle: 'Surety network active. Receive instant requests for bail bond verification and detainee release.',
-        resourceType: 'system',
+        title: '🏛️ Urgent Bail Assistance: Marcus Vance',
+        subtitle: 'Citizen Marcus Vance initiated an emergency stop at Elm St & Broadway and requested surety bond evaluation.',
+        resourceType: 'meeting',
+        resourceId: 'bail_demo_1',
+        metadata: {
+          callerName: 'Marcus Vance',
+          callerRole: 'CITIZEN',
+          location: 'Elm St & Broadway',
+          category: 'EMERGENCY',
+          isLive: true,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 15 * 60 * 1000),
       },
@@ -159,6 +210,10 @@ const getInitialNotificationsForRole = (
         title: '📅 Bail Consultation Center',
         subtitle: 'Consultations scheduled with clients or indemnitors in chat will appear on your Schedule tab.',
         resourceType: 'meeting',
+        metadata: {
+          topic: 'Surety Bond Consultation',
+          isLive: false,
+        },
         isRead: false,
         createdAt: new Date(now.getTime() - 40 * 60 * 1000),
       },
@@ -168,6 +223,9 @@ const getInitialNotificationsForRole = (
         title: '📁 Collateral & Indemnity Vault',
         subtitle: 'Access and manage collateral documentation and court filings securely in the Evidence Vault.',
         resourceType: 'vault',
+        metadata: {
+          folderName: 'Surety Documentation',
+        },
         isRead: true,
         createdAt: new Date(now.getTime() - 2 * 3600 * 1000),
       },
@@ -190,7 +248,10 @@ const getInitialNotificationsForRole = (
       type: 'emergency',
       title: '🛡️ Govia Active Protection Online',
       subtitle: 'Your emergency stop button is armed. Responders, video recording, and live GPS are ready.',
-      resourceType: 'system',
+      resourceType: 'encounter',
+      metadata: {
+        category: 'EMERGENCY',
+      },
       isRead: false,
       createdAt: new Date(now.getTime() - 5 * 60 * 1000),
     },
@@ -200,6 +261,9 @@ const getInitialNotificationsForRole = (
       title: '🩺 Mental Health & Clinical Care',
       subtitle: 'Verified doctors and therapists are available for confidential telehealth checkups via chat.',
       resourceType: 'meeting',
+      metadata: {
+        topic: 'Mental Health Support',
+      },
       isRead: false,
       createdAt: new Date(now.getTime() - 30 * 60 * 1000),
     },
@@ -209,6 +273,9 @@ const getInitialNotificationsForRole = (
       title: '⚖️ Legal Counsel & Defense',
       subtitle: 'Licensed defense attorneys are on standby to protect your constitutional rights during encounters.',
       resourceType: 'meeting',
+      metadata: {
+        topic: 'Legal Defense Support',
+      },
       isRead: true,
       createdAt: new Date(now.getTime() - 2 * 3600 * 1000),
     },
@@ -218,6 +285,9 @@ const getInitialNotificationsForRole = (
       title: '📁 Evidence Vault Secured',
       subtitle: 'Your personal vault is encrypted. All recordings and legal documents are protected.',
       resourceType: 'vault',
+      metadata: {
+        folderName: 'Personal Evidence Vault',
+      },
       isRead: true,
       createdAt: new Date(now.getTime() - 24 * 3600 * 1000),
     },
@@ -323,6 +393,7 @@ const createNotification = async (payload: {
   resourceId?: string;
   link?: { label: string; url: string };
   icon?: string;
+  metadata?: Record<string, unknown>;
 }) => {
   try {
     const userObjectId =
@@ -339,6 +410,7 @@ const createNotification = async (payload: {
       resourceId: payload.resourceId || '',
       link: payload.link,
       icon: payload.icon,
+      metadata: payload.metadata || {},
       isRead: false,
     });
 
@@ -371,6 +443,7 @@ const createRoleNotification = async (
     resourceId?: string;
     link?: { label: string; url: string };
     icon?: string;
+    metadata?: Record<string, unknown>;
   },
   excludeUserId?: string
 ) => {
@@ -392,6 +465,7 @@ const createRoleNotification = async (
       resourceId: payload.resourceId || '',
       link: payload.link,
       icon: payload.icon,
+      metadata: payload.metadata || {},
       isRead: false,
     }));
 

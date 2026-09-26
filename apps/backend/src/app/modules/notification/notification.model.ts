@@ -45,6 +45,10 @@ const notificationSchema = new Schema<INotification, NotificationModel>(
     icon: {
       type: String,
     },
+    metadata: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,

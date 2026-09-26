@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:get/get.dart';
 import 'package:gsabino365/core/services/api_client.dart';
+import 'package:gsabino365/core/services/notification_router.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/notification_model.dart';
 import 'package:gsabino365/data/repositories/notification_repository.dart';
@@ -63,6 +64,11 @@ class PoliceNotificationController extends GetxController {
     await _repo.markAsRead(notif.id);
   }
 
+  Future<void> onNotificationTapped(NotificationModel notif) async {
+    markAsRead(notif);
+    await NotificationRouter.navigate(notif);
+  }
+
   Future<void> markAllAsRead() async {
     for (int i = 0; i < notifications.length; i++) {
       notifications[i] = notifications[i].copyWith(isRead: true, readAt: DateTime.now());
@@ -82,24 +88,33 @@ class PoliceNotificationController extends GetxController {
     NotificationModel(
       id: 'pol_notif_1',
       userId: 'police_1',
-      type: 'dispatch',
-      title: 'Headquarters Dispatch',
-      subtitle: 'System parameter modifications have been approved by precinct admin and are now active.',
-      resourceType: 'system',
-      resourceId: 'sys_1',
+      type: 'incident',
+      title: 'Priority Dispatch: Active Encounter (Marcus Vance)',
+      subtitle: 'Citizen requested live legal observation at Elm St & Broadway.',
+      resourceType: 'meeting',
+      resourceId: 'disp_1',
       isRead: false,
+      metadata: {
+        'callerName': 'Marcus Vance',
+        'location': 'Elm St & Broadway, Precinct 7',
+        'category': 'Emergency Stop',
+        'isLive': true,
+      },
       createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
       updatedAt: DateTime.now().subtract(const Duration(minutes: 5)),
     ),
     NotificationModel(
       id: 'pol_notif_2',
       userId: 'police_1',
-      type: 'registry',
-      title: 'Officer Registry',
+      type: 'duty',
+      title: 'Officer Registry & Duty Roster',
       subtitle: 'New officer duty roster for Precinct 7 has been updated and verified.',
       resourceType: 'roster',
       resourceId: 'rost_1',
       isRead: false,
+      metadata: {
+        'category': 'Precinct Shift',
+      },
       createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
       updatedAt: DateTime.now().subtract(const Duration(minutes: 30)),
     ),
@@ -107,7 +122,7 @@ class PoliceNotificationController extends GetxController {
       id: 'pol_notif_3',
       userId: 'police_1',
       type: 'system',
-      title: 'System Security',
+      title: 'Body-Cam & System Security Sweep',
       subtitle: 'Daily encounter encryption and security sweep completed. No anomalies detected.',
       resourceType: 'security',
       resourceId: 'sec_1',
@@ -119,7 +134,7 @@ class PoliceNotificationController extends GetxController {
       id: 'pol_notif_4',
       userId: 'police_1',
       type: 'legal',
-      title: 'Legal Affairs Office',
+      title: 'Legal Affairs Office Notice',
       subtitle: 'Quarterly encounter de-escalation documentation deadline is approaching in 5 days.',
       resourceType: 'legal',
       resourceId: 'leg_1',

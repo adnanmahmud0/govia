@@ -4,9 +4,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/api_client.dart';
+import 'package:gsabino365/core/services/notification_router.dart';
 import 'package:gsabino365/module/citizen/notification/controller/citizen_notification_controller.dart';
+import 'package:gsabino365/module/attorney/notification/controller/attorney_notification_controller.dart';
+import 'package:gsabino365/module/doctore/notification/controller/doctor_notification_controller.dart';
+import 'package:gsabino365/module/police/notification/controller/police_notification_controller.dart';
+import 'package:gsabino365/module/bail_bondsman/notification/controller/bail_bondsman_notification_controller.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -105,9 +109,21 @@ class FcmService {
     final title = notification?.title ?? message.data['title'] ?? 'GoVia Alert';
     final body = notification?.body ?? message.data['body'] ?? '';
 
-    // Refresh notification count/list if controller is active
+    // Refresh notification count/list for whichever role controller is active
     if (Get.isRegistered<CitizenNotificationController>()) {
-      Get.find<CitizenNotificationController>().fetchNotifications();
+      Get.find<CitizenNotificationController>().fetchNotifications(silent: true);
+    }
+    if (Get.isRegistered<AttorneyNotificationController>()) {
+      Get.find<AttorneyNotificationController>().fetchNotifications(silent: true);
+    }
+    if (Get.isRegistered<DoctorNotificationController>()) {
+      Get.find<DoctorNotificationController>().fetchNotifications(silent: true);
+    }
+    if (Get.isRegistered<PoliceNotificationController>()) {
+      Get.find<PoliceNotificationController>().fetchNotifications(silent: true);
+    }
+    if (Get.isRegistered<BailBondsmanNotificationController>()) {
+      Get.find<BailBondsmanNotificationController>().fetchNotifications(silent: true);
     }
 
     // Display rich in-app toast/snackbar
@@ -144,19 +160,6 @@ class FcmService {
 
   /// Routes the user to the relevant screen when a push notification is tapped
   void _handleNotificationTap(RemoteMessage message) {
-    final type = message.data['type']?.toString().toLowerCase();
-    final meetingId = message.data['meetingId']?.toString();
-    final conversationId = message.data['conversationId']?.toString();
-
-    if (type == 'meeting' || meetingId != null) {
-      Get.toNamed(
-        AppRoutes.citizenLiveCall,
-        arguments: {'meetingId': meetingId, 'isHost': false},
-      );
-    } else if (type == 'chat' || conversationId != null) {
-      Get.toNamed(AppRoutes.attorneyChatDetails);
-    } else {
-      Get.toNamed(AppRoutes.citizenNotification);
-    }
+    NotificationRouter.navigateFromRemoteMessage(message);
   }
 }

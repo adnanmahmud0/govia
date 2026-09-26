@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:get/get.dart';
 import 'package:gsabino365/core/services/api_client.dart';
+import 'package:gsabino365/core/services/notification_router.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/notification_model.dart';
 import 'package:gsabino365/data/repositories/notification_repository.dart';
@@ -63,6 +64,11 @@ class DoctorNotificationController extends GetxController {
     await _repo.markAsRead(notif.id);
   }
 
+  Future<void> onNotificationTapped(NotificationModel notif) async {
+    markAsRead(notif);
+    await NotificationRouter.navigate(notif);
+  }
+
   Future<void> markAllAsRead() async {
     for (int i = 0; i < notifications.length; i++) {
       notifications[i] = notifications[i].copyWith(isRead: true, readAt: DateTime.now());
@@ -82,47 +88,63 @@ class DoctorNotificationController extends GetxController {
     NotificationModel(
       id: 'doc_notif_1',
       userId: 'doc_1',
-      type: 'assessment',
-      title: 'Clinical Assessment Request',
-      subtitle: 'New clinical assessment for Patient #0047 has been submitted for verification.',
-      resourceType: 'assessment',
-      resourceId: 'ass_1',
+      type: 'incident',
+      title: 'Mobile Crisis Team Dispatch (Marcus Vance)',
+      subtitle: 'Field unit assigned to citizen encounter. Live telehealth triage requested.',
+      resourceType: 'meeting',
+      resourceId: 'disp_1',
       isRead: false,
+      metadata: {
+        'callerName': 'Marcus Vance',
+        'location': 'Elm St & Broadway, Sector 4',
+        'category': 'Crisis De-escalation',
+        'isLive': true,
+      },
       createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
       updatedAt: DateTime.now().subtract(const Duration(minutes: 10)),
     ),
     NotificationModel(
       id: 'doc_notif_2',
       userId: 'doc_1',
-      type: 'dispatch',
-      title: 'Mobile Crisis Team Dispatch',
-      subtitle: 'Field unit assigned to District 4 incident. Live telehealth triage requested.',
-      resourceType: 'dispatch',
-      resourceId: 'disp_1',
+      type: 'assessment',
+      title: 'Clinical Assessment Request',
+      subtitle: 'New clinical assessment for Patient #0047 has been submitted for psychiatric verification.',
+      resourceType: 'assessment',
+      resourceId: 'ass_1',
       isRead: false,
+      metadata: {
+        'callerName': 'Marcus Vance',
+        'location': 'District 4 Health Center',
+        'category': 'Assessment Intake',
+      },
       createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
       updatedAt: DateTime.now().subtract(const Duration(minutes: 45)),
     ),
     NotificationModel(
       id: 'doc_notif_3',
       userId: 'doc_1',
-      type: 'system',
-      title: 'HIPAA Compliance Verified',
-      subtitle: 'Your monthly telehealth encryption and compliance documentation has been approved.',
-      resourceType: 'compliance',
-      resourceId: 'comp_1',
+      type: 'meeting',
+      title: 'Scheduled Telehealth Consultation',
+      subtitle: 'Dr. Sarah Chen scheduled a multi-specialty triage case review.',
+      resourceType: 'meeting',
+      resourceId: 'sched_1',
       isRead: true,
+      metadata: {
+        'callerName': 'Dr. Sarah Chen',
+        'location': 'Virtual Care Room 3',
+        'category': 'Case Consultation',
+      },
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
     ),
     NotificationModel(
       id: 'doc_notif_4',
       userId: 'doc_1',
-      type: 'schedule',
-      title: 'Consultation Shift Updated',
-      subtitle: 'Dr. Sarah Chen updated the on-call emergency de-escalation roster.',
-      resourceType: 'schedule',
-      resourceId: 'sched_1',
+      type: 'system',
+      title: 'HIPAA Compliance Verified',
+      subtitle: 'Your monthly telehealth encryption and compliance documentation has been approved.',
+      resourceType: 'compliance',
+      resourceId: 'comp_1',
       isRead: true,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       updatedAt: DateTime.now().subtract(const Duration(days: 1)),

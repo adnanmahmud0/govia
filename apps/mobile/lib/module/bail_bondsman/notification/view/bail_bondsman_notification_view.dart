@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:gsabino365/data/models/notification_model.dart';
+import 'package:gsabino365/core/widgets/common_notification_card.dart';
 import 'package:gsabino365/module/bail_bondsman/notification/controller/bail_bondsman_notification_controller.dart';
 
 class BailBondsmanNotificationView extends GetView<BailBondsmanNotificationController> {
@@ -172,17 +172,18 @@ class BailBondsmanNotificationView extends GetView<BailBondsmanNotificationContr
                   return RefreshIndicator(
                     color: const Color(0xFF1550A6),
                     onRefresh: () => controller.fetchNotifications(),
-                    child: ListView.builder(
+                    child: ListView.separated(
                       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 4.h),
                       physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
                       itemCount: list.length,
+                      separatorBuilder: (context, index) => SizedBox(height: 2.h),
                       itemBuilder: (context, index) {
                         final notif = list[index];
                         final isLast = index == list.length - 1;
-                        return _NotifCard(
+                        return CommonNotificationCard(
                           notif: notif,
                           isLast: isLast,
-                          onTap: () => controller.markAsRead(notif),
+                          onTap: () => controller.onNotificationTapped(notif),
                         );
                       },
                     ),
@@ -222,168 +223,5 @@ class BailBondsmanNotificationView extends GetView<BailBondsmanNotificationContr
         ),
       );
     });
-  }
-}
-
-class _NotifCard extends StatelessWidget {
-  final NotificationModel notif;
-  final bool isLast;
-  final VoidCallback onTap;
-
-  const _NotifCard({
-    required this.notif,
-    required this.isLast,
-    required this.onTap,
-  });
-
-  String _timeAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes <= 0 ? 1 : diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else {
-      return '${diff.inDays}d ago';
-    }
-  }
-
-  String _getInitials(String title) {
-    final words = title.trim().split(' ');
-    if (words.length >= 2) {
-      return '${words[0][0]}${words[1][0]}'.toUpperCase();
-    } else if (title.isNotEmpty) {
-      return title.substring(0, title.length > 2 ? 2 : title.length).toUpperCase();
-    }
-    return 'BB';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isUnread = !notif.isRead;
-    final initials = _getInitials(notif.title);
-
-    return Container(
-      margin: EdgeInsets.only(bottom: isLast ? 0 : 12.h),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16.r),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16.r),
-          child: Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: isUnread ? Colors.white : Colors.white.withValues(alpha: 0.75),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(
-                color: isUnread
-                    ? const Color(0xFF1550A6).withValues(alpha: 0.15)
-                    : const Color(0xFFE2E8F0),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isUnread
-                      ? const Color(0xFF1550A6).withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.02),
-                  blurRadius: isUnread ? 10 : 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      width: 48.w,
-                      height: 48.w,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1550A6).withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF1550A6).withValues(alpha: 0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          initials,
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF1550A6),
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (isUnread)
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 12.w,
-                          height: 12.w,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF5252),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              notif.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 15.sp,
-                                fontWeight: isUnread ? FontWeight.w700 : FontWeight.w600,
-                                color: const Color(0xFF0A192F),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            _timeAgo(notif.createdAt),
-                            style: GoogleFonts.inter(
-                              fontSize: 11.sp,
-                              color: const Color(0xFF90A0B3),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        notif.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          color: isUnread ? const Color(0xFF3A4A5C) : const Color(0xFF7A8A9A),
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

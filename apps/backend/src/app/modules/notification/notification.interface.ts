@@ -30,6 +30,7 @@ export type INotification = {
   isRead: boolean;
   readAt?: Date;
   icon?: string;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }

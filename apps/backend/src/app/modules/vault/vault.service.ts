@@ -5,6 +5,8 @@ import { Meeting } from '../meeting/meeting.model';
 import { IMeeting } from '../meeting/meeting.interface';
 import { IVaultFolder, VaultCategory } from './vaultFolder.interface';
 import { VaultFolder } from './vaultFolder.model';
+import { User } from '../user/user.model';
+import { NotificationService } from '../notification/notification.service';
 import { IVaultItem, VaultItemType } from './vaultItem.interface';
 import { VaultItem } from './vaultItem.model';
 
@@ -388,6 +390,28 @@ const shareFolder = async (
       permission: 'VIEW',
     });
     await folder.save();
+
+    // Deliver notification to recipient
+    try {
+      const ownerUser = await User.findById(ownerId);
+      const ownerName = ownerUser?.name || 'A user';
+      await NotificationService.createNotification({
+        userId: targetUserId,
+        type: 'vault',
+        title: `📁 Evidence Folder Shared: ${folder.name}`,
+        subtitle: `${ownerName} shared the case evidence folder "${folder.name}" with you. Tap to view in Evidence Vault.`,
+        resourceType: 'vault',
+        resourceId: folder._id.toString(),
+        metadata: {
+          folderId: folder._id.toString(),
+          folderName: folder.name,
+          callerName: ownerName,
+          category: folder.category || 'GENERAL',
+        },
+      });
+    } catch (e) {
+      console.error('Failed to notify shared folder recipient:', e);
+    }
   }
 
   return folder;

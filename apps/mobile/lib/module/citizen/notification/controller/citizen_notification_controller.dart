@@ -4,6 +4,7 @@ import 'package:gsabino365/core/services/api_client.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/notification_model.dart';
 import 'package:gsabino365/data/repositories/notification_repository.dart';
+import 'package:gsabino365/core/services/notification_router.dart';
 
 class CitizenNotificationController extends GetxController {
   late final NotificationRepository _repo;
@@ -90,15 +91,24 @@ class CitizenNotificationController extends GetxController {
     Helpers.showCustomSnackBar('Notification removed', type: SnackBarType.info);
   }
 
+  Future<void> onNotificationTapped(NotificationModel notif) async {
+    markAsRead(notif);
+    await NotificationRouter.navigate(notif);
+  }
+
   static final List<NotificationModel> _defaultNotifications = [
     NotificationModel(
       id: 'notif_1',
       userId: 'user_1',
       type: 'medical',
       title: 'Dr. Sarah Chen',
-      subtitle: 'The clinical laboratory results for your consultation are ready for review.',
-      resourceType: 'consultation',
+      subtitle: 'The clinical laboratory results for your consultation are ready for review. Tap to view consultation.',
+      resourceType: 'meeting',
       resourceId: 'c1',
+      metadata: {
+        'callerName': 'Dr. Sarah Chen',
+        'topic': 'Telehealth Clinical Review',
+      },
       isRead: false,
       createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
       updatedAt: DateTime.now().subtract(const Duration(minutes: 15)),
@@ -108,9 +118,13 @@ class CitizenNotificationController extends GetxController {
       userId: 'user_1',
       type: 'legal',
       title: 'Attorney Mark Thompson',
-      subtitle: 'New legal consultation request accepted. View details in your sessions.',
+      subtitle: 'New legal consultation request accepted. Tap to view schedule details.',
       resourceType: 'meeting',
       resourceId: 'm1',
+      metadata: {
+        'callerName': 'Attorney Mark Thompson',
+        'topic': 'Legal Representation Consultation',
+      },
       isRead: false,
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
@@ -118,11 +132,14 @@ class CitizenNotificationController extends GetxController {
     NotificationModel(
       id: 'notif_3',
       userId: 'user_1',
-      type: 'system',
-      title: 'System Security Alert',
-      subtitle: 'Emergency recording and location telemetry are active on your device.',
-      resourceType: 'system',
-      resourceId: 's1',
+      type: 'vault',
+      title: '📹 Vault Recording Ready: Incident Session',
+      subtitle: 'Your completed session recording has been securely archived. Tap to open Evidence Vault.',
+      resourceType: 'recording',
+      resourceId: 'rec_1',
+      metadata: {
+        'topic': 'Traffic Stop Recording',
+      },
       isRead: true,
       createdAt: DateTime.now().subtract(const Duration(hours: 3)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 3)),
@@ -130,11 +147,14 @@ class CitizenNotificationController extends GetxController {
     NotificationModel(
       id: 'notif_4',
       userId: 'user_1',
-      type: 'info',
-      title: 'GoVia Emergency AI',
-      subtitle: 'Safety profile updated. Your preferred emergency providers have been notified.',
-      resourceType: 'profile',
-      resourceId: 'p1',
+      type: 'emergency',
+      title: '🛡️ Govia Active Protection Online',
+      subtitle: 'Emergency stop button is armed. Responders, video recording, and live GPS are ready.',
+      resourceType: 'encounter',
+      resourceId: 'enc_1',
+      metadata: {
+        'category': 'EMERGENCY',
+      },
       isRead: true,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       updatedAt: DateTime.now().subtract(const Duration(days: 1)),

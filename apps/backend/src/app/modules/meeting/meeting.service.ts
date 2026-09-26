@@ -267,7 +267,9 @@ const createInstantMeeting = async (
       socketHelper.broadcast('emergency_meeting_created', meetingResult);
 
       const hostName = hostUser?.name || 'Citizen';
+      const hostAvatar = hostUser?.image || '';
       const loc = locationAddress || 'Active GPS Location';
+      const meetingId = newMeeting._id.toString();
 
       // 1. Citizen's own active protection notification
       NotificationService.createNotification({
@@ -276,43 +278,93 @@ const createInstantMeeting = async (
         title: '🛡️ Govia Active Protection Enabled',
         subtitle: `Live encounter active at ${loc}. Responders alerted and cloud recording started.`,
         resourceType: 'encounter',
-        resourceId: newMeeting._id.toString(),
+        resourceId: meetingId,
+        metadata: {
+          callerName: hostName,
+          callerRole: 'CITIZEN',
+          callerAvatar: hostAvatar,
+          location: loc,
+          meetingId,
+          topic,
+          category: 'EMERGENCY',
+          isLive: true,
+        },
       });
 
       // 2. Police notification
       NotificationService.createRoleNotification('POLICE', {
         type: 'dispatch',
-        title: '🚨 Emergency Stop Encounter',
-        subtitle: `${hostName} initiated an emergency encounter at ${loc}. Live video & GPS streaming.`,
+        title: `🚨 Emergency Stop Encounter: ${hostName}`,
+        subtitle: `Citizen ${hostName} initiated an emergency encounter at ${loc}. Live video & GPS streaming.`,
         resourceType: 'encounter',
-        resourceId: newMeeting._id.toString(),
+        resourceId: meetingId,
+        metadata: {
+          callerName: hostName,
+          callerRole: 'CITIZEN',
+          callerAvatar: hostAvatar,
+          location: loc,
+          meetingId,
+          topic,
+          category: 'EMERGENCY',
+          isLive: true,
+        },
       }, userId);
 
       // 3. Attorney notification
       NotificationService.createRoleNotification('ATTORNEY', {
         type: 'legal',
-        title: '⚖️ Emergency Defense Dispatch',
-        subtitle: `${hostName} initiated an emergency encounter at ${loc} and requested legal representation.`,
+        title: `⚖️ Emergency Defense Dispatch: ${hostName}`,
+        subtitle: `Citizen ${hostName} requested emergency legal representation during a live stop at ${loc}. Tap to review details & join call.`,
         resourceType: 'meeting',
-        resourceId: newMeeting._id.toString(),
+        resourceId: meetingId,
+        metadata: {
+          callerName: hostName,
+          callerRole: 'CITIZEN',
+          callerAvatar: hostAvatar,
+          location: loc,
+          meetingId,
+          topic,
+          category: 'EMERGENCY',
+          isLive: true,
+        },
       }, userId);
 
       // 4. Mental Health notification
       NotificationService.createRoleNotification('MENTAL_HEALTH_PROFESSIONAL', {
         type: 'medical',
-        title: '🩺 Crisis De-escalation Alert',
-        subtitle: `Mental health crisis support requested for active encounter with ${hostName}.`,
+        title: `🩺 Crisis De-escalation Alert: ${hostName}`,
+        subtitle: `Mental health crisis support requested for active encounter with citizen ${hostName} at ${loc}.`,
         resourceType: 'meeting',
-        resourceId: newMeeting._id.toString(),
+        resourceId: meetingId,
+        metadata: {
+          callerName: hostName,
+          callerRole: 'CITIZEN',
+          callerAvatar: hostAvatar,
+          location: loc,
+          meetingId,
+          topic,
+          category: 'EMERGENCY',
+          isLive: true,
+        },
       }, userId);
 
       // 5. Bail Bondsman notification
       NotificationService.createRoleNotification('BAIL_BONDSMAN', {
         type: 'bail',
-        title: '🏛️ Urgent Bail Assistance Notice',
-        subtitle: `Citizen ${hostName} initiated an emergency stop in your service jurisdiction.`,
+        title: `🏛️ Urgent Bail Assistance Notice: ${hostName}`,
+        subtitle: `Citizen ${hostName} initiated an emergency stop at ${loc} in your service jurisdiction.`,
         resourceType: 'meeting',
-        resourceId: newMeeting._id.toString(),
+        resourceId: meetingId,
+        metadata: {
+          callerName: hostName,
+          callerRole: 'CITIZEN',
+          callerAvatar: hostAvatar,
+          location: loc,
+          meetingId,
+          topic,
+          category: 'EMERGENCY',
+          isLive: true,
+        },
       }, userId);
     } else if (participantId) {
       socketHelper.emitToUser(
@@ -321,13 +373,21 @@ const createInstantMeeting = async (
         meetingResult
       );
       const hostName = hostUser?.name || 'User';
+      const hostAvatar = hostUser?.image || '';
       NotificationService.createNotification({
         userId: participantId,
         type: 'consultation',
-        title: '📞 Instant Consultation Call',
-        subtitle: `${hostName} started an instant video consultation: "${topic}".`,
+        title: `📞 Instant Consultation Call: ${hostName}`,
+        subtitle: `${hostName} started an instant video consultation: "${topic}". Tap to join call.`,
         resourceType: 'meeting',
         resourceId: newMeeting._id.toString(),
+        metadata: {
+          callerName: hostName,
+          callerAvatar: hostAvatar,
+          topic,
+          meetingId: newMeeting._id.toString(),
+          isLive: true,
+        },
       });
     } else {
       socketHelper.emitToRole('ATTORNEY', 'emergency_alert', meetingResult);
@@ -533,20 +593,32 @@ const scheduleMeeting = async (
       NotificationService.createNotification({
         userId: participantId,
         type: 'consultation',
-        title: '📅 Consultation Scheduled',
+        title: `📅 Consultation Scheduled: ${topic}`,
         subtitle: `${hostName} scheduled "${topic}" for ${meetingDate.toLocaleDateString()} at ${meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
         resourceType: 'meeting',
         resourceId: scheduledMeeting._id.toString(),
+        metadata: {
+          callerName: hostName,
+          topic,
+          meetingDate: meetingDate.toISOString(),
+          isLive: false,
+        },
       });
 
       // 2. Host confirmation notification
       NotificationService.createNotification({
         userId,
         type: 'consultation',
-        title: '📅 Consultation Confirmed',
+        title: `📅 Consultation Confirmed: ${topic}`,
         subtitle: `Consultation with ${participantName} confirmed for ${meetingDate.toLocaleDateString()} at ${meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
         resourceType: 'meeting',
         resourceId: scheduledMeeting._id.toString(),
+        metadata: {
+          callerName: participantName,
+          topic,
+          meetingDate: meetingDate.toISOString(),
+          isLive: false,
+        },
       });
     }
 
