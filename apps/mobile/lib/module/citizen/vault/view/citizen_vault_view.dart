@@ -274,16 +274,20 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'All Session Recordings ($count)',
-                style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E293B),
+              Expanded(
+                child: Text(
+                  'All Session Recordings ($count)',
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              SizedBox(width: 8.w),
               Text(
                 'Encounters & Consultations',
                 style: GoogleFonts.inter(
@@ -302,16 +306,20 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
           child: Column(
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'My Case Folders ($count)',
-                    style: GoogleFonts.inter(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B),
+                  Expanded(
+                    child: Text(
+                      'My Case Folders ($count)',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1E293B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  SizedBox(width: 8.w),
                   Text(
                     'Full Edit & Share Access',
                     style: GoogleFonts.inter(
@@ -343,21 +351,25 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
             ],
           ),
         );
-      } else if (tab == 'Shared with Me') {
+      } else if (tab == 'Shared' || tab == 'Shared with Me') {
         final count = controller.filteredSharedFolders.length;
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Shared Folders ($count)',
-                style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E293B),
+              Expanded(
+                child: Text(
+                  'Shared Folders ($count)',
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              SizedBox(width: 8.w),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
@@ -388,16 +400,20 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'All Recordings ($count)',
-                style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E293B),
+              Expanded(
+                child: Text(
+                  'All Recordings ($count)',
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              SizedBox(width: 8.w),
               Text(
                 'Encounters & Consultations',
                 style: GoogleFonts.inter(
@@ -1013,29 +1029,33 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
               Text(dateStr, style: GoogleFonts.inter(fontSize: 11.5.sp, color: const Color(0xFF94A3B8))),
               if (folderName != null && folderName.isNotEmpty) ...[
                 const Spacer(),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(6.r),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.folder_open_rounded, size: 12.sp, color: const Color(0xFF1D4ED8)),
-                      SizedBox(width: 4.w),
-                      Text(
-                        folderName,
-                        style: GoogleFonts.inter(
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1D4ED8),
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.folder_open_rounded, size: 12.sp, color: const Color(0xFF1D4ED8)),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            folderName,
+                            style: GoogleFonts.inter(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1D4ED8),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
