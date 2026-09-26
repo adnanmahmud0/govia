@@ -50,6 +50,11 @@ class SubscriptionView extends GetView<SubscriptionController> {
 
                     SizedBox(height: 20.h),
 
+                    // Gift Subscriptions & Redeem Banner
+                    _buildGiftPromotionBanner(),
+
+                    SizedBox(height: 20.h),
+
                     // Trust Badges
                     _buildTrustBadges(),
 
@@ -628,6 +633,116 @@ class SubscriptionView extends GetView<SubscriptionController> {
     );
   }
 
+  /// Gifting Promotion Card (Buy bundles or redeem code)
+  Widget _buildGiftPromotionBanner() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(18.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10.r),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1550A6).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Icon(
+                  Icons.card_giftcard_rounded,
+                  color: const Color(0xFF1550A6),
+                  size: 24.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Gift Govia Protection',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      'Protect loved ones, clients, or employees',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 14.h),
+          Text(
+            'Purchase single or multi-user gift bundles (Family, Team, Community packs) with single-use codes, or redeem a gift code someone sent you.',
+            style: GoogleFonts.inter(
+              fontSize: 12.5.sp,
+              color: const Color(0xFF334155),
+              height: 1.45,
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF1550A6), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    padding: EdgeInsets.symmetric(vertical: 11.h),
+                  ),
+                  onPressed: () => Get.toNamed(AppRoutes.giftingHub, arguments: {'tab': 1}),
+                  child: Text(
+                    'Redeem Code',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1550A6),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1550A6),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    padding: EdgeInsets.symmetric(vertical: 11.h),
+                  ),
+                  onPressed: () => Get.toNamed(AppRoutes.giftingHub, arguments: {'tab': 0}),
+                  child: Text(
+                    'Buy Gift Passes',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Helper Feature Row
   Widget _buildFeatureRow(
     String title,
@@ -825,22 +940,49 @@ class SubscriptionView extends GetView<SubscriptionController> {
         }
 
         if (isPrem) {
-          return SizedBox(
-            width: double.infinity,
-            height: 52.h,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 52.h,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF059669),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                  ),
+                  onPressed: () => Get.back(),
+                  icon: const Icon(Icons.verified_rounded, color: Colors.white, size: 18),
+                  label: Text(
+                    'Govia Premium Active',
+                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp),
+                  ),
+                ),
               ),
-              onPressed: () => Get.back(),
-              icon: const Icon(Icons.verified_rounded, color: Colors.white, size: 18),
-              label: Text(
-                'Govia Premium Active',
-                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp),
+              SizedBox(height: 10.h),
+              GestureDetector(
+                onTap: () => Get.toNamed(AppRoutes.giftingHub, arguments: {'tab': 0}),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.card_giftcard_rounded, color: const Color(0xFF1550A6), size: 15.sp),
+                      SizedBox(width: 6.w),
+                      Text(
+                        'Gift Subscriptions to Family & Friends',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF1550A6),
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           );
         }
 
@@ -897,6 +1039,37 @@ class SubscriptionView extends GetView<SubscriptionController> {
                           ),
                         ],
                       ),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            GestureDetector(
+              onTap: () => Get.toNamed(AppRoutes.giftingHub, arguments: {'tab': 1}),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 4.h),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.card_giftcard_rounded, color: const Color(0xFF1550A6), size: 15.sp),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'Have a gift pass? ',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF64748B),
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      'Redeem code',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF1550A6),
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

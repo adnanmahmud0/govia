@@ -443,6 +443,69 @@ const cancelSubscription = async (userId: string) => {
   return activeSub;
 };
 
+/**
+ * Activate or extend a subscription via a redeemed Gift Code
+ */
+const activateGiftSubscription = async (
+  userId: string,
+  userRole: string | undefined,
+  plan: SUBSCRIPTION_PLAN,
+  durationDays: number,
+  giftCode: string
+) => {
+  const effectiveRole = await resolveUserRole(userId, userRole);
+  const userObjectId = new Types.ObjectId(userId);
+  const now = new Date();
+
+  // Find if user already has an active subscription
+  const activeSub = await Subscription.findOne({
+    userId: userObjectId,
+    status: 'ACTIVE',
+  }).sort({ createdAt: -1 });
+
+  let calculatedEndDate: Date;
+
+  if (activeSub && activeSub.endDate && activeSub.endDate > now) {
+    // Extend from the current expiration date
+    calculatedEndDate = new Date(
+      activeSub.endDate.getTime() + durationDays * 24 * 60 * 60 * 1000
+    );
+    activeSub.endDate = calculatedEndDate;
+    if (plan === 'PREMIUM_YEARLY') {
+      activeSub.plan = 'PREMIUM_YEARLY';
+      activeSub.billingCycle = 'YEARLY';
+    }
+    await activeSub.save();
+    return activeSub;
+  }
+
+  // Deactivate any expired or older subscriptions
+  await Subscription.updateMany(
+    { userId: userObjectId, status: 'ACTIVE' },
+    { $set: { status: 'CANCELLED', autoRenew: false } }
+  );
+
+  calculatedEndDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+  const isYearly = durationDays >= 365 || plan === 'PREMIUM_YEARLY';
+  const newSub = await Subscription.create({
+    userId: userObjectId,
+    role: effectiveRole || USER_ROLES.CITIZEN,
+    plan,
+    status: 'ACTIVE',
+    billingCycle: isYearly ? 'YEARLY' : 'MONTHLY',
+    price: 0,
+    currency: 'USD',
+    startDate: now,
+    endDate: calculatedEndDate,
+    autoRenew: false, // Gift passes do not auto-renew on recipient's account
+    paymentProvider: 'MANUAL',
+    productId: `gift_code:${giftCode}`,
+  });
+
+  return newSub;
+};
+
 export const SubscriptionService = {
   getUserSubscriptionStatus,
   checkCitizenMeetingQuota,
@@ -451,4 +514,6 @@ export const SubscriptionService = {
   verifyAndSubscribeIAP,
   subscribeManual,
   cancelSubscription,
+  activateGiftSubscription,
 };
+
