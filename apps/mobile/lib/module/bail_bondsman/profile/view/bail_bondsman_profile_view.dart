@@ -276,11 +276,6 @@ class BailBondsmanProfileView extends GetView<BailBondsmanProfileController> {
                       onTap: () => Get.toNamed(AppRoutes.bailBondsmanHistory),
                     ),
                     _buildMenuItem(
-                      icon: Icons.hexagon_outlined,
-                      title: 'Referral For Points',
-                      onTap: () => Get.toNamed(AppRoutes.referral),
-                    ),
-                    _buildMenuItem(
                       icon: Icons.card_giftcard_rounded,
                       title: 'Gift Plan',
                       onTap: () => Get.toNamed(AppRoutes.giftingHub),

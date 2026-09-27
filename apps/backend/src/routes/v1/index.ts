@@ -14,6 +14,7 @@ import { StorageSettingRoutes } from '../../app/modules/storageSetting/storageSe
 import { SubscriptionRoutes } from '../../app/modules/subscription/subscription.route';
 import { GiftPlanRoutes } from '../../app/modules/giftPlan/giftPlan.route';
 import { ProviderPaymentRoutes } from '../../app/modules/providerPayment/providerPayment.route';
+import { ReferralRoutes } from '../../app/modules/referral/referral.route';
 
 const router = express.Router();
 
@@ -101,6 +102,14 @@ const apiRoutes = [
   {
     path: '/provider-payment',
     route: ProviderPaymentRoutes,
+  },
+  {
+    path: '/referral',
+    route: ReferralRoutes,
+  },
+  {
+    path: '/referrals',
+    route: ReferralRoutes,
   },
 ];
 

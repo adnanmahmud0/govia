@@ -112,6 +112,13 @@ class ApiConstants {
   static const String providerCheckoutSession = '/provider-payment/checkout-session';
   static const String providerVerifySession = '/provider-payment/verify-session';
   static const String providerTransactions = '/provider-payment/transactions';
+
+  // ─── Citizen Referral Endpoints ───────────────────────────────────────────
+  static const String referralSummary = '/referral/summary';
+  static const String referralHistory = '/referral/history';
+  static const String referralRewards = '/referral/rewards-catalog';
+  static const String referralRedeem = '/referral/redeem';
+  static const String referralTransactions = '/referral/transactions';
 }
 
 

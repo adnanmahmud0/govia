@@ -10,15 +10,54 @@ import generateOTP from '../../../util/generateOTP';
 import { Meeting } from '../meeting/meeting.model';
 import { IUser } from './user.interface';
 import { User } from './user.model';
+import { ReferralService } from '../referral/referral.service';
 import { debug } from '../../../shared/debug';
 import QueryBuilder from '../../builder/QueryBuilder';
 
-const createUserToDB = async (payload: Partial<IUser>): Promise<IUser> => {
+const createUserToDB = async (
+  payload: Partial<IUser> & { referredByCode?: string; inviteCode?: string }
+): Promise<IUser> => {
   //set role if not provided
   if (!payload.role) payload.role = USER_ROLES.USER;
+
+  const isCitizen =
+    payload.role === USER_ROLES.USER || payload.role === USER_ROLES.CITIZEN;
+
+  // Extract any incoming invite code entered by user
+  let inviteCode = payload.referredByCode || payload.inviteCode;
+
+  // If user entered referralCode in registration payload, check if it refers to another user
+  if (payload.referralCode) {
+    const existingReferrer = await User.findOne({
+      referralCode: payload.referralCode.toUpperCase(),
+    }).lean();
+    if (existingReferrer) {
+      inviteCode = payload.referralCode;
+    }
+  }
+
+  // Assign citizen's own unique referral code
+  if (isCitizen) {
+    payload.referralCode = await ReferralService.generateUniqueReferralCode(
+      payload.name
+    );
+  }
+
   const createUser = await User.create(payload);
   if (!createUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Failed to create user');
+  }
+
+  // If invited by another citizen, attribute points and bonuses
+  if (isCitizen && inviteCode) {
+    try {
+      await ReferralService.attributeReferralOnRegister(
+        createUser._id,
+        inviteCode
+      );
+    } catch (_err) {
+      // Non-blocking attribution
+    }
   }
 
   //send email

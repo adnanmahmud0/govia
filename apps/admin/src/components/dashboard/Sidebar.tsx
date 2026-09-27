@@ -28,6 +28,7 @@ import {
   BookOpen,
   UserCheck,
   Video,
+  Award,
 } from "lucide-react";
 import {
   Sheet,
@@ -62,6 +63,7 @@ const items: Array<{
   { href: "/risk-map", label: "Risk Map", Icon: Map },
   { href: "/gift-code", label: "Gift Code", Icon: Gift },
   { href: "/subscription", label: "Subscription", Icon: CreditCard },
+  { href: "/referrals", label: "Citizen Referrals", Icon: Award },
   { href: "/provider-finance", label: "Provider Payouts", Icon: DollarSign },
   { href: "/subpoena", label: "Subpoena", Icon: FileSignature },
   { href: "/profile", label: "Profile", Icon: User },

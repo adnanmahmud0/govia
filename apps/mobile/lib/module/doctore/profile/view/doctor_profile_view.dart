@@ -325,11 +325,6 @@ class DoctorProfileView extends GetView<DoctorProfileController> {
                 onTap: () => Get.toNamed(AppRoutes.doctorHistory),
               ),
               _buildOptionItem(
-                icon: Icons.hexagon_outlined,
-                title: 'Referral For Points',
-                onTap: () => Get.toNamed(AppRoutes.referral),
-              ),
-              _buildOptionItem(
                 icon: Icons.card_giftcard_outlined,
                 title: 'Gift Plan',
                 onTap: () => Get.toNamed(AppRoutes.giftingHub),

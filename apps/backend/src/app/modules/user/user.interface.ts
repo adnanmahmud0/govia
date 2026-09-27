@@ -1,4 +1,4 @@
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { USER_ROLES } from '../../../enums/user';
 
 export type IUser = {
@@ -38,6 +38,11 @@ export type IUser = {
   payoutsEnabled?: boolean;
   preferredAttorneyActiveUntil?: Date;
   preferredBailBondsmanActiveUntil?: Date;
+  referralCode?: string;
+  referredBy?: Types.ObjectId | IUser;
+  referralPoints?: number;
+  lifetimeReferralPoints?: number;
+  referralCount?: number;
   authentication?: {
     isResetPassword: boolean;
     oneTimeCode: number;

@@ -359,11 +359,6 @@ class AttorneyProfileView extends GetView<AttorneyProfileController> {
                 onTap: () => Get.toNamed(AppRoutes.attorneyEvidenceVault),
               ),
               _buildOptionItem(
-                icon: Icons.hexagon_outlined,
-                title: 'Referral For Points',
-                onTap: () => Get.toNamed(AppRoutes.referral),
-              ),
-              _buildOptionItem(
                 icon: Icons.card_giftcard_outlined,
                 title: 'Gift Plan',
                 onTap: () => Get.toNamed(AppRoutes.giftingHub),

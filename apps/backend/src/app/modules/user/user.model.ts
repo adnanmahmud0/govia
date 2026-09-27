@@ -90,6 +90,11 @@ const userSchema = new Schema<IUser, UserModal>(
     payoutsEnabled: { type: Boolean, default: false },
     preferredAttorneyActiveUntil: { type: Date },
     preferredBailBondsmanActiveUntil: { type: Date },
+    referralCode: { type: String, trim: true, uppercase: true },
+    referredBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    referralPoints: { type: Number, default: 0 },
+    lifetimeReferralPoints: { type: Number, default: 0 },
+    referralCount: { type: Number, default: 0 },
   },
   {
     timestamps: true,
@@ -110,6 +115,7 @@ userSchema.virtual('shortHexId').get(function (this: { _id?: { toString(): strin
 });
 
 userSchema.index({ email: 1, role: 1 }, { unique: true });
+userSchema.index({ referralCode: 1 }, { sparse: true });
 
 //exist user check
 userSchema.statics.isExistUserById = async (id: string) => {
