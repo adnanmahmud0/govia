@@ -577,12 +577,12 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
             Text(
               title,
               textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
               style: GoogleFonts.inter(
-                fontSize: 12.5.sp,
+                fontSize: 11.5.sp,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF0F172A),
+                height: 1.2,
               ),
             ),
             SizedBox(height: 2.h),
@@ -592,7 +592,7 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
-                fontSize: 10.sp,
+                fontSize: 9.5.sp,
                 color: const Color(0xFF64748B),
                 fontWeight: FontWeight.w500,
               ),
@@ -749,33 +749,42 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.workspace_premium_rounded, color: const Color(0xFFFBBF24), size: 16.sp),
-                  SizedBox(width: 4.w),
-                  Text(
-                    '$total Community Commendations',
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.9),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.workspace_premium_rounded, color: const Color(0xFFFBBF24), size: 15.sp),
+                    SizedBox(width: 4.w),
+                    Flexible(
+                      child: Text(
+                        '$total Commendations',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              SizedBox(width: 8.w),
               InkWell(
                 onTap: controller.clearSelectedOfficer,
                 borderRadius: BorderRadius.circular(8.r),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 15.sp),
-                      SizedBox(width: 4.w),
+                      Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 14.sp),
+                      SizedBox(width: 3.w),
                       Text(
                         'Change Officer',
                         style: GoogleFonts.inter(
-                          fontSize: 12.sp,
+                          fontSize: 11.5.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                           decoration: TextDecoration.underline,
@@ -991,13 +1000,19 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
     final img = (item['image'] ?? '').toString();
     final rating = (item['rating'] as num?)?.toDouble() ?? 4.9;
 
-    return Container(
-      padding: EdgeInsets.all(12.r),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
+    return InkWell(
+      onTap: () {
+        controller.selectOfficer(item);
+        Get.back();
+      },
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        padding: EdgeInsets.all(12.r),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
       child: Row(
         children: [
           CircleAvatar(
@@ -1029,6 +1044,8 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                     ),
                     SizedBox(width: 4.w),
                     Icon(Icons.verified_rounded, color: const Color(0xFF10B981), size: 14.sp),
+                    SizedBox(width: 6.w),
+                    Text('$rating ★', style: GoogleFonts.inter(fontSize: 11.5.sp, fontWeight: FontWeight.w700, color: const Color(0xFFD97706))),
                   ],
                 ),
                 SizedBox(height: 2.h),
@@ -1038,8 +1055,10 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(fontSize: 11.5.sp, color: const Color(0xFF64748B)),
                 ),
-                SizedBox(height: 4.h),
-                Row(
+                SizedBox(height: 5.h),
+                Wrap(
+                  spacing: 6.w,
+                  runSpacing: 4.h,
                   children: [
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
@@ -1048,7 +1067,7 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                         borderRadius: BorderRadius.circular(4.r),
                       ),
                       child: Text(
-                        'BADGE #$badge',
+                        'BADGE #${badge.replaceFirst('#', '')}',
                         style: GoogleFonts.sourceCodePro(
                           fontSize: 9.5.sp,
                           fontWeight: FontWeight.w700,
@@ -1056,12 +1075,22 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                         ),
                       ),
                     ),
-                    if (car.isNotEmpty && car != 'N/A') ...[
-                      SizedBox(width: 6.w),
-                      Text('• Car: $car', style: GoogleFonts.inter(fontSize: 10.sp, color: const Color(0xFF94A3B8))),
-                    ],
-                    const Spacer(),
-                    Text('$rating ★', style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w700, color: const Color(0xFFD97706))),
+                    if (car.isNotEmpty && car != 'N/A')
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                        child: Text(
+                          'Car: $car',
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5.sp,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ],
@@ -1087,8 +1116,9 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ──────────────────────── DIALOG 2: QR CAMERA SCANNER ────────────────────────
   void _showQrScannerModal(BuildContext context) {
@@ -1239,6 +1269,11 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                 child: TextField(
                   controller: controller.badgeLookupController,
                   autofocus: true,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (val) async {
+                    final ok = await controller.lookupOfficerById(val);
+                    if (ok) Get.back();
+                  },
                   textCapitalization: TextCapitalization.characters,
                   style: GoogleFonts.sourceCodePro(
                     fontSize: 16.sp,
@@ -1256,7 +1291,23 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                 ),
               ),
 
-              SizedBox(height: 20.h),
+              SizedBox(height: 10.h),
+
+              Text(
+                'Recent / Quick badges:',
+                style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+              ),
+              SizedBox(height: 6.h),
+              Wrap(
+                spacing: 8.w,
+                runSpacing: 6.h,
+                children: [
+                  _buildQuickBadgeChip('CPD-4402', 'Miller'),
+                  _buildQuickBadgeChip('CPD-2108', 'Walker'),
+                ],
+              ),
+
+              SizedBox(height: 18.h),
 
               Row(
                 children: [
@@ -1296,6 +1347,40 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickBadgeChip(String badge, String officerName) {
+    return InkWell(
+      onTap: () async {
+        controller.badgeLookupController.text = badge;
+        final ok = await controller.lookupOfficerById(badge);
+        if (ok) Get.back();
+      },
+      borderRadius: BorderRadius.circular(20.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFF6FF),
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: const Color(0xFFBFDBFE)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bolt_rounded, color: const Color(0xFF1550A6), size: 14.sp),
+            SizedBox(width: 4.w),
+            Text(
+              '$badge ($officerName)',
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1550A6),
+              ),
+            ),
+          ],
         ),
       ),
     );
