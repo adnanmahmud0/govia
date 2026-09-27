@@ -355,8 +355,6 @@ class PoliceHomeView extends GetView<PoliceHomeController> {
                             'Licensed crisis counselors for encounter de-escalation, activated through on-scene citizen verification.',
                         buttonText: 'SCAN CITIZEN QR TO ENGAGE',
                         onPressed: () => controller.openScanner(),
-                        secondaryActionText: 'OPEN CRISIS LIVE LINK',
-                        onSecondaryAction: () => controller.openCrisisManagement(),
                       ),
                       SizedBox(height: 20.h),
 
