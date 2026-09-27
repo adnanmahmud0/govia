@@ -238,6 +238,8 @@ class AppRoutes {
   static const String attorneyGoviaAi = '/attorney-govia-ai';
   static const String attorneyChatList = '/attorney-chat-list';
   static const String attorneyChatDetails = '/attorney-chat-details';
+  static const String messages = '/attorney-chat-list';
+  static const String chatList = '/attorney-chat-list';
 
   // Doctor standalone sub-tabs
   static const String doctorHome = '/doctor-home';

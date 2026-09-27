@@ -75,6 +75,61 @@ class CommonScheduleView extends StatelessWidget {
                         ],
                       ),
                     ),
+                    SizedBox(width: 10.w),
+                    // ─── Message / Chat Icon to Schedule Consultations ───
+                    Tooltip(
+                      message: 'Messages • Schedule consultation',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Get.toNamed(AppRoutes.attorneyChatList),
+                          borderRadius: BorderRadius.circular(14.r),
+                          child: Container(
+                            width: 42.r,
+                            height: 42.r,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(14.r),
+                              border: Border.all(
+                                color: const Color(0xFFBFDBFE),
+                                width: 1.w,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF1550A6).withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Center(
+                                  child: Icon(
+                                    Icons.chat_bubble_rounded,
+                                    color: const Color(0xFF1550A6),
+                                    size: 20.sp,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 8.h,
+                                  right: 8.w,
+                                  child: Container(
+                                    width: 7.r,
+                                    height: 7.r,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -223,6 +278,29 @@ class CommonScheduleView extends StatelessWidget {
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
+                                if (isUpcoming) ...[
+                                  SizedBox(height: 18.h),
+                                  ElevatedButton.icon(
+                                    onPressed: () => Get.toNamed(AppRoutes.attorneyChatList),
+                                    icon: Icon(Icons.chat_bubble_rounded, size: 16.sp),
+                                    label: Text(
+                                      'Go to Messages to Schedule',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1550A6),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 11.h),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12.r),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -442,11 +520,23 @@ class CommonScheduleView extends StatelessWidget {
                     controller.showRecordingDialog(meeting);
                   } else if (val == 'vault') {
                     controller.showAddToVaultModal(meeting);
+                  } else if (val == 'open_chat') {
+                    Get.toNamed(AppRoutes.attorneyChatList);
                   } else if (val == 'open_vault') {
                     _navigateToVaultFolder(vaultFolderId, vaultFolderName, category);
                   }
                 },
                 itemBuilder: (ctx) => [
+                  const PopupMenuItem(
+                    value: 'open_chat',
+                    child: Row(
+                      children: [
+                        Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Color(0xFF1550A6)),
+                        SizedBox(width: 8),
+                        Text('Message / Chat'),
+                      ],
+                    ),
+                  ),
                   if (isCompleted) ...[
                     const PopupMenuItem(
                       value: 'record',
