@@ -27,6 +27,8 @@ const createUserZodSchema = z.object({
     didCarNumberChange: z.string().optional(),
     newCarNumber: z.string().optional(),
     licenseNumber: z.string().optional(),
+    referralCode: z.string().optional(),
+    referredByCode: z.string().optional(),
   }),
 });
 
