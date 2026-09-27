@@ -386,6 +386,7 @@ const createCheckoutSession = async (
   return {
     sessionId: session.id,
     sessionUrl: session.url,
+    checkoutUrl: session.url,
     transactionId,
   };
 };

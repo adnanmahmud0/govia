@@ -1260,7 +1260,7 @@ class PreferredProvidersController extends GetxController {
                       ),
                       onPressed: () {
                         Get.back();
-                        startStripeCheckout(context, provider, forAttorney: forAttorney);
+                        startStripeCheckout(provider, forAttorney: forAttorney);
                       },
                       icon: const Icon(Icons.payment_rounded, color: Colors.white, size: 18),
                       label: Text(
@@ -1283,24 +1283,26 @@ class PreferredProvidersController extends GetxController {
   }
 
   Future<void> startStripeCheckout(
-    BuildContext context,
     ProviderDirectoryItem provider, {
     required bool forAttorney,
   }) async {
     isProcessingCheckout.value = true;
     try {
       final session = await providerPaymentRepo.createCheckoutSession(provider.id);
-      if (session == null || session['checkoutUrl'] == null) {
+      final rawUrl = session?['checkoutUrl'] ?? session?['sessionUrl'] ?? session?['url'];
+      if (session == null || rawUrl == null) {
         Helpers.showError('Could not create payment session. Please try again.');
         return;
       }
 
-      final checkoutUrl = session['checkoutUrl'].toString();
+      final checkoutUrl = rawUrl.toString();
       final expectedSessionId = session['sessionId']?.toString() ?? '';
 
-      if (context.mounted) {
-        await StripeWebviewModal.show(
-          context: context,
+      final activeContext = Get.overlayContext ?? Get.context;
+      if (activeContext == null || !activeContext.mounted) return;
+
+      await StripeWebviewModal.show(
+        context: activeContext,
           initialUrl: checkoutUrl,
           title: 'Activate Preferred Provider',
           onPaymentSuccess: (sessionId) async {
@@ -1311,7 +1313,6 @@ class PreferredProvidersController extends GetxController {
             Helpers.showError('Payment cancelled. Provider was not activated.');
           },
         );
-      }
     } catch (e) {
       Helpers.showError('Payment error: $e');
     } finally {
