@@ -230,15 +230,27 @@ const lookupUserByIdentifier = async (rawIdentifier: string) => {
     shortHexId: { $regex: new RegExp(`^${cleaned}$`, 'i') },
   });
 
-  // assignedNumber
-  queryConditions.push({ assignedNumber: cleaned });
+  // Badge number (exact or partial)
+  queryConditions.push({
+    badgeNumber: { $regex: new RegExp(cleaned, 'i') },
+  });
+
+  // License / LEO number
+  queryConditions.push({
+    licenseNumber: { $regex: new RegExp(cleaned, 'i') },
+  });
+
+  // assignedNumber / Patrol Unit / Car number
+  queryConditions.push({
+    assignedNumber: { $regex: new RegExp(`^${cleaned}$`, 'i') },
+  });
 
   let user = await User.findOne({
     $or: queryConditions,
     status: 'active',
   })
     .select(
-      '_id name email role image phoneNumber badgeNumber lawFirmName officeName specialization companyName shortHexId assignedNumber'
+      '_id name email role image phoneNumber badgeNumber licenseNumber departmentOrPrecinct subRole lawFirmName officeName specialization companyName shortHexId assignedNumber'
     )
     .lean();
 
@@ -246,7 +258,7 @@ const lookupUserByIdentifier = async (rawIdentifier: string) => {
   if (!user && /^[0-9a-fA-F]{8}$/.test(cleaned)) {
     const activeUsers = await User.find({ status: 'active' })
       .select(
-        '_id name email role image phoneNumber badgeNumber lawFirmName officeName specialization companyName shortHexId assignedNumber'
+        '_id name email role image phoneNumber badgeNumber licenseNumber departmentOrPrecinct subRole lawFirmName officeName specialization companyName shortHexId assignedNumber'
       )
       .lean();
 

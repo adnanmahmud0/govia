@@ -2,16 +2,17 @@ import { z } from 'zod';
 
 const createHeroHighlightZodSchema = z.object({
   body: z.object({
+    officerId: z.string().optional(),
     officerName: z.string({
       required_error: 'Officer Name is required',
     }),
+    officerRank: z.string().optional(),
     badgeNumber: z.string().optional(),
     agency: z.string({
       required_error: 'Agency is required',
     }),
-    carNumber: z.string({
-      required_error: 'Car Number is required',
-    }),
+    carNumber: z.string().optional().default(''),
+    officerAvatar: z.string().optional(),
     respectRating: z
       .number({
         required_error: 'Respect Rating is required',

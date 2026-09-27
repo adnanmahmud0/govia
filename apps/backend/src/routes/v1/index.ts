@@ -40,6 +40,14 @@ const apiRoutes = [
     route: HeroHighlightRoutes,
   },
   {
+    path: '/hero-highlight',
+    route: HeroHighlightRoutes,
+  },
+  {
+    path: '/heroHighlights',
+    route: HeroHighlightRoutes,
+  },
+  {
     path: '/aiAssistant',
     route: AiAssistantRoutes,
   },

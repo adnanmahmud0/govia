@@ -119,6 +119,13 @@ class ApiConstants {
   static const String referralRewards = '/referral/rewards-catalog';
   static const String referralRedeem = '/referral/redeem';
   static const String referralTransactions = '/referral/transactions';
+
+  // ─── Hero Highlight Endpoints ─────────────────────────────────────────────
+  static const String heroHighlight = '/heroHighlight';
+  static const String heroHighlightOfficers = '/heroHighlight/officers';
+  static String heroHighlightLookup(String identifier) =>
+      '/heroHighlight/officers/lookup/$identifier';
+  static String heroHighlightSalute(String id) => '/heroHighlight/$id/salute';
 }
 
 
