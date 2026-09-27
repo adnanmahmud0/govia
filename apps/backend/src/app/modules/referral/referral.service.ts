@@ -184,7 +184,7 @@ const redeemReward = async (userId: string, rewardId: string) => {
   user.referralPoints = newBalance;
   await user.save();
 
-  let redemptionDetails: Record<string, any> = {
+  const redemptionDetails: Record<string, unknown> = {
     rewardId: reward.id,
     rewardTitle: reward.title,
     pointsDeducted: reward.pointsCost,

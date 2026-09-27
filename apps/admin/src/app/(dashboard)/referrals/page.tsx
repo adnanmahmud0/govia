@@ -11,8 +11,6 @@ import {
   CheckCircle2,
   Shield,
   ArrowUpRight,
-  Sparkles,
-  Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -343,7 +341,7 @@ export default function CitizenReferralsAdminPage() {
                   </td>
                 </tr>
               ) : (
-                filteredReferrers.map((user, idx) => (
+                filteredReferrers.map((user) => (
                   <tr key={user._id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">

@@ -33,7 +33,7 @@ export type IPointTransaction = {
   balanceAfter: number;
   title: string;
   description: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt?: Date;
   updatedAt?: Date;
 };
