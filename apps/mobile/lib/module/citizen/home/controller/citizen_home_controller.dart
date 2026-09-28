@@ -254,6 +254,17 @@ class CitizenHomeController extends GetxController with WidgetsBindingObserver {
     HapticFeedback.lightImpact();
     if (!isGpsActive.value) {
       try {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          _showStatusFeedback(
+            'GPS Disabled',
+            'Please turn on Location Services in device settings',
+            Icons.location_disabled_rounded,
+            false,
+          );
+          return;
+        }
+
         final status = await Permission.locationWhenInUse.request();
         if (status.isPermanentlyDenied) {
           _showPermissionSettingsPrompt('GPS / Location');
@@ -292,33 +303,44 @@ class CitizenHomeController extends GetxController with WidgetsBindingObserver {
     HapticFeedback.lightImpact();
     if (!isVoiceActive.value) {
       try {
-        final status = await Permission.microphone.request();
-        if (status.isPermanentlyDenied) {
+        final micStatus = await Permission.microphone.request();
+
+        if (micStatus.isPermanentlyDenied) {
           _showPermissionSettingsPrompt('Microphone');
+          isVoiceActive.value = false;
           return;
         }
-        if (status.isGranted) {
+
+        if (micStatus.isGranted) {
           isVoiceActive.value = true;
-          VoiceService().startListening(
-            onWakeWord: () {
-              _showStatusFeedback(
-                'Voice Trigger Detected!',
-                'Saying "Start Govia" activated emergency response',
-                Icons.mic_rounded,
-                true,
-              );
-              startEmergencySession(reason: 'Voice Wake Word: Start Govia');
-            },
-          );
           _showStatusFeedback(
-            'Voice Monitoring Activated',
-            'Listening for wake word: "Start Govia"',
+            'Microphone Activated',
+            'Microphone is active for live consultation calls & audio monitoring',
             Icons.mic_rounded,
             true,
           );
+
+          // Optional emergency wake word listener (runs if speech recognition is available)
+          try {
+            VoiceService().startListening(
+              onWakeWord: () {
+                _showStatusFeedback(
+                  'Voice Trigger Detected!',
+                  'Saying "Start Govia" activated emergency response',
+                  Icons.mic_rounded,
+                  true,
+                );
+                startEmergencySession(reason: 'Voice Wake Word: Start Govia');
+              },
+            );
+          } catch (e) {
+            debugPrint('[toggleVoice] Wake word recognition not available: $e');
+          }
           return;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[toggleVoice] Error: $e');
+      }
       isVoiceActive.value = false;
       _showStatusFeedback(
         'Voice Deactivated',
@@ -328,7 +350,7 @@ class CitizenHomeController extends GetxController with WidgetsBindingObserver {
       );
     } else {
       isVoiceActive.value = false;
-      VoiceService().stopListening();
+      await VoiceService().stopListening();
       _showStatusFeedback(
         'Voice Deactivated',
         'Microphone monitoring is muted',

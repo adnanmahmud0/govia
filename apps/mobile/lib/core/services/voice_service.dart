@@ -16,8 +16,12 @@ class VoiceService {
   Future<bool> initialize() async {
     try {
       _isAvailable = await _speech.initialize(
-        onError: (val) => debugPrint('VoiceService error: ${val.errorMsg}'),
+        onError: (val) {
+          debugPrint('VoiceService error: ${val.errorMsg}');
+          isListening = false;
+        },
         onStatus: (val) {
+          debugPrint('VoiceService status: $val');
           if (val == 'done' || val == 'notListening') {
             isListening = false;
           }
@@ -26,18 +30,23 @@ class VoiceService {
       return _isAvailable;
     } catch (e) {
       debugPrint('VoiceService initialize failed: $e');
+      _isAvailable = false;
+      isListening = false;
       return false;
     }
   }
 
-  Future<void> startListening({required Function() onWakeWord}) async {
+  Future<bool> startListening({required Function() onWakeWord}) async {
     _onWakeWord = onWakeWord;
-    if (!_isAvailable) {
-      final ok = await initialize();
-      if (!ok) return;
-    }
-
     try {
+      if (!_isAvailable) {
+        final ok = await initialize();
+        if (!ok) {
+          isListening = false;
+          return false;
+        }
+      }
+
       isListening = true;
       await _speech.listen(
         onResult: (result) {
@@ -59,15 +68,22 @@ class VoiceService {
           cancelOnError: false,
         ),
       );
+      return true;
     } catch (e) {
       debugPrint('VoiceService listen error: $e');
+      isListening = false;
+      return false;
     }
   }
 
   Future<void> stopListening() async {
     try {
       isListening = false;
-      await _speech.stop();
-    } catch (_) {}
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+    } catch (e) {
+      debugPrint('VoiceService stop error: $e');
+    }
   }
 }
