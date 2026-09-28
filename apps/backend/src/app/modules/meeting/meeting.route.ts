@@ -110,10 +110,10 @@ router.get(
   RiskAnalyticsController.getRiskAnalytics
 );
 
-// Get list of active meetings (Attorney & Admin view)
+// Get list of active meetings (all roles can check active encounters / meetings)
 router.get(
   '/active',
-  auth(USER_ROLES.ATTORNEY, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  auth(...allRoles),
   MeetingController.getActiveMeetings
 );
 
