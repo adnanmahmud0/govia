@@ -11,6 +11,7 @@ class LocationService {
   /// with a configurable timeout so emergency workflows are never delayed.
   static Future<Position?> getCurrentLocation({
     Duration timeout = const Duration(seconds: 3),
+    bool requestPermissionIfNotGranted = false,
   }) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -26,12 +27,16 @@ class LocationService {
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+        if (requestPermissionIfNotGranted) {
+          permission = await Geolocator.requestPermission();
+        } else {
+          return null;
+        }
       }
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        debugPrint('[LocationService] Location permission denied: $permission');
+        debugPrint('[LocationService] Location permission not granted: $permission');
         return null;
       }
 

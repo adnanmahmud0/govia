@@ -11,6 +11,7 @@ import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/core/services/call_background_service.dart';
 import 'package:gsabino365/core/services/location_service.dart';
 import 'package:gsabino365/core/services/wakelock_service.dart';
+import 'package:gsabino365/core/utils/device_hardware_helper.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/models/meeting_model.dart';
 import 'package:gsabino365/data/repositories/meeting_repository.dart';
@@ -191,19 +192,19 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     hasError.value = false;
     errorMessage.value = '';
 
-    // 1. Request camera + microphone permissions
+    // 1. Request microphone (and camera if available on hardware)
+    final hasCamera = await DeviceHardwareHelper.hasCameraDevice();
     final permStatus = await [
-      Permission.camera,
+      if (hasCamera) Permission.camera,
       Permission.microphone,
     ].request();
 
-    final camGranted = permStatus[Permission.camera]?.isGranted ?? false;
     final micGranted = permStatus[Permission.microphone]?.isGranted ?? false;
 
-    if (!camGranted || !micGranted) {
+    if (!micGranted) {
       isLoading.value = false;
       hasError.value = true;
-      errorMessage.value = 'Camera and microphone permissions are required to join.';
+      errorMessage.value = 'Microphone permission is required to join.';
       return;
     }
 
@@ -379,18 +380,25 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     _reconnectAttempts = 0;
     _isReconnecting = false;
 
-    // Publish local camera at 720p@30fps
-    try {
-      await room.localParticipant?.setCameraEnabled(
-        true,
-        cameraCaptureOptions: CameraCaptureOptions(
-          cameraPosition: _cameraPosition,
-          params: VideoParametersPresets.h720_169,
-        ),
-      ).timeout(const Duration(seconds: 8));
-      isVideoMuted.value = false;
-    } catch (e) {
-      debugPrint('⚠️ Attorney camera activation notice (e.g. simulator without camera): $e');
+    // Publish local camera at 720p@30fps if physical hardware exists
+    final hasCamera = await DeviceHardwareHelper.hasCameraDevice();
+    if (hasCamera) {
+      try {
+        await room.localParticipant?.setCameraEnabled(
+          true,
+          cameraCaptureOptions: CameraCaptureOptions(
+            cameraPosition: _cameraPosition,
+            params: VideoParametersPresets.h720_169,
+          ),
+        ).timeout(const Duration(seconds: 8));
+        isVideoMuted.value = false;
+      } catch (e) {
+        debugPrint('⚠️ Attorney camera activation notice: $e');
+        isVideoMuted.value = true;
+        localVideoTrack.value = null;
+      }
+    } else {
+      debugPrint('📱 [AttorneyLiveCall] iOS Simulator or camera absent: operating in audio-only mode.');
       isVideoMuted.value = true;
       localVideoTrack.value = null;
     }
@@ -595,6 +603,21 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   Future<void> toggleVideo() async {
     final participant = _room?.localParticipant;
     if (participant == null) return;
+
+    final hasCamera = await DeviceHardwareHelper.hasCameraDevice();
+    if (!hasCamera) {
+      Get.snackbar(
+        'Camera Notice',
+        'Camera is not available on this device/simulator. Voice audio is active.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFF1E293B),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+      isVideoMuted.value = true;
+      return;
+    }
+
     try {
       final newVideoMuted = !isVideoMuted.value;
       if (!newVideoMuted) {
@@ -620,18 +643,6 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       }
     } catch (e) {
       debugPrint('Error toggling video: $e');
-      if (e.toString().contains('TrackCreateException') ||
-          e.toString().contains('no video') ||
-          e.toString().contains('Camera')) {
-        Get.snackbar(
-          'Camera Notice',
-          'Camera hardware is not available on this device/simulator. Voice audio is active.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF1E293B),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
-        );
-      }
     }
   }
 
