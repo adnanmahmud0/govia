@@ -134,6 +134,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       title: 'GoVia Live Consultation',
       text: 'Call active • Live audio & video',
     );
+    _startTimer();
     final args = Get.arguments;
 
     if (args is MeetingModel) {
@@ -551,14 +552,18 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
     _setupLiveKitListeners(listener, room);
 
-    await room.connect(
-      url,
-      token,
-      fastConnectOptions: FastConnectOptions(
-        camera: const TrackOption(enabled: true),
-        microphone: const TrackOption(enabled: true),
-      ),
-    );
+    try {
+      await room.connect(
+        url,
+        token,
+        fastConnectOptions: FastConnectOptions(
+          microphone: const TrackOption(enabled: true),
+        ),
+      ).timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('⚠️ LiveKit room.connect error: $e');
+      rethrow;
+    }
 
     // Reset reconnect counter on successful connection
     _reconnectAttempts = 0;
@@ -570,15 +575,26 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       meetingRepo.rejoinMeeting(mId);
     }
 
-    // Publish local camera at 540p@30fps for instant, low-latency streaming.
-    await room.localParticipant?.setCameraEnabled(
-      true,
-      cameraCaptureOptions: CameraCaptureOptions(
-        cameraPosition: _cameraPosition,
-        params: VideoParametersPresets.h540_169,
-      ),
-    );
-    await room.localParticipant?.setMicrophoneEnabled(true);
+    // Publish local camera at 540p@30fps with timeout protection
+    try {
+      await room.localParticipant?.setCameraEnabled(
+        true,
+        cameraCaptureOptions: CameraCaptureOptions(
+          cameraPosition: _cameraPosition,
+          params: VideoParametersPresets.h540_169,
+        ),
+      ).timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ Local camera activation timeout/error (non-fatal): $e');
+    }
+
+    try {
+      await room.localParticipant
+          ?.setMicrophoneEnabled(true)
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ Local microphone activation timeout/error (non-fatal): $e');
+    }
 
     _updateTracks(room);
     isSessionJoined.value = true;
@@ -745,7 +761,9 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
     try {
       final newVideoMuted = !isVideoMuted.value;
-      await participant.setCameraEnabled(!newVideoMuted);
+      await participant
+          .setCameraEnabled(!newVideoMuted)
+          .timeout(const Duration(seconds: 3));
       isVideoMuted.value = newVideoMuted;
       if (newVideoMuted) {
         localVideoTrack.value = null;

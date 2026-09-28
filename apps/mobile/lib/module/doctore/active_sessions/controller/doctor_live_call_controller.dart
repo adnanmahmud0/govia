@@ -290,24 +290,39 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
 
     _setupLiveKitListeners(listener, room);
 
-    await room.connect(
-      url,
-      token,
-      fastConnectOptions: FastConnectOptions(
-        camera: const TrackOption(enabled: true),
-        microphone: const TrackOption(enabled: true),
-      ),
-    );
+    try {
+      await room.connect(
+        url,
+        token,
+        fastConnectOptions: FastConnectOptions(
+          microphone: const TrackOption(enabled: true),
+        ),
+      ).timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('⚠️ Doctor room.connect error: $e');
+      rethrow;
+    }
 
-    // Publish local camera at 540p@30fps for instant, low-latency streaming
-    await room.localParticipant?.setCameraEnabled(
-      true,
-      cameraCaptureOptions: CameraCaptureOptions(
-        cameraPosition: _cameraPosition,
-        params: VideoParametersPresets.h540_169,
-      ),
-    );
-    await room.localParticipant?.setMicrophoneEnabled(true);
+    // Publish local camera at 540p@30fps with timeout protection
+    try {
+      await room.localParticipant?.setCameraEnabled(
+        true,
+        cameraCaptureOptions: CameraCaptureOptions(
+          cameraPosition: _cameraPosition,
+          params: VideoParametersPresets.h540_169,
+        ),
+      ).timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ Doctor camera activation warning (non-fatal): $e');
+    }
+
+    try {
+      await room.localParticipant
+          ?.setMicrophoneEnabled(true)
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ Doctor microphone activation warning (non-fatal): $e');
+    }
 
     _updateTracks(room);
     isSessionJoined.value = true;

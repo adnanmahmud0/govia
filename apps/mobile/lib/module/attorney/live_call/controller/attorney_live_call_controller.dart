@@ -358,24 +358,34 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       url,
       token,
       fastConnectOptions: FastConnectOptions(
-        camera: const TrackOption(enabled: true),
         microphone: const TrackOption(enabled: true),
       ),
-    );
+    ).timeout(const Duration(seconds: 8));
 
     // Reset reconnect counter on successful connection
     _reconnectAttempts = 0;
     _isReconnecting = false;
 
-    // Publish local camera at 540p@30fps for instant, low-latency streaming.
-    await room.localParticipant?.setCameraEnabled(
-      true,
-      cameraCaptureOptions: CameraCaptureOptions(
-        cameraPosition: _cameraPosition,
-        params: VideoParametersPresets.h540_169,
-      ),
-    );
-    await room.localParticipant?.setMicrophoneEnabled(true);
+    // Publish local camera at 540p@30fps with timeout protection
+    try {
+      await room.localParticipant?.setCameraEnabled(
+        true,
+        cameraCaptureOptions: CameraCaptureOptions(
+          cameraPosition: _cameraPosition,
+          params: VideoParametersPresets.h540_169,
+        ),
+      ).timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ Attorney camera activation warning (non-fatal): $e');
+    }
+
+    try {
+      await room.localParticipant
+          ?.setMicrophoneEnabled(true)
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠️ Attorney microphone activation warning (non-fatal): $e');
+    }
 
     _updateTracks(room);
     isSessionJoined.value = true;
