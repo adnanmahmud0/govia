@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -40,6 +40,11 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   final RxString remoteParticipantName = 'Patient / Citizen'.obs;
   final RxString licenseText = 'License: Active'.obs;
   final RxString topic = 'Emergency Medical Support'.obs;
+
+  // ─── Remote Participant Media Status ─────────────────────────────────
+  final RxBool isRemoteParticipantJoined = false.obs;
+  final RxBool isRemoteAudioMuted = false.obs;
+  final RxBool isRemoteVideoMuted = false.obs;
 
   // ─── Phone Lock / Background State ───────────────────────────────────
   final RxBool isRemotePhoneLocked = false.obs;
@@ -197,6 +202,14 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       final tokenData = await meetingRepo.getMeetingToken(meetingId!);
       if (tokenData != null) {
         token = tokenData['token']?.toString() ?? tokenData['livekitToken']?.toString();
+        if (tokenData['roomName'] != null && tokenData['roomName'].toString().isNotEmpty) {
+          roomName = tokenData['roomName'].toString();
+        }
+        if (tokenData['livekitUrl'] != null &&
+            tokenData['livekitUrl'].toString().isNotEmpty &&
+            !tokenData['livekitUrl'].toString().contains('govia.com')) {
+          livekitUrl = tokenData['livekitUrl'].toString();
+        }
       } else {
         final err = meetingRepo.lastErrorMessage ?? 'This consultation session has ended and is no longer available to join.';
         isLoading.value = false;
@@ -303,25 +316,29 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       rethrow;
     }
 
-    // Publish local camera at 540p@30fps with timeout protection
+    // Publish local camera at 720p@30fps
     try {
       await room.localParticipant?.setCameraEnabled(
         true,
         cameraCaptureOptions: CameraCaptureOptions(
           cameraPosition: _cameraPosition,
-          params: VideoParametersPresets.h540_169,
+          params: VideoParametersPresets.h720_169,
         ),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 8));
+      isVideoMuted.value = false;
     } catch (e) {
-      debugPrint('⚠️ Doctor camera activation warning (non-fatal): $e');
+      debugPrint('⚠️ Doctor camera activation notice (e.g. simulator without camera): $e');
+      isVideoMuted.value = true;
+      localVideoTrack.value = null;
     }
 
     try {
       await room.localParticipant
           ?.setMicrophoneEnabled(true)
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 5));
+      isMuted.value = false;
     } catch (e) {
-      debugPrint('⚠️ Doctor microphone activation warning (non-fatal): $e');
+      debugPrint('⚠️ Doctor microphone activation notice: $e');
     }
 
     _updateTracks(room);
@@ -409,8 +426,8 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   void _updateTracks(Room room) {
     // Local video track (Doctor's camera)
     final localPub = room.localParticipant?.videoTrackPublications.firstOrNull;
-    if (localPub?.track is VideoTrack) {
-      localVideoTrack.value = localPub!.track as VideoTrack;
+    if (localPub != null && localPub.track is VideoTrack && !localPub.muted && !isVideoMuted.value) {
+      localVideoTrack.value = localPub.track as VideoTrack;
     } else {
       localVideoTrack.value = null;
     }
@@ -436,6 +453,11 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
     if (caller.isNotEmpty) {
       remoteParticipantName.value = caller;
     }
+    isRemoteParticipantJoined.value = room.remoteParticipants.isNotEmpty;
+    isRemoteAudioMuted.value = foundRemoteTrack == null && room.remoteParticipants.isNotEmpty
+        ? (room.remoteParticipants.values.firstOrNull?.audioTrackPublications.firstOrNull?.muted ?? false)
+        : false;
+    isRemoteVideoMuted.value = foundRemoteTrack == null && room.remoteParticipants.isNotEmpty;
   }
 
   Future<void> toggleMute() async {
@@ -445,6 +467,9 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       final newMuted = !isMuted.value;
       await participant.setMicrophoneEnabled(!newMuted);
       isMuted.value = newMuted;
+      if (_room != null) {
+        _updateTracks(_room!);
+      }
     } catch (e) {
       debugPrint('Error toggling doctor audio: $e');
     }
@@ -455,15 +480,41 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
     if (participant == null) return;
     try {
       final newVideoMuted = !isVideoMuted.value;
-      await participant.setCameraEnabled(!newVideoMuted);
-      isVideoMuted.value = newVideoMuted;
-      if (newVideoMuted) {
+      if (!newVideoMuted) {
+        // Turning camera ON
+        await participant
+            .setCameraEnabled(
+              true,
+              cameraCaptureOptions: CameraCaptureOptions(
+                cameraPosition: _cameraPosition,
+                params: VideoParametersPresets.h720_169,
+              ),
+            )
+            .timeout(const Duration(seconds: 8));
+        isVideoMuted.value = false;
+      } else {
+        // Turning camera OFF
+        await participant.setCameraEnabled(false);
+        isVideoMuted.value = true;
         localVideoTrack.value = null;
-      } else if (_room != null) {
+      }
+      if (_room != null) {
         _updateTracks(_room!);
       }
     } catch (e) {
       debugPrint('Error toggling doctor video: $e');
+      if (e.toString().contains('TrackCreateException') ||
+          e.toString().contains('no video') ||
+          e.toString().contains('Camera')) {
+        Get.snackbar(
+          'Camera Notice',
+          'Camera hardware is not available on this device/simulator. Voice audio is active.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF1E293B),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
     }
   }
 

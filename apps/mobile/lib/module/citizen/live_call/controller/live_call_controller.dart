@@ -81,6 +81,11 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   final Rxn<VideoTrack> remoteVideoTrack = Rxn<VideoTrack>();
   final RxString remoteParticipantName = ''.obs;
 
+  // ─── Remote Participant Media Status ─────────────────────────────────
+  final RxBool isRemoteParticipantJoined = false.obs;
+  final RxBool isRemoteAudioMuted = false.obs;
+  final RxBool isRemoteVideoMuted = false.obs;
+
   // ─── Phone Lock / Background State ───────────────────────────────────
   final RxBool isRemotePhoneLocked = false.obs;
   bool _wasCameraActiveBeforeLock = false;
@@ -575,25 +580,29 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       meetingRepo.rejoinMeeting(mId);
     }
 
-    // Publish local camera at 540p@30fps with timeout protection
+    // Publish local camera at 720p@30fps
     try {
       await room.localParticipant?.setCameraEnabled(
         true,
         cameraCaptureOptions: CameraCaptureOptions(
           cameraPosition: _cameraPosition,
-          params: VideoParametersPresets.h540_169,
+          params: VideoParametersPresets.h720_169,
         ),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 8));
+      isVideoMuted.value = false;
     } catch (e) {
-      debugPrint('⚠️ Local camera activation timeout/error (non-fatal): $e');
+      debugPrint('⚠️ Local camera activation notice (e.g. simulator without camera hardware): $e');
+      isVideoMuted.value = true;
+      localVideoTrack.value = null;
     }
 
     try {
       await room.localParticipant
           ?.setMicrophoneEnabled(true)
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 5));
+      isMuted.value = false;
     } catch (e) {
-      debugPrint('⚠️ Local microphone activation timeout/error (non-fatal): $e');
+      debugPrint('⚠️ Local microphone activation notice: $e');
     }
 
     _updateTracks(room);
@@ -712,33 +721,62 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   }
 
   void _updateTracks(Room room) {
-    // Update local video track
+    // 1. Update local video track
     final localPub = room.localParticipant?.videoTrackPublications.firstOrNull;
-    if (localPub?.track is VideoTrack) {
-      localVideoTrack.value = localPub!.track as VideoTrack;
+    if (localPub != null && localPub.track is VideoTrack && !localPub.muted && !isVideoMuted.value) {
+      localVideoTrack.value = localPub.track as VideoTrack;
     } else {
       localVideoTrack.value = null;
     }
 
-    // Update remote video track
+    // 2. Update remote participant presence and media status
     VideoTrack? foundRemoteTrack;
     String responderName = '';
+    bool remoteVideoMuted = false;
+    bool remoteAudioMuted = false;
+    final hasRemote = room.remoteParticipants.isNotEmpty;
 
     for (final participant in room.remoteParticipants.values) {
+      responderName = participant.name.isNotEmpty
+          ? participant.name
+          : (participant.identity.isNotEmpty ? participant.identity : 'Responder');
+
+      // Audio track mute status
+      final audioPub = participant.audioTrackPublications.firstOrNull;
+      if (audioPub != null) {
+        if (audioPub.muted) {
+          remoteAudioMuted = true;
+        }
+      } else {
+        remoteAudioMuted = true;
+      }
+
+      // Video track mute status & track extraction
+      bool hasActiveVideo = false;
       for (final pub in participant.videoTrackPublications) {
-        if (pub.track is VideoTrack) {
+        if (pub.muted) {
+          remoteVideoMuted = true;
+        } else if (pub.track is VideoTrack) {
           foundRemoteTrack = pub.track as VideoTrack;
-          responderName = participant.name.isNotEmpty
-              ? participant.name
-              : (participant.identity.isNotEmpty ? participant.identity : 'Responder');
+          hasActiveVideo = true;
+          remoteVideoMuted = false;
           break;
         }
       }
+      if (!hasActiveVideo) {
+        remoteVideoMuted = true;
+      }
+
       if (foundRemoteTrack != null) break;
     }
 
     remoteVideoTrack.value = foundRemoteTrack;
-    remoteParticipantName.value = responderName;
+    if (responderName.isNotEmpty) {
+      remoteParticipantName.value = responderName;
+    }
+    isRemoteParticipantJoined.value = hasRemote;
+    isRemoteAudioMuted.value = remoteAudioMuted;
+    isRemoteVideoMuted.value = remoteVideoMuted;
   }
 
   // ─── Hardware & Call Controls ────────────────────────────────────────
@@ -750,6 +788,9 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       final newMuted = !isMuted.value;
       await participant.setMicrophoneEnabled(!newMuted);
       isMuted.value = newMuted;
+      if (_room != null) {
+        _updateTracks(_room!);
+      }
     } catch (e) {
       debugPrint('Error toggling audio: $e');
     }
@@ -761,17 +802,41 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
     try {
       final newVideoMuted = !isVideoMuted.value;
-      await participant
-          .setCameraEnabled(!newVideoMuted)
-          .timeout(const Duration(seconds: 3));
-      isVideoMuted.value = newVideoMuted;
-      if (newVideoMuted) {
+      if (!newVideoMuted) {
+        // Turning camera ON
+        await participant
+            .setCameraEnabled(
+              true,
+              cameraCaptureOptions: CameraCaptureOptions(
+                cameraPosition: _cameraPosition,
+                params: VideoParametersPresets.h720_169,
+              ),
+            )
+            .timeout(const Duration(seconds: 8));
+        isVideoMuted.value = false;
+      } else {
+        // Turning camera OFF
+        await participant.setCameraEnabled(false);
+        isVideoMuted.value = true;
         localVideoTrack.value = null;
-      } else if (_room != null) {
+      }
+      if (_room != null) {
         _updateTracks(_room!);
       }
     } catch (e) {
       debugPrint('Error toggling video: $e');
+      if (e.toString().contains('TrackCreateException') ||
+          e.toString().contains('no video') ||
+          e.toString().contains('Camera')) {
+        Get.snackbar(
+          'Camera Notice',
+          'Camera hardware is not available on this device/simulator. Voice audio is active.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF1E293B),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
     }
   }
 

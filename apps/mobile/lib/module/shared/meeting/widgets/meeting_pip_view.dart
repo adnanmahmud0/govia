@@ -8,6 +8,7 @@ import 'package:livekit_client/livekit_client.dart';
 class MeetingPipView extends StatelessWidget {
   final VideoTrack? localTrack;
   final bool isVideoMuted;
+  final bool isMicMuted;
   final String label;
   final VoidCallback? onFlipCamera;
   final VoidCallback? onTap;
@@ -17,6 +18,7 @@ class MeetingPipView extends StatelessWidget {
     super.key,
     required this.localTrack,
     required this.isVideoMuted,
+    this.isMicMuted = false,
     this.label = 'You',
     this.onFlipCamera,
     this.onTap,
@@ -120,6 +122,14 @@ class MeetingPipView extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
+                          if (isMicMuted) ...[
+                            SizedBox(width: 4.w),
+                            Icon(
+                              Icons.mic_off_rounded,
+                              size: 9.sp,
+                              color: const Color(0xFFEF4444),
+                            ),
+                          ],
                           SizedBox(width: 4.w),
                           Text(
                             label,

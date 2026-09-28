@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
@@ -39,6 +39,11 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   final Rxn<VideoTrack> localVideoTrack = Rxn<VideoTrack>();
   final Rxn<VideoTrack> remoteVideoTrack = Rxn<VideoTrack>();
   final RxString remoteParticipantName = 'Citizen Caller'.obs;
+
+  // ─── Remote Participant Media Status ─────────────────────────────────
+  final RxBool isRemoteParticipantJoined = false.obs;
+  final RxBool isRemoteAudioMuted = false.obs;
+  final RxBool isRemoteVideoMuted = false.obs;
 
   // ─── Live Location State ─────────────────────────────────────────────
   final RxnDouble liveLatitude = RxnDouble();
@@ -243,6 +248,14 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       final tokenData = await meetingRepo.getMeetingToken(meetingId!);
       if (tokenData != null) {
         token = tokenData['token']?.toString() ?? tokenData['livekitToken']?.toString();
+        if (tokenData['roomName'] != null && tokenData['roomName'].toString().isNotEmpty) {
+          roomName = tokenData['roomName'].toString();
+        }
+        if (tokenData['livekitUrl'] != null &&
+            tokenData['livekitUrl'].toString().isNotEmpty &&
+            !tokenData['livekitUrl'].toString().contains('govia.com')) {
+          livekitUrl = tokenData['livekitUrl'].toString();
+        }
       } else {
         final err = meetingRepo.lastErrorMessage ?? 'This encounter has ended and is no longer available to join.';
         isLoading.value = false;
@@ -366,25 +379,29 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     _reconnectAttempts = 0;
     _isReconnecting = false;
 
-    // Publish local camera at 540p@30fps with timeout protection
+    // Publish local camera at 720p@30fps
     try {
       await room.localParticipant?.setCameraEnabled(
         true,
         cameraCaptureOptions: CameraCaptureOptions(
           cameraPosition: _cameraPosition,
-          params: VideoParametersPresets.h540_169,
+          params: VideoParametersPresets.h720_169,
         ),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 8));
+      isVideoMuted.value = false;
     } catch (e) {
-      debugPrint('⚠️ Attorney camera activation warning (non-fatal): $e');
+      debugPrint('⚠️ Attorney camera activation notice (e.g. simulator without camera): $e');
+      isVideoMuted.value = true;
+      localVideoTrack.value = null;
     }
 
     try {
       await room.localParticipant
           ?.setMicrophoneEnabled(true)
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 5));
+      isMuted.value = false;
     } catch (e) {
-      debugPrint('⚠️ Attorney microphone activation warning (non-fatal): $e');
+      debugPrint('⚠️ Attorney microphone activation notice: $e');
     }
 
     _updateTracks(room);
@@ -502,28 +519,52 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   }
 
   void _updateTracks(Room room) {
-    // Local video track (Attorney's own camera)
+    // 1. Local video track (Attorney's own camera)
     final localPub = room.localParticipant?.videoTrackPublications.firstOrNull;
-    if (localPub?.track is VideoTrack) {
-      localVideoTrack.value = localPub!.track as VideoTrack;
+    if (localPub != null && localPub.track is VideoTrack && !localPub.muted && !isVideoMuted.value) {
+      localVideoTrack.value = localPub.track as VideoTrack;
     } else {
       localVideoTrack.value = null;
     }
 
-    // Remote video track (Citizen's camera stream)
+    // 2. Remote video track & status (Citizen's stream)
     VideoTrack? foundRemoteTrack;
     String caller = '';
+    bool remoteVideoMuted = false;
+    bool remoteAudioMuted = false;
+    final hasRemote = room.remoteParticipants.isNotEmpty;
 
     for (final participant in room.remoteParticipants.values) {
+      caller = participant.name.isNotEmpty
+          ? participant.name
+          : (participant.identity.isNotEmpty ? participant.identity : 'Citizen Caller');
+
+      // Audio track mute status
+      final audioPub = participant.audioTrackPublications.firstOrNull;
+      if (audioPub != null) {
+        if (audioPub.muted) {
+          remoteAudioMuted = true;
+        }
+      } else {
+        remoteAudioMuted = true;
+      }
+
+      // Video track mute status & track extraction
+      bool hasActiveVideo = false;
       for (final pub in participant.videoTrackPublications) {
-        if (pub.track is VideoTrack) {
+        if (pub.muted) {
+          remoteVideoMuted = true;
+        } else if (pub.track is VideoTrack) {
           foundRemoteTrack = pub.track as VideoTrack;
-          caller = participant.name.isNotEmpty
-              ? participant.name
-              : (participant.identity.isNotEmpty ? participant.identity : 'Citizen Caller');
+          hasActiveVideo = true;
+          remoteVideoMuted = false;
           break;
         }
       }
+      if (!hasActiveVideo) {
+        remoteVideoMuted = true;
+      }
+
       if (foundRemoteTrack != null) break;
     }
 
@@ -531,6 +572,9 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     if (caller.isNotEmpty) {
       remoteParticipantName.value = caller;
     }
+    isRemoteParticipantJoined.value = hasRemote;
+    isRemoteAudioMuted.value = remoteAudioMuted;
+    isRemoteVideoMuted.value = remoteVideoMuted;
   }
 
   Future<void> toggleMute() async {
@@ -540,6 +584,9 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       final newMuted = !isMuted.value;
       await participant.setMicrophoneEnabled(!newMuted);
       isMuted.value = newMuted;
+      if (_room != null) {
+        _updateTracks(_room!);
+      }
     } catch (e) {
       debugPrint('Error toggling audio: $e');
     }
@@ -550,15 +597,41 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     if (participant == null) return;
     try {
       final newVideoMuted = !isVideoMuted.value;
-      await participant.setCameraEnabled(!newVideoMuted);
-      isVideoMuted.value = newVideoMuted;
-      if (newVideoMuted) {
+      if (!newVideoMuted) {
+        // Turning camera ON
+        await participant
+            .setCameraEnabled(
+              true,
+              cameraCaptureOptions: CameraCaptureOptions(
+                cameraPosition: _cameraPosition,
+                params: VideoParametersPresets.h720_169,
+              ),
+            )
+            .timeout(const Duration(seconds: 8));
+        isVideoMuted.value = false;
+      } else {
+        // Turning camera OFF
+        await participant.setCameraEnabled(false);
+        isVideoMuted.value = true;
         localVideoTrack.value = null;
-      } else if (_room != null) {
+      }
+      if (_room != null) {
         _updateTracks(_room!);
       }
     } catch (e) {
       debugPrint('Error toggling video: $e');
+      if (e.toString().contains('TrackCreateException') ||
+          e.toString().contains('no video') ||
+          e.toString().contains('Camera')) {
+        Get.snackbar(
+          'Camera Notice',
+          'Camera hardware is not available on this device/simulator. Voice audio is active.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF1E293B),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
     }
   }
 

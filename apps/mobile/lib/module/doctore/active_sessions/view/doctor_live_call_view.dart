@@ -59,18 +59,79 @@ class DoctorLiveCallView extends GetView<DoctorLiveCallController> {
                     );
                   }
 
-                  return MeetingAmbientBackground(
-                    child: MeetingWaitingPresence(
-                      title: 'Connected with ${controller.remoteParticipantName.value}',
-                      subtitle:
-                          'LiveKit Encrypted Medical Consultation\nSubscribed to incoming live audio & video feed.',
-                      roleBadge: 'Verified Patient Encounter',
-                      centerIcon: Icons.medical_services_rounded,
-                      callerName: controller.remoteParticipantName.value,
-                    ),
-                  );
-                }),
-              ),
+                    // Patient has joined, but camera is turned off or audio-only
+                    if (controller.isRemoteParticipantJoined.value) {
+                      return MeetingAmbientBackground(
+                        child: MeetingWaitingPresence(
+                          title: '${controller.remoteParticipantName.value} (Camera Off)',
+                          subtitle:
+                              'Patient is connected via secure live audio.\nCamera is currently turned off.',
+                          roleBadge: 'Connected • Audio Active',
+                          centerIcon: Icons.videocam_off_rounded,
+                          callerName: controller.remoteParticipantName.value,
+                        ),
+                      );
+                    }
+
+                    return MeetingAmbientBackground(
+                      child: MeetingWaitingPresence(
+                        title: 'Connecting with ${controller.remoteParticipantName.value}...',
+                        subtitle:
+                            'LiveKit Encrypted Medical Consultation\nAwaiting incoming live audio & video feed.',
+                        roleBadge: 'Verified Patient Encounter',
+                        centerIcon: Icons.medical_services_rounded,
+                        callerName: controller.remoteParticipantName.value,
+                      ),
+                    );
+                  }),
+                ),
+
+                // ─── 1.5 Remote Participant Muted Pill ─────────────────────────
+                Positioned(
+                  top: 56.h,
+                  left: 0,
+                  right: 0,
+                  child: Obx(() {
+                    if (!controller.isRemoteParticipantJoined.value ||
+                        !controller.isRemoteAudioMuted.value) {
+                      return const SizedBox.shrink();
+                    }
+                    final name = controller.remoteParticipantName.value.isNotEmpty
+                        ? controller.remoteParticipantName.value
+                        : 'Patient';
+                    return Center(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 5.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(20.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.mic_off_rounded, color: Colors.white, size: 13.sp),
+                            SizedBox(width: 5.w),
+                            Text(
+                              '$name is muted',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
 
               // ─── 2. Safe Area Foreground Elements ───────────────────────────
               SafeArea(
@@ -101,13 +162,11 @@ class DoctorLiveCallView extends GetView<DoctorLiveCallController> {
                       child: Obx(() {
                         final localTrack = controller.localVideoTrack.value;
                         final isMuted = controller.isVideoMuted.value;
-                        if (localTrack == null && !isMuted) {
-                          return const SizedBox.shrink();
-                        }
 
                         return MeetingPipView(
                           localTrack: localTrack,
                           isVideoMuted: isMuted,
+                          isMicMuted: controller.isMuted.value,
                           label: 'You (Doctor)',
                           isFrontCamera: controller.isFrontCamera.value,
                           onFlipCamera: () => controller.switchCamera(),

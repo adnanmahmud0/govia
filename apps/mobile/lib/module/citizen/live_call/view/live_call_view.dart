@@ -74,7 +74,24 @@ class _LiveCallViewState extends State<LiveCallView> {
                       );
                     }
 
-                    // Modern Organic Waiting / Audio-Only Presence
+                    // Remote participant has joined, but their camera is turned off
+                    if (controller.isRemoteParticipantJoined.value) {
+                      final name = controller.remoteParticipantName.value.isNotEmpty
+                          ? controller.remoteParticipantName.value
+                          : 'Responder';
+                      return MeetingAmbientBackground(
+                        child: MeetingWaitingPresence(
+                          title: '$name (Camera Off)',
+                          subtitle:
+                              'The responder is connected via secure live audio.\nCamera is currently turned off.',
+                          roleBadge: 'Connected • Audio Active',
+                          centerIcon: Icons.videocam_off_rounded,
+                          callerName: userName,
+                        ),
+                      );
+                    }
+
+                    // Modern Organic Waiting / Audio-Only Presence (Awaiting responder)
                     return MeetingAmbientBackground(
                       child: MeetingWaitingPresence(
                         title: 'Connecting with Responder...',
@@ -83,6 +100,53 @@ class _LiveCallViewState extends State<LiveCallView> {
                         roleBadge: 'Verified Incident Responder',
                         centerIcon: Icons.shield_rounded,
                         callerName: userName,
+                      ),
+                    );
+                  }),
+                ),
+
+                // ─── 1.5 Remote Participant Muted Pill ─────────────────────────
+                Positioned(
+                  top: 56.h,
+                  left: 0,
+                  right: 0,
+                  child: Obx(() {
+                    if (!controller.isRemoteParticipantJoined.value ||
+                        !controller.isRemoteAudioMuted.value) {
+                      return const SizedBox.shrink();
+                    }
+                    final name = controller.remoteParticipantName.value.isNotEmpty
+                        ? controller.remoteParticipantName.value
+                        : 'Responder';
+                    return Center(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 5.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(20.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.mic_off_rounded, color: Colors.white, size: 13.sp),
+                            SizedBox(width: 5.w),
+                            Text(
+                              '$name is muted',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }),
@@ -196,13 +260,11 @@ class _LiveCallViewState extends State<LiveCallView> {
                   child: Obx(() {
                     final localTrack = controller.localVideoTrack.value;
                     final isMuted = controller.isVideoMuted.value;
-                    if (localTrack == null && !isMuted) {
-                      return const SizedBox.shrink();
-                    }
 
                     return MeetingPipView(
                       localTrack: localTrack,
                       isVideoMuted: isMuted,
+                      isMicMuted: controller.isMuted.value,
                       label: 'You',
                       isFrontCamera: controller.isFrontCamera.value,
                       onFlipCamera: () => controller.switchCamera(),

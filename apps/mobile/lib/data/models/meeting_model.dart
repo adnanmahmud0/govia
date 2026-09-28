@@ -129,7 +129,22 @@ class MeetingModel {
     this.locationAddress,
   });
 
-  factory MeetingModel.fromJson(Map<String, dynamic> json) {
+  factory MeetingModel.fromJson(Map<String, dynamic> rawJson) {
+    final Map<String, dynamic> json;
+    if (rawJson.containsKey('meeting') && rawJson['meeting'] is Map) {
+      json = Map<String, dynamic>.from(rawJson['meeting'] as Map);
+      if (rawJson['token'] != null) json['token'] = rawJson['token'];
+      if (rawJson['livekitToken'] != null) json['livekitToken'] = rawJson['livekitToken'];
+      if (rawJson['sdkToken'] != null) json['sdkToken'] = rawJson['sdkToken'];
+      if (rawJson['livekitUrl'] != null) json['livekitUrl'] = rawJson['livekitUrl'];
+      if (rawJson['roomName'] != null) json['roomName'] = rawJson['roomName'];
+      if (rawJson['sessionName'] != null) json['sessionName'] = rawJson['sessionName'];
+      if (rawJson['id'] != null && json['_id'] == null) json['_id'] = rawJson['id'];
+      if (rawJson['meetingId'] != null && json['_id'] == null) json['_id'] = rawJson['meetingId'];
+    } else {
+      json = rawJson;
+    }
+
     final rName = json['roomName']?.toString() ??
         json['sessionName']?.toString() ??
         (json['zoomMeetingId'] != null
