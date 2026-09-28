@@ -16,8 +16,6 @@ import { IMeeting } from './meeting.interface';
 import { Conversation } from '../conversation/conversation.model';
 import { Message } from '../message/message.model';
 import { NotificationService } from '../notification/notification.service';
-import { VaultFolder } from '../vault/vaultFolder.model';
-import { VaultItem } from '../vault/vaultItem.model';
 import { debug, debugError } from '../../../shared/debug';
 import { USER_ROLES } from '../../../enums/user';
 import { SubscriptionService } from '../subscription/subscription.service';
@@ -1492,66 +1490,6 @@ const getMeetingSdkToken = async (meetingId: string, userId: string) => {
     livekitToken,
     livekitUrl: config.livekit.url,
   };
-};
-
-/**
- * Helper to auto-save or update meeting recording into the user's Evidence Vault
- */
-const autoSaveMeetingToVault = async (
-  meeting: Partial<IMeeting> & { _id?: unknown },
-  fileUrl: string,
-  fileSize = 0
-) => {
-  try {
-    if (!meeting || !meeting.userId || !fileUrl) return;
-
-    let folder = await VaultFolder.findOne({
-      userId: meeting.userId,
-      $or: [
-        { name: meeting.topic },
-        { category: meeting.category || 'ENCOUNTER' },
-      ],
-      isArchived: false,
-    });
-
-    if (!folder) {
-      folder = await VaultFolder.create({
-        userId: meeting.userId,
-        name: meeting.topic || 'Recorded Incident',
-        description: `Encounter & meeting recording for ${meeting.topic}`,
-        category: meeting.category || 'ENCOUNTER',
-        incidentDate: meeting.createdAt || new Date(),
-        location: meeting.locationAddress || '',
-      });
-    }
-
-    const existingItem = await VaultItem.findOne({ meetingId: meeting._id });
-    if (!existingItem) {
-      await VaultItem.create({
-        userId: meeting.userId,
-        folderId: folder._id,
-        title: `${meeting.topic} - Video Recording`,
-        description: `Official recorded evidence for session: ${meeting.topic}`,
-        category: meeting.category || 'ENCOUNTER',
-        importance: meeting.meetingType === 'EMERGENCY' ? 'CRITICAL' : 'HIGH',
-        fileType: 'RECORDING',
-        fileUrl,
-        fileSize,
-        mimeType: 'video/mp4',
-        meetingId: meeting._id,
-      });
-      debug(`[Vault] Created evidence vault item for meeting ${meeting._id}`);
-    } else {
-      existingItem.fileUrl = fileUrl;
-      if (fileSize) existingItem.fileSize = fileSize;
-      await existingItem.save();
-    }
-  } catch (err: unknown) {
-    debugError(
-      '[Vault] Failed to auto-save meeting recording to Vault:',
-      err instanceof Error ? err.message : String(err)
-    );
-  }
 };
 
 const startRecording = async (meetingId: string, _userId?: string) => {

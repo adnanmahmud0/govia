@@ -325,7 +325,7 @@ const linkMeetingToFolder = async (
   const linkedItems: IVaultItem[] = [];
 
   for (const folder of folders) {
-    let existingItem = await VaultItem.findOne({
+    const existingItem = await VaultItem.findOne({
       folderId: folder._id,
       meetingId: meeting._id,
     });
