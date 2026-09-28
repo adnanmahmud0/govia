@@ -40,9 +40,16 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// File retrieve
-app.use(express.static('uploads'));
-app.use('/uploads', express.static('uploads'));
+// File retrieve with byte-range and cache support for smooth video streaming
+const staticUploadOptions = {
+  maxAge: '7d',
+  setHeaders: (res: express.Response) => {
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+  },
+};
+app.use(express.static('uploads', staticUploadOptions));
+app.use('/uploads', express.static('uploads', staticUploadOptions));
 
 // API Documentation (OpenAPI 3.0 & Swagger UI)
 app.use('/api', DocsRoutes);

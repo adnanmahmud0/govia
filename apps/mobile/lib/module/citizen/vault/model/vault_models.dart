@@ -245,11 +245,10 @@ class VaultItemModel {
     }
 
     String fileUrl = (json['fileUrl'] ?? '').toString();
+    if (fileUrl.contains('recordings.govia.ai')) fileUrl = '';
     if (fileUrl.isEmpty && meetingMap != null) {
       fileUrl = (meetingMap['recordingUrl'] ?? meetingMap['joinUrl'] ?? '').toString();
-      if (fileUrl.isEmpty && meetingMap['_id'] != null) {
-        fileUrl = 'https://recordings.govia.ai/play/${meetingMap['_id']}';
-      }
+      if (fileUrl.contains('recordings.govia.ai')) fileUrl = '';
     }
 
     return VaultItemModel(

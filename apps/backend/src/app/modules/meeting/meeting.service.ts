@@ -1196,8 +1196,7 @@ const endMeeting = async (userId: string, meetingId: string) => {
                 recordingEnd,
               }];
               debug(`[Meeting] ✅ Recording S3 URL captured: ${fileLocation}`);
-              // Auto-save to Evidence Vault
-              autoSaveMeetingToVault(meeting, fileLocation, fileSize).catch(() => {});
+              // Note: Folder auto-creation and auto-adding recordings on meeting completion disabled.
               break;
             }
           }
@@ -1700,8 +1699,8 @@ const handleLiveKitWebhook = async (
           }
         );
 
-        // Auto-save into Evidence Vault
-        await autoSaveMeetingToVault(meeting, fileLocation, fileSize);
+        // Note: Folder auto-creation and auto-adding recordings on meeting completion disabled.
+        // Recording remains accessible unassigned under user's Vault recordings until explicitly assigned.
 
         // Real-time socket broadcast
         const populatedMeeting = await Meeting.findById(meeting._id)
@@ -1819,7 +1818,8 @@ const uploadRecordingDirect = async (
     }
   );
 
-  await autoSaveMeetingToVault(meeting, filePath, fileSize);
+  // Note: Folder auto-creation and auto-adding recordings on meeting completion disabled.
+  // Recording remains accessible unassigned under user's Vault recordings until explicitly assigned.
 
   const populatedMeeting = await Meeting.findById(meeting._id)
     .populate('userId', 'name email role image phoneNumber')

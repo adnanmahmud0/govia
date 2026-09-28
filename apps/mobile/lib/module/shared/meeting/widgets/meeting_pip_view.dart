@@ -11,6 +11,7 @@ class MeetingPipView extends StatelessWidget {
   final String label;
   final VoidCallback? onFlipCamera;
   final VoidCallback? onTap;
+  final bool isFrontCamera;
 
   const MeetingPipView({
     super.key,
@@ -19,10 +20,16 @@ class MeetingPipView extends StatelessWidget {
     this.label = 'You',
     this.onFlipCamera,
     this.onTap,
+    this.isFrontCamera = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic mirror: Front camera is mirrored for natural selfie view; Back camera is NEVER mirrored!
+    final dynamicMirrorMode = isFrontCamera
+        ? VideoViewMirrorMode.mirror
+        : VideoViewMirrorMode.off;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -54,8 +61,9 @@ class MeetingPipView extends StatelessWidget {
               else
                 VideoTrackRenderer(
                   localTrack!,
+                  key: ValueKey('pip_${localTrack!.sid}_$isFrontCamera'),
                   fit: VideoViewFit.cover,
-                  mirrorMode: VideoViewMirrorMode.mirror,
+                  mirrorMode: dynamicMirrorMode,
                 ),
 
               // 2. Subtle Vignette at Bottom for Badge Readability

@@ -131,8 +131,6 @@ const getFolderDetails = async (userId: string, folderId: string) => {
     if (!item.fileUrl || item.fileUrl === '') {
       if (item.meetingId?.recordingUrl) {
         item.fileUrl = item.meetingId.recordingUrl;
-      } else if (item.meetingId?._id) {
-        item.fileUrl = `https://recordings.govia.ai/play/${item.meetingId._id}`;
       }
     }
     return item;
@@ -259,20 +257,24 @@ const uploadEvidence = async (
 const linkMeetingToFolder = async (
   userId: string,
   payload: {
-    folderId: string;
+    folderId?: string;
+    folderIds?: string[];
     meetingId: string;
     title?: string;
     description?: string;
   }
 ) => {
   const userObjectId = new Types.ObjectId(userId);
-  const folder = await VaultFolder.findOne({
-    _id: new Types.ObjectId(payload.folderId),
-    userId: userObjectId,
-  });
+  const targetFolderIdStrings = (
+    payload.folderIds && payload.folderIds.length > 0
+      ? payload.folderIds
+      : payload.folderId
+        ? [payload.folderId]
+        : []
+  ).filter((id): id is string => Boolean(id) && Types.ObjectId.isValid(id));
 
-  if (!folder) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Target vault folder not found');
+  if (targetFolderIdStrings.length === 0) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'At least one valid folderId is required');
   }
 
   // 1. Resolve meeting: payload.meetingId might be a direct Meeting ID OR a VaultItem ID that links to a meeting!
@@ -291,17 +293,18 @@ const linkMeetingToFolder = async (
     throw new ApiError(StatusCodes.NOT_FOUND, 'Meeting record not found');
   }
 
-  // 2. Prevent duplicate entries in the same folder
-  const existingItem = await VaultItem.findOne({
-    folderId: folder._id,
-    meetingId: meeting._id,
+  // 2. Resolve target folders owned or shared with this user
+  const targetObjectIds = targetFolderIdStrings.map(id => new Types.ObjectId(id));
+  const folders = await VaultFolder.find({
+    _id: { $in: targetObjectIds },
+    $or: [
+      { userId: userObjectId },
+      { 'sharedWith.userId': userObjectId },
+    ],
   });
 
-  if (existingItem) {
-    if (payload.title) existingItem.title = payload.title.trim();
-    if (payload.description) existingItem.description = payload.description.trim();
-    await existingItem.save();
-    return existingItem;
+  if (folders.length === 0) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Target vault folder(s) not found');
   }
 
   // 3. Category handling: Strictly map to ENCOUNTER, EMERGENCY, or CONSULTATION
@@ -314,28 +317,54 @@ const linkMeetingToFolder = async (
     meetingCategory = 'ENCOUNTER';
   }
 
-  const recordingUrl = meeting.recordingUrl || meeting.joinUrl || `https://recordings.govia.ai/play/${meeting._id}`;
+  const recordingUrl = meeting.recordingUrl || meeting.joinUrl || (meeting.recordings && meeting.recordings[0]?.playUrl) || '';
   const duration = meeting.durationMinutes
     ? `${meeting.durationMinutes} mins`
     : '30 mins';
 
-  const item = await VaultItem.create({
-    userId: userObjectId,
-    folderId: folder._id,
-    title: payload.title?.trim() || meeting.topic || `${meetingCategory} Session Recording`,
-    description: payload.description?.trim() || meeting.agenda || `Recorded ${meetingCategory.toLowerCase()} session linked to Vault.`,
-    category: meetingCategory,
-    fileType: 'VIDEO',
-    fileUrl: recordingUrl,
-    duration,
-    meetingId: meeting._id,
-  });
+  const linkedItems: IVaultItem[] = [];
 
-  // Link back on Meeting document
-  meeting.vaultFolderId = folder._id;
+  for (const folder of folders) {
+    let existingItem = await VaultItem.findOne({
+      folderId: folder._id,
+      meetingId: meeting._id,
+    });
+
+    if (existingItem) {
+      if (payload.title) existingItem.title = payload.title.trim();
+      if (payload.description) existingItem.description = payload.description.trim();
+      if (recordingUrl && (!existingItem.fileUrl || existingItem.fileUrl === '')) {
+        existingItem.fileUrl = recordingUrl;
+      }
+      await existingItem.save();
+      linkedItems.push(existingItem);
+    } else {
+      const newItem = await VaultItem.create({
+        userId: userObjectId,
+        folderId: folder._id,
+        title: payload.title?.trim() || meeting.topic || `${meetingCategory} Session Recording`,
+        description: payload.description?.trim() || meeting.agenda || `Recorded ${meetingCategory.toLowerCase()} session linked to Vault.`,
+        category: meetingCategory,
+        fileType: 'VIDEO',
+        fileUrl: recordingUrl,
+        duration,
+        meetingId: meeting._id,
+      });
+      linkedItems.push(newItem);
+    }
+  }
+
+  // Update meeting folder references (both legacy single and multi-folder array)
+  meeting.vaultFolderIds = folders.map(f => f._id);
+  meeting.vaultFolderId = folders[0]?._id;
   await meeting.save();
 
-  return item;
+  return {
+    success: true,
+    linkedCount: linkedItems.length,
+    items: linkedItems,
+    folders: folders.map(f => ({ _id: f._id, name: f.name, category: f.category })),
+  };
 };
 
 const deleteItem = async (userId: string, itemId: string) => {
@@ -512,13 +541,35 @@ const getAllRecordings = async (userId: string) => {
 
   const meetingObjectIds = meetings.map(m => m._id);
 
+  // Find all VaultItems for this user's meetings to identify all folders they belong to
+  const vaultItemsForMeetings = await VaultItem.find({
+    userId: userObjectId,
+    meetingId: { $in: meetingObjectIds },
+  })
+    .populate('folderId', 'name category')
+    .lean();
+
   // Ensure every meeting has a valid playback URL and category
   const normalizedMeetings = (
     meetings as unknown as Array<Record<string, unknown>>
   ).map((m) => {
-    if (!m.recordingUrl || m.recordingUrl === '') {
-      m.recordingUrl = `https://recordings.govia.ai/play/${m._id}`;
+    // If recordingUrl is empty or placeholder, resolve from recordings array if present
+    if (!m.recordingUrl || (typeof m.recordingUrl === 'string' && m.recordingUrl.includes('recordings.govia.ai'))) {
+      const recs = m.recordings as Array<{ playUrl?: string }> | undefined;
+      m.recordingUrl = recs?.[0]?.playUrl || '';
     }
+
+    // Attach all folders this meeting is currently linked to
+    const matchingItems = vaultItemsForMeetings.filter(
+      vi => vi.meetingId?.toString() === (m._id as unknown as string).toString()
+    );
+    const assignedFolders = matchingItems
+      .map(vi => vi.folderId as unknown as Record<string, unknown>)
+      .filter(f => Boolean(f && typeof f === 'object' && f._id));
+
+    m.folders = assignedFolders;
+    m.vaultFolders = assignedFolders;
+    m.vaultFolderId = assignedFolders[0] || m.vaultFolderId || null;
     const cat = m.category as string | undefined;
     if (!cat || !['ENCOUNTER', 'EMERGENCY', 'CONSULTATION'].includes(cat)) {
       const topic = typeof m.topic === 'string' ? m.topic.toLowerCase() : '';

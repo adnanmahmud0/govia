@@ -90,6 +90,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   final RxBool isVideoMuted = false.obs;
   final RxBool isSpeakerOn = true.obs;
   CameraPosition _cameraPosition = CameraPosition.front;
+  final RxBool isFrontCamera = true.obs;
 
   // ─── Host & Recording State ──────────────────────────────────────────
   final RxBool isHost = false.obs;
@@ -765,6 +766,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
             : CameraPosition.front;
         await track.setCameraPosition(nextPos);
         _cameraPosition = nextPos;
+        isFrontCamera.value = (nextPos == CameraPosition.front);
       }
     } catch (e) {
       debugPrint('Error switching camera: $e');

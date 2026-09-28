@@ -13,6 +13,7 @@ import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
+import 'package:gsabino365/config/constants/api_constants.dart';
 
 enum VideoQualityMode {
   auto,
@@ -116,14 +117,32 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
 
   // ─── Network & Cache Handling ──────────────────────────────────────────────
 
+  String get _cleanUrl {
+    final raw = widget.videoUrl.trim();
+    if (raw.isEmpty || raw.contains('recordings.govia.ai')) return '';
+    return ApiConstants.getFileUrl(raw);
+  }
+
   String _getCacheKey(String url) {
     return md5.convert(utf8.encode(url)).toString();
   }
 
   Future<void> _checkOfflineCacheAndInitialize() async {
+    final url = _cleanUrl;
+    if (url.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = 'No valid recording URL is available for this session.';
+        });
+      }
+      return;
+    }
+
     try {
       final dir = await getTemporaryDirectory();
-      final key = _getCacheKey(widget.videoUrl);
+      final key = _getCacheKey(url);
       final cachedFile = File('${dir.path}/govia_rec_$key.mp4');
 
       if (await cachedFile.exists() && await cachedFile.length() > 1024) {
@@ -133,7 +152,58 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
       }
     } catch (_) {}
 
-    _initializePlayer(sourceUrl: widget.videoUrl);
+    // 1. Initialize immediate network stream
+    _initializePlayer(sourceUrl: url);
+
+    // 2. Automatically kick off background progressive caching into storage so playback remains 100% smooth
+    _startAutoBackgroundCaching(url);
+  }
+
+  void _startAutoBackgroundCaching(String url) async {
+    if (_isOfflineCached || _isDownloading) return;
+    try {
+      final dir = await getTemporaryDirectory();
+      final key = _getCacheKey(url);
+      final targetPath = '${dir.path}/govia_rec_$key.mp4';
+      final tempPartPath = '$targetPath.part';
+
+      if (mounted) {
+        setState(() {
+          _isDownloading = true;
+        });
+      }
+
+      final dio = Dio();
+      await dio.download(
+        url,
+        tempPartPath,
+        onReceiveProgress: (received, total) {
+          if (total > 0 && mounted) {
+            setState(() {
+              _downloadProgress = (received / total).clamp(0.0, 1.0);
+            });
+          }
+        },
+      );
+
+      final partFile = File(tempPartPath);
+      if (await partFile.exists() && await partFile.length() > 1024) {
+        await partFile.rename(targetPath);
+        if (mounted) {
+          setState(() {
+            _isOfflineCached = true;
+            _isDownloading = false;
+            _downloadProgress = 1.0;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+    }
   }
 
   Future<void> _initializePlayer({String? sourceUrl, File? sourceFile}) async {
@@ -150,7 +220,7 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
       if (sourceFile != null) {
         _controller = VideoPlayerController.file(sourceFile);
       } else {
-        final uri = Uri.parse(sourceUrl ?? widget.videoUrl);
+        final uri = Uri.parse(sourceUrl ?? _cleanUrl);
         _controller = VideoPlayerController.networkUrl(
           uri,
           videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
@@ -216,9 +286,10 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
   void _listenToConnectivity() {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
       final isConnected = results.any((r) => r != ConnectivityResult.none);
-      if (isConnected && _hasError && !_isOfflineCached) {
+      final url = _cleanUrl;
+      if (isConnected && _hasError && !_isOfflineCached && url.isNotEmpty) {
         // Auto-recover when network becomes available
-        _initializePlayer(sourceUrl: widget.videoUrl);
+        _initializePlayer(sourceUrl: url);
       }
     });
   }
@@ -231,6 +302,12 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
       return;
     }
 
+    final url = _cleanUrl;
+    if (url.isEmpty) {
+      Helpers.showError('No valid recording URL to download');
+      return;
+    }
+
     if (_isDownloading) return;
 
     setState(() {
@@ -240,13 +317,14 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
 
     try {
       final dir = await getTemporaryDirectory();
-      final key = _getCacheKey(widget.videoUrl);
+      final key = _getCacheKey(url);
       final savePath = '${dir.path}/govia_rec_$key.mp4';
+      final tempPart = '$savePath.part';
 
       final dio = Dio();
       await dio.download(
-        widget.videoUrl,
-        savePath,
+        url,
+        tempPart,
         onReceiveProgress: (received, total) {
           if (total > 0 && mounted) {
             setState(() {
@@ -256,12 +334,14 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
         },
       );
 
-      final downloadedFile = File(savePath);
-      if (await downloadedFile.exists()) {
+      final downloadedPart = File(tempPart);
+      if (await downloadedPart.exists() && await downloadedPart.length() > 1024) {
+        await downloadedPart.rename(savePath);
         if (mounted) {
           setState(() {
             _isOfflineCached = true;
             _isDownloading = false;
+            _downloadProgress = 1.0;
           });
           Helpers.showSuccess('Cached successfully! Playable with no internet connection.');
         }

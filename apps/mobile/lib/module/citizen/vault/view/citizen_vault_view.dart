@@ -936,13 +936,6 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
     final callerName = (rec['callerName'] ?? rec['hostName'] ?? rec['name'] ?? 'Citizen Encounter').toString();
     final category = (rec['category'] ?? (rec['meetingType'] == 'EMERGENCY' ? 'EMERGENCY' : 'CONSULTATION')).toString().toUpperCase();
 
-    // Check if already linked to a folder
-    final linkedFolder = rec['vaultFolderId'] ?? rec['folderId'];
-    String? folderName;
-    if (linkedFolder is Map) {
-      folderName = linkedFolder['name']?.toString();
-    }
-
     DateTime? createdAt;
     if (rec['createdAt'] != null) {
       createdAt = DateTime.tryParse(rec['createdAt'].toString());
@@ -951,87 +944,135 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
 
     final isLocked = rec['isRecordingLocked'] == true;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: (isLocked ? const Color(0xFF7C3AED) : const Color(0xFFDC2626)).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Icon(
-                  isLocked ? Icons.lock_outline_rounded : Icons.videocam_rounded,
-                  color: isLocked ? const Color(0xFF7C3AED) : const Color(0xFFDC2626),
-                  size: 24,
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 3.h),
-                    Text(
-                      'Recorded session with $callerName',
-                      style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF64748B)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: (isLocked ? const Color(0xFFDC2626) : const Color(0xFF1550A6)).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-                child: Text(
-                  isLocked ? 'LOCKED · PREMIUM' : category.toUpperCase(),
-                  style: GoogleFonts.inter(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                    color: isLocked ? const Color(0xFFDC2626) : const Color(0xFF1550A6),
+    return Obx(() {
+      // Gather assigned folders from all sources (backend lists + local folders state)
+      final List<String> assignedFolderNames = [];
+
+      if (rec['folders'] is List) {
+        for (final f in rec['folders']) {
+          if (f is Map && f['name'] != null) {
+            final name = f['name'].toString();
+            if (!assignedFolderNames.contains(name)) assignedFolderNames.add(name);
+          }
+        }
+      }
+      if (rec['vaultFolders'] is List) {
+        for (final f in rec['vaultFolders']) {
+          if (f is Map && f['name'] != null) {
+            final name = f['name'].toString();
+            if (!assignedFolderNames.contains(name)) assignedFolderNames.add(name);
+          }
+        }
+      }
+      final linkedFolder = rec['vaultFolderId'] ?? rec['folderId'];
+      if (linkedFolder is Map && linkedFolder['name'] != null) {
+        final name = linkedFolder['name'].toString();
+        if (!assignedFolderNames.contains(name)) assignedFolderNames.add(name);
+      }
+
+      // Also check client-side controller.folders in case folders were updated/linked dynamically
+      for (final folder in controller.folders) {
+        if (folder.linkedMeetingIds.contains(meetingId)) {
+          if (!assignedFolderNames.contains(folder.name)) {
+            assignedFolderNames.add(folder.name);
+          }
+        }
+      }
+
+      final bool hasFolders = assignedFolderNames.isNotEmpty;
+
+      return Container(
+        margin: EdgeInsets.only(bottom: 12.h),
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.r),
+                  decoration: BoxDecoration(
+                    color: (isLocked ? const Color(0xFF7C3AED) : const Color(0xFFDC2626)).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(
+                    isLocked ? Icons.lock_outline_rounded : Icons.videocam_rounded,
+                    color: isLocked ? const Color(0xFF7C3AED) : const Color(0xFFDC2626),
+                    size: 24,
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10.h),
-          Row(
-            children: [
-              Icon(Icons.access_time_rounded, size: 13.sp, color: const Color(0xFF94A3B8)),
-              SizedBox(width: 4.w),
-              Text(dateStr, style: GoogleFonts.inter(fontSize: 11.5.sp, color: const Color(0xFF94A3B8))),
-              if (folderName != null && folderName.isNotEmpty) ...[
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 3.h),
+                      Text(
+                        'Recorded session with $callerName',
+                        style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF64748B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: (isLocked ? const Color(0xFFDC2626) : const Color(0xFF1550A6)).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Text(
+                    isLocked ? 'LOCKED · PREMIUM' : category.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                      color: isLocked ? const Color(0xFFDC2626) : const Color(0xFF1550A6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            Row(
+              children: [
+                Icon(Icons.access_time_rounded, size: 13.sp, color: const Color(0xFF94A3B8)),
+                SizedBox(width: 4.w),
+                Text(dateStr, style: GoogleFonts.inter(fontSize: 11.5.sp, color: const Color(0xFF94A3B8))),
                 const Spacer(),
-                Flexible(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                if (!hasFolders)
+                  Text(
+                    'No folder assigned',
+                    style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF94A3B8), fontStyle: FontStyle.italic),
+                  ),
+              ],
+            ),
+            if (hasFolders) ...[
+              SizedBox(height: 8.h),
+              Wrap(
+                spacing: 6.w,
+                runSpacing: 4.h,
+                children: assignedFolderNames.map((folderName) {
+                  return Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(6.r),
@@ -1042,7 +1083,8 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
                       children: [
                         Icon(Icons.folder_open_rounded, size: 12.sp, color: const Color(0xFF1D4ED8)),
                         SizedBox(width: 4.w),
-                        Flexible(
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: 160.w),
                           child: Text(
                             folderName,
                             style: GoogleFonts.inter(
@@ -1056,54 +1098,57 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
                         ),
                       ],
                     ),
+                  );
+                }).toList(),
+              ),
+            ],
+            SizedBox(height: 12.h),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            SizedBox(height: 12.h),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showWatchRecordingDialog(context, rec),
+                    icon: Icon(
+                      isLocked ? Icons.lock_rounded : Icons.play_circle_fill_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      isLocked ? 'Unlock Recording' : 'Watch',
+                      style: GoogleFonts.inter(fontSize: 12.5.sp, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isLocked ? const Color(0xFF1550A6) : const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showAddToFolderModal(context, meetingId, title),
+                    icon: Icon(hasFolders ? Icons.drive_file_move_rounded : Icons.drive_file_move_outline, size: 16),
+                    label: Text(
+                      hasFolders ? 'Manage Folders' : 'Add to Folder',
+                      style: GoogleFonts.inter(fontSize: 12.5.sp, fontWeight: FontWeight.w700),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1550A6),
+                      side: const BorderSide(color: Color(0xFF1550A6), width: 1.2),
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                    ),
                   ),
                 ),
               ],
-            ],
-          ),
-          SizedBox(height: 12.h),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          SizedBox(height: 12.h),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showWatchRecordingDialog(context, rec),
-                  icon: Icon(
-                    isLocked ? Icons.lock_rounded : Icons.play_circle_fill_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    isLocked ? 'Unlock Recording' : 'Watch',
-                    style: GoogleFonts.inter(fontSize: 12.5.sp, fontWeight: FontWeight.w700),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isLocked ? const Color(0xFF1550A6) : const Color(0xFF059669),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 10.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                  ),
-                ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showAddToFolderModal(context, meetingId, title),
-                  icon: Icon(folderName != null ? Icons.drive_file_move_rounded : Icons.drive_file_move_outline, size: 16),
-                  label: Text(folderName != null ? 'Move / Add' : 'Add to Folder', style: GoogleFonts.inter(fontSize: 12.5.sp, fontWeight: FontWeight.w700)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF1550A6),
-                    side: const BorderSide(color: Color(0xFF1550A6), width: 1.2),
-                    padding: EdgeInsets.symmetric(vertical: 10.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   // ──────────────────────── WATCH RECORDING DIALOG ────────────────────────
@@ -1250,82 +1295,160 @@ class CitizenVaultView extends GetView<CitizenVaultController> {
       return;
     }
 
-    final availableFolders = controller.folders
-        .where((f) => !f.linkedMeetingIds.contains(meetingId))
-        .toList();
-
-    if (availableFolders.isEmpty) {
-      Helpers.showInfo('This recording is already added to all your vault folders.');
-      return;
-    }
+    // Pre-select any folders that already link to this meeting
+    final selectedFolderIds = controller.folders
+        .where((f) => f.linkedMeetingIds.contains(meetingId))
+        .map((f) => f.id)
+        .toSet();
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.all(20.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.drive_file_move_rounded, color: const Color(0xFF1550A6), size: 22.sp),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: Text(
-                    'Select Case Folder',
-                    style: GoogleFonts.outfit(fontSize: 18.sp, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.drive_file_move_rounded, color: const Color(0xFF1550A6), size: 22.sp),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: Text(
+                          'Assign to Folders',
+                          style: GoogleFonts.outfit(fontSize: 18.sp, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                        ),
+                      ),
+                      IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.of(ctx).pop()),
+                    ],
                   ),
-                ),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.of(ctx).pop()),
-              ],
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              'Attach recording "$topic" to an existing case folder:',
-              style: GoogleFonts.inter(fontSize: 12.5.sp, color: const Color(0xFF64748B)),
-            ),
-            SizedBox(height: 16.h),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 280.h),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: availableFolders.length,
-                separatorBuilder: (context, index) => SizedBox(height: 8.h),
-                itemBuilder: (c, idx) {
-                  final folder = availableFolders[idx];
-                  return ListTile(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-                    tileColor: const Color(0xFFF8FAFC),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                      side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Select one or more case folders to store "$topic":',
+                    style: GoogleFonts.inter(fontSize: 12.5.sp, color: const Color(0xFF64748B)),
+                  ),
+                  SizedBox(height: 14.h),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: 300.h),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: controller.folders.length,
+                      separatorBuilder: (context, index) => SizedBox(height: 8.h),
+                      itemBuilder: (c, idx) {
+                        final folder = controller.folders[idx];
+                        final isSelected = selectedFolderIds.contains(folder.id);
+                        return InkWell(
+                          onTap: () {
+                            setModalState(() {
+                              if (isSelected) {
+                                selectedFolderIds.remove(folder.id);
+                              } else {
+                                selectedFolderIds.add(folder.id);
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(10.r),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.folder_rounded,
+                                  color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                  size: 22.sp,
+                                ),
+                                SizedBox(width: 10.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        folder.name,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        '${folder.itemCount} files • ${folder.categoryDisplayName}',
+                                        style: GoogleFonts.inter(fontSize: 11.5.sp, color: const Color(0xFF64748B)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Checkbox(
+                                  value: isSelected,
+                                  activeColor: const Color(0xFF2563EB),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.r)),
+                                  onChanged: (val) {
+                                    setModalState(() {
+                                      if (val == true) {
+                                        selectedFolderIds.add(folder.id);
+                                      } else {
+                                        selectedFolderIds.remove(folder.id);
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    leading: const Icon(Icons.folder_rounded, color: Color(0xFF1550A6)),
-                    title: Text(
-                      folder.name,
-                      style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                  ),
+                  SizedBox(height: 16.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: selectedFolderIds.isEmpty
+                          ? null
+                          : () async {
+                              Navigator.of(ctx).pop();
+                              await controller.linkMeetingToFolder(
+                                folderIds: selectedFolderIds.toList(),
+                                meetingId: meetingId,
+                                title: topic,
+                              );
+                            },
+                      icon: const Icon(Icons.check_rounded, size: 18),
+                      label: Text(
+                        selectedFolderIds.isEmpty
+                            ? 'Select Folders'
+                            : 'Save to ${selectedFolderIds.length} Folder${selectedFolderIds.length > 1 ? 's' : ''}',
+                        style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1550A6),
+                        disabledBackgroundColor: const Color(0xFF94A3B8),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      ),
                     ),
-                    subtitle: Text('${folder.itemCount} files • ${folder.categoryDisplayName}', style: GoogleFonts.inter(fontSize: 11.5.sp, color: const Color(0xFF64748B))),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
-                    onTap: () async {
-                      Navigator.of(ctx).pop();
-                      await controller.linkMeetingToFolder(
-                        folderId: folder.id,
-                        meetingId: meetingId,
-                        title: topic,
-                      );
-                    },
-                  );
-                },
+                  ),
+                ],
               ),
-            ),
-            SizedBox(height: 12.h),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -25,6 +25,7 @@ export type IMeeting = {
   meetingType: 'INSTANT' | 'SCHEDULED' | 'EMERGENCY';
   category?: 'ENCOUNTER' | 'EMERGENCY' | 'CONSULTATION';
   vaultFolderId?: Types.ObjectId;
+  vaultFolderIds?: Types.ObjectId[];
   startTime?: Date;
   durationMinutes?: number;
   timezone?: string;

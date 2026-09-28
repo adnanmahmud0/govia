@@ -50,6 +50,7 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   final RxBool isVideoMuted = false.obs;
   final RxBool isSpeakerOn = true.obs;
   CameraPosition _cameraPosition = CameraPosition.front;
+  final RxBool isFrontCamera = true.obs;
 
   // ─── Call Timer ──────────────────────────────────────────────────────
   final RxInt duration = 0.obs;
@@ -461,6 +462,7 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
             : CameraPosition.front;
         await videoTrack.setCameraPosition(newPosition);
         _cameraPosition = newPosition;
+        isFrontCamera.value = (newPosition == CameraPosition.front);
       } catch (e) {
         debugPrint('Error switching doctor camera: $e');
       }

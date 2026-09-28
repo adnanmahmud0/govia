@@ -441,26 +441,36 @@ class CitizenVaultController extends GetxController {
 
   // ──────────────────────── LINK MEETING TO VAULT ────────────────────────
   Future<bool> linkMeetingToFolder({
-    required String folderId,
+    String? folderId,
+    List<String>? folderIds,
     required String meetingId,
     String? title,
     String? description,
   }) async {
     try {
       isActionLoading.value = true;
-      final payload = {
-        'folderId': folderId,
+      final targetList = (folderIds != null && folderIds.isNotEmpty)
+          ? folderIds
+          : (folderId != null ? [folderId] : <String>[]);
+
+      final payload = <String, dynamic>{
+        'folderIds': targetList,
         'meetingId': meetingId,
-        if (title != null && title.isNotEmpty) 'title': title.trim(),
-        if (description != null && description.isNotEmpty) 'description': description.trim(),
       };
+      if (folderId != null) payload['folderId'] = folderId;
+      if (title != null && title.isNotEmpty) payload['title'] = title.trim();
+      if (description != null && description.isNotEmpty) payload['description'] = description.trim();
 
       final response = await _apiClient.postData(ApiConstants.vaultLinkMeeting, payload);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Helpers.showSuccess('Meeting recording attached to Vault');
+        Helpers.showSuccess(targetList.length > 1
+            ? 'Recording linked to ${targetList.length} folders'
+            : 'Meeting recording attached to Vault');
         HapticFeedback.mediumImpact();
         await fetchFolders(showLoader: false);
-        await fetchFolderDetails(folderId, forceRefresh: true);
+        for (final fid in targetList) {
+          await fetchFolderDetails(fid, forceRefresh: true);
+        }
         await fetchAllRecordings(showLoader: false);
         return true;
       } else {

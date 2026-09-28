@@ -226,6 +226,7 @@ class AttorneyLiveCallView extends GetView<AttorneyLiveCallController> {
                           : isBailBondsman
                               ? 'You (Bail Agent)'
                               : 'You (Counsel)',
+                      isFrontCamera: controller.isFrontCamera.value,
                       onFlipCamera: () => controller.switchCamera(),
                     );
                   }),

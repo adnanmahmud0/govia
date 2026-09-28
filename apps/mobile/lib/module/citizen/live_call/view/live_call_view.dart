@@ -204,6 +204,7 @@ class _LiveCallViewState extends State<LiveCallView> {
                       localTrack: localTrack,
                       isVideoMuted: isMuted,
                       label: 'You',
+                      isFrontCamera: controller.isFrontCamera.value,
                       onFlipCamera: () => controller.switchCamera(),
                     );
                   }),

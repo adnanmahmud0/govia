@@ -58,6 +58,12 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       required: false,
       index: true,
     },
+    vaultFolderIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'VaultFolder',
+      },
+    ],
     startTime: {
       type: Date,
     },

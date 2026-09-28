@@ -109,6 +109,7 @@ class DoctorLiveCallView extends GetView<DoctorLiveCallController> {
                           localTrack: localTrack,
                           isVideoMuted: isMuted,
                           label: 'You (Doctor)',
+                          isFrontCamera: controller.isFrontCamera.value,
                           onFlipCamera: () => controller.switchCamera(),
                         );
                       }),
