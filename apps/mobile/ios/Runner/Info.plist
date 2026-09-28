@@ -26,6 +26,25 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>GoVia requires camera access to stream live video evidence and capture photos during emergency incidents.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>GoVia uses your location in the background to ensure continuous tracking during active emergency monitoring.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>GoVia uses your location in the background to ensure continuous tracking during active emergency monitoring.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GoVia requires your location to display real-time GPS status and coordinate emergency response dispatch.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>GoVia requires microphone access to enable voice monitoring and live audio communication during safety protocols.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GoVia requires photo library access to attach media and documentation to your vault.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>GoVia requires speech recognition to detect emergency voice trigger words like "Start Govia".</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,6 +68,11 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -65,36 +89,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-
-	<!-- GoVia Hardware & Sensor Permissions -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>GoVia requires your location to display real-time GPS status and coordinate emergency response dispatch.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>GoVia uses your location in the background to ensure continuous tracking during active emergency monitoring.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>GoVia uses your location in the background to ensure continuous tracking during active emergency monitoring.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>GoVia requires microphone access to enable voice monitoring and live audio communication during safety protocols.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>GoVia requires speech recognition to detect emergency voice trigger words like "Start Govia".</string>
-	<key>NSCameraUsageDescription</key>
-	<string>GoVia requires camera access to stream live video evidence and capture photos during emergency incidents.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>GoVia requires photo library access to attach media and documentation to your vault.</string>
-
-	<!-- In-App Web View Permissions -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoadsInWebContent</key>
-		<true/>
-	</dict>
-
-	<!-- Background Modes for Live Calls & Emergency Monitoring -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-		<string>location</string>
 	</array>
 </dict>
 </plist>

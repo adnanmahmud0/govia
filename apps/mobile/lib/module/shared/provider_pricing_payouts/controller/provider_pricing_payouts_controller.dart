@@ -143,7 +143,8 @@ class ProviderPricingPayoutsController extends GetxController {
           );
         }
       } else {
-        Helpers.showError('Failed to generate Stripe onboarding link. Please try again.');
+        final errorMsg = _repo.lastErrorMessage ?? 'Failed to generate Stripe onboarding link. Please try again.';
+        Helpers.showError(errorMsg);
       }
     } catch (e) {
       Helpers.showError('Stripe onboarding error: $e');
@@ -165,7 +166,8 @@ class ProviderPricingPayoutsController extends GetxController {
           );
         }
       } else {
-        Helpers.showError('Could not load Stripe dashboard link. Please verify payout setup.');
+        final errorMsg = _repo.lastErrorMessage ?? 'Could not load Stripe dashboard link. Please verify payout setup.';
+        Helpers.showError(errorMsg);
       }
     } catch (e) {
       Helpers.showError('Dashboard error: $e');

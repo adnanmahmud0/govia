@@ -49,7 +49,9 @@ class ProviderPaymentRepository {
     return null;
   }
 
-  /// PUT /provider-payment/pricing-profile
+  String? lastErrorMessage;
+
+  /// PATCH /provider-payment/pricing-profile
   Future<Response> updatePricingProfile({
     double? serviceFee,
     double? monthlyServiceFee,
@@ -60,19 +62,27 @@ class ProviderPaymentRepository {
     if (monthlyServiceFee != null) data['monthlyServiceFee'] = monthlyServiceFee;
     if (shortDescription != null) data['shortDescription'] = shortDescription;
 
-    return await apiClient.putData(ApiConstants.providerPricingProfile, data);
+    final res = await apiClient.patchData(ApiConstants.providerPricingProfile, data);
+    if (res.statusCode != 200) {
+      // Fallback to putData if backend accepts PUT
+      return await apiClient.putData(ApiConstants.providerPricingProfile, data);
+    }
+    return res;
   }
 
-  /// POST /provider-payment/payout-account
+  /// POST /provider-payment/payout/onboard
   Future<Map<String, dynamic>?> createPayoutAccount() async {
+    lastErrorMessage = null;
     final response = await apiClient.postData(ApiConstants.providerPayoutAccount, {});
     if (response.statusCode == 200 && response.data?['data'] != null) {
       return Map<String, dynamic>.from(response.data['data']);
     }
+    lastErrorMessage = response.data?['message']?.toString() ??
+        'Failed to generate Stripe onboarding link (Status: ${response.statusCode})';
     return null;
   }
 
-  /// GET /provider-payment/payout-status
+  /// GET /provider-payment/payout/status
   Future<Map<String, dynamic>?> getPayoutStatus() async {
     final response = await apiClient.getData(ApiConstants.providerPayoutStatus);
     if (response.statusCode == 200 && response.data?['data'] != null) {
@@ -81,12 +91,15 @@ class ProviderPaymentRepository {
     return null;
   }
 
-  /// GET /provider-payment/payout-dashboard
+  /// GET /provider-payment/payout/dashboard-link
   Future<String?> getPayoutDashboardLink() async {
+    lastErrorMessage = null;
     final response = await apiClient.getData(ApiConstants.providerPayoutDashboard);
     if (response.statusCode == 200 && response.data?['data'] != null) {
       return response.data['data']['url']?.toString();
     }
+    lastErrorMessage = response.data?['message']?.toString() ??
+        'Could not load Stripe dashboard link (Status: ${response.statusCode})';
     return null;
   }
 

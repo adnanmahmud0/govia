@@ -86,7 +86,9 @@ class _StripeWebviewModalState extends State<StripeWebviewModal> {
     }
 
     // Check for Stripe Connect Return
-    if (urlStr.contains('/stripe/connect/return')) {
+    if (urlStr.contains('/stripe/connect/return') ||
+        urlStr.contains('status=return') ||
+        urlStr.contains('onboard-callback')) {
       isCompleted = true;
       Navigator.of(context).pop();
       if (widget.onConnectComplete != null) {
@@ -177,7 +179,9 @@ class _StripeWebviewModalState extends State<StripeWebviewModal> {
             final urlStr = uri.toString();
             if (urlStr.contains('/checkout/success') ||
                 urlStr.contains('/checkout/cancel') ||
-                urlStr.contains('/stripe/connect/return')) {
+                urlStr.contains('/stripe/connect/return') ||
+                urlStr.contains('status=return') ||
+                urlStr.contains('onboard-callback')) {
               _handleUrlChange(uri);
               return NavigationActionPolicy.CANCEL;
             }

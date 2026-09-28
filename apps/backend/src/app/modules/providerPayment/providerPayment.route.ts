@@ -8,28 +8,33 @@ import { ProviderPaymentValidation } from './providerPayment.validation';
 const router = express.Router();
 
 // 1. Provider Profile Pricing (Attorney & Bail Bondsman)
-router.patch(
-  '/pricing-profile',
-  auth(USER_ROLES.ATTORNEY, USER_ROLES.BAIL_BONDSMAN, USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-  validateRequest(ProviderPaymentValidation.updatePricingProfileZodSchema),
-  ProviderPaymentController.updatePricingProfile
-);
+router.route('/pricing-profile')
+  .patch(
+    auth(USER_ROLES.ATTORNEY, USER_ROLES.BAIL_BONDSMAN, USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    validateRequest(ProviderPaymentValidation.updatePricingProfileZodSchema),
+    ProviderPaymentController.updatePricingProfile
+  )
+  .put(
+    auth(USER_ROLES.ATTORNEY, USER_ROLES.BAIL_BONDSMAN, USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    validateRequest(ProviderPaymentValidation.updatePricingProfileZodSchema),
+    ProviderPaymentController.updatePricingProfile
+  );
 
 // 2. Stripe Connect Express Payout Onboarding & Status
 router.post(
-  '/payout/onboard',
+  ['/payout/onboard', '/payout-account', '/payout/account'],
   auth(USER_ROLES.ATTORNEY, USER_ROLES.BAIL_BONDSMAN),
   ProviderPaymentController.createPayoutOnboard
 );
 
 router.get(
-  '/payout/status',
+  ['/payout/status', '/payout-status'],
   auth(USER_ROLES.ATTORNEY, USER_ROLES.BAIL_BONDSMAN),
   ProviderPaymentController.getPayoutStatus
 );
 
 router.get(
-  '/payout/dashboard-link',
+  ['/payout/dashboard-link', '/payout-dashboard'],
   auth(USER_ROLES.ATTORNEY, USER_ROLES.BAIL_BONDSMAN),
   ProviderPaymentController.getPayoutDashboardLink
 );

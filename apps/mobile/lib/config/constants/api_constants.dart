@@ -106,9 +106,9 @@ class ApiConstants {
   // ─── Provider Directory & Stripe Payment Endpoints ────────────────────────
   static const String providerDirectory = '/provider/directory';
   static const String providerPricingProfile = '/provider-payment/pricing-profile';
-  static const String providerPayoutAccount = '/provider-payment/payout-account';
-  static const String providerPayoutStatus = '/provider-payment/payout-status';
-  static const String providerPayoutDashboard = '/provider-payment/payout-dashboard';
+  static const String providerPayoutAccount = '/provider-payment/payout/onboard';
+  static const String providerPayoutStatus = '/provider-payment/payout/status';
+  static const String providerPayoutDashboard = '/provider-payment/payout/dashboard-link';
   static const String providerCheckoutSession = '/provider-payment/checkout-session';
   static const String providerVerifySession = '/provider-payment/verify-session';
   static const String providerTransactions = '/provider-payment/transactions';
