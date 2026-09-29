@@ -352,11 +352,12 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
         defaultVideoPublishOptions: VideoPublishOptions(
           simulcast: false,
           videoEncoding: VideoEncoding(
-            // 1.5 Mbps @ 30fps: encoder has enough budget to flush every frame
-            // immediately without queuing. Previously 900kbps@24fps caused
-            // keyframe starvation under load → growing receiver delay.
-            maxBitrate: 1500000,
-            maxFramerate: 30,
+            // 800 kbps @ 24fps: lower bitrate gives the decoder a steady, constant
+            // stream it can render frame-by-frame without buffering ahead. Higher
+            // bitrates (≥1.2Mbps) under mobile-network conditions cause the
+            // receiver's jitter buffer to grow continuously → increasing lag.
+            maxBitrate: 800000,
+            maxFramerate: 24,
           ),
         ),
       ),
@@ -521,6 +522,16 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
             final map = jsonDecode(msg) as Map<String, dynamic>;
             isRemotePhoneLocked.value = map['isLocked'] == true;
             debugPrint('📱 Remote participant phone lock state: ${isRemotePhoneLocked.value}');
+          } else if (msg.contains('"type":"location_update"') || msg.contains('"type": "location_update"')) {
+            // Citizen is broadcasting their live GPS position via DataChannel
+            final map = jsonDecode(msg) as Map<String, dynamic>;
+            final lat = map['latitude'] != null ? double.tryParse(map['latitude'].toString()) : null;
+            final lng = map['longitude'] != null ? double.tryParse(map['longitude'].toString()) : null;
+            final addr = map['address']?.toString() ?? '';
+            if (lat != null) liveLatitude.value = lat;
+            if (lng != null) liveLongitude.value = lng;
+            if (addr.isNotEmpty) liveLocationAddress.value = addr;
+            debugPrint('📍 Citizen live location updated: $lat, $lng ($addr)');
           }
         } catch (_) {}
       });

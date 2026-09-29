@@ -169,14 +169,16 @@ class _LiveCallViewState extends State<LiveCallView> {
                   ),
                 ),
 
-                // ─── 2.5 Live Location Floating Pill (host-only, Interactive Google Maps) ──
+                // ─── 2.5 Live Location Floating Pill (guests-only, Interactive Google Maps) ──
+                // The citizen is the host and knows their own location; this pill is shown
+                // to attorney/bondsman in their view. We intentionally hide it here.
                 Positioned(
                   top: 72.h,
                   left: 16.w,
                   child: Obx(() {
-                    // Only the host can see the location pill — guests must not
-                    // see the host's GPS coordinates.
-                    if (!controller.isHost.value || !controller.hasLiveLocation) {
+                    // Citizen (host) should NOT see their own location pill.
+                    // Attorney and bondsman see it in their own views via DataChannel updates.
+                    if (controller.isHost.value || !controller.hasLiveLocation) {
                       return const SizedBox.shrink();
                     }
                     final locationText = controller.currentLocationText;

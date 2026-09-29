@@ -106,6 +106,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   final RxInt callSeconds = 0.obs;
   Timer? _timer;
   Timer? _retryPoller;
+  Timer? _locationBroadcastTimer;
 
   // ─── Reconnect State ─────────────────────────────────────────────────
   String? _lastLivekitUrl;
@@ -342,12 +343,20 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     try {
       await _connectLiveKit(livekitUrl, token);
       isLoading.value = false;
-      _startTimer();
 
       // Auto-start cloud Egress recording if this device is the call host
       if (isHost.value) {
         debugPrint('⏺ Host starting recording in joinIncomingOrExistingMeeting for meeting: $mId');
         _startRecording();
+        // Broadcast initial location to guests immediately after connection
+        if (liveLatitude.value != null && liveLongitude.value != null) {
+          _broadcastLocationToGuests(
+            liveLatitude.value!,
+            liveLongitude.value!,
+            liveLocationAddress.value,
+          );
+        }
+        _startLocationBroadcast();
       }
     } catch (e) {
       debugPrint('⚠️ Error joining LiveKit session: $e');
@@ -374,8 +383,46 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
             locationAddress: liveLocationAddress.value,
           );
         }
+        // Broadcast live location to all guests in the room via DataChannel
+        _broadcastLocationToGuests(pos.latitude, pos.longitude, liveLocationAddress.value);
       }
     } catch (_) {}
+  }
+
+  /// Broadcasts citizen GPS coordinates to all remote participants (attorney/bondsman)
+  /// so they can display a live location pill without polling the backend.
+  Future<void> _broadcastLocationToGuests(double lat, double lng, String address) async {
+    try {
+      final payload = jsonEncode({
+        'type': 'location_update',
+        'latitude': lat,
+        'longitude': lng,
+        'address': address,
+      });
+      await _room?.localParticipant?.publishData(
+        utf8.encode(payload),
+        reliable: true,
+      );
+    } catch (_) {}
+  }
+
+  /// Starts a periodic location broadcast (every 10 seconds) to keep remote
+  /// participants updated with the citizen's latest GPS coordinates.
+  void _startLocationBroadcast() {
+    _locationBroadcastTimer?.cancel();
+    _locationBroadcastTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      try {
+        final pos = await LocationService.getCurrentLocation(
+          timeout: const Duration(seconds: 3),
+        );
+        if (pos != null) {
+          liveLatitude.value = pos.latitude;
+          liveLongitude.value = pos.longitude;
+          liveLocationAddress.value = LocationService.formatCoordinates(pos.latitude, pos.longitude);
+          _broadcastLocationToGuests(pos.latitude, pos.longitude, liveLocationAddress.value);
+        }
+      } catch (_) {}
+    });
   }
 
   // ─── Start Govia (Create & Join Native LiveKit Session) ───────────────
@@ -505,13 +552,21 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     }
 
     isLoading.value = false;
-    _startTimer();
 
     // Auto-start cloud Egress recording. Only the host triggers this so
     // there is exactly one Egress per room (prevents duplicate recordings).
     if (isHost.value) {
       debugPrint('⏺ Host starting recording for meeting: ${meeting.id}');
       _startRecording();
+      // Broadcast initial location to guests immediately after connection
+      if (liveLatitude.value != null && liveLongitude.value != null) {
+        _broadcastLocationToGuests(
+          liveLatitude.value!,
+          liveLongitude.value!,
+          liveLocationAddress.value,
+        );
+      }
+      _startLocationBroadcast();
     }
   }
 
@@ -526,7 +581,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     final room = Room(
       roomOptions: const RoomOptions(
         // ── Low-Latency Configuration ─────────────────────────────────────
-        // Disabled adaptiveStream & dynacast: in a 2-person call these features
+        // adaptiveStream & dynacast disabled: in a 2-person call these features
         // require simulcast layers that we don't publish. Leaving them on with
         // simulcast=false causes the receiver-side adaptive logic to pause/resume
         // the single track, which builds a growing jitter buffer (visible lag).
@@ -542,11 +597,12 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
         defaultVideoPublishOptions: VideoPublishOptions(
           simulcast: false,
           videoEncoding: VideoEncoding(
-            // 1.5 Mbps @ 30fps: encoder has enough budget to flush every frame
-            // immediately without queuing. Previously 900kbps@24fps caused
-            // keyframe starvation under load → growing receiver delay.
-            maxBitrate: 1500000,
-            maxFramerate: 30,
+            // 800 kbps @ 24fps: lower bitrate gives the decoder a steady, constant
+            // stream it can render frame-by-frame without buffering ahead. Higher
+            // bitrates (≥1.2Mbps) under mobile-network conditions cause the
+            // receiver's jitter buffer to grow continuously → increasing lag.
+            maxBitrate: 800000,
+            maxFramerate: 24,
           ),
         ),
       ),
@@ -1047,6 +1103,8 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     CallBackgroundService.stop();
     _retryPoller?.cancel();
     _retryPoller = null;
+    _locationBroadcastTimer?.cancel();
+    _locationBroadcastTimer = null;
     // Clear reconnect params so any pending timer won't fire after intentional leave
     _lastLivekitUrl = null;
     _lastLivekitToken = null;
