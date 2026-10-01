@@ -51,11 +51,10 @@ class MeetingClosingOverlay extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
+        );
+      }
+    }
