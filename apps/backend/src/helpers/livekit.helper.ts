@@ -2,6 +2,8 @@ import {
   AccessToken,
   EgressClient,
   EncodedFileOutput,
+  EncodingOptions,
+  EncodingOptionsPreset,
   RoomServiceClient,
   S3Upload,
   WebhookReceiver,
@@ -67,7 +69,10 @@ export const createLiveKitToken = async ({
  */
 export const startLiveKitRecording = async (
   roomName: string,
-  options?: { layout?: string }
+  options?: {
+    layout?: string;
+    encodingOptions?: EncodingOptionsPreset | EncodingOptions;
+  }
 ): Promise<Record<string, unknown> | null> => {
   let apiKey = config.livekit.apiKey;
   let apiSecret = config.livekit.apiSecret;
@@ -143,11 +148,19 @@ export const startLiveKitRecording = async (
       },
     });
 
+    // Use portrait encoding preset (720x1280 @ 30fps) by default so mobile device
+    // camera streams are recorded with full camera view angle without cropping.
+    const encodingOptions =
+      options?.encodingOptions !== undefined
+        ? options.encodingOptions
+        : EncodingOptionsPreset.PORTRAIT_H264_720P_30;
+
     const info = await egressClient.startRoomCompositeEgress(
       roomName,
       fileOutput,
       {
         layout: options?.layout || 'grid',
+        encodingOptions,
       }
     );
 

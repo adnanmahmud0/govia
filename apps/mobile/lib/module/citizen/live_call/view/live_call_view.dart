@@ -46,15 +46,33 @@ class _LiveCallViewState extends State<LiveCallView> {
           body: SafeArea(
             child: Stack(
               children: [
-                // ─── 1. Ambient Background & Remote Video Stream ──────────────
+                // ─── 1. Ambient Background & Remote / Local Video Stream ──────
                 Positioned.fill(
                   child: Obx(() {
+                    final isLocalFullScreen = controller.isLocalCameraFullScreen.value;
+                    final localTrack = controller.localVideoTrack.value;
                     final remoteTrack = controller.remoteVideoTrack.value;
+
+                    // If citizen toggled to view local camera full screen
+                    if (isLocalFullScreen && localTrack != null && !controller.isVideoMuted.value) {
+                      return MeetingAmbientBackground(
+                        child: VideoTrackRenderer(
+                          localTrack,
+                          key: ValueKey('main_local__'),
+                          fit: VideoViewFit.contain,
+                          mirrorMode: controller.isFrontCamera.value
+                              ? VideoViewMirrorMode.mirror
+                              : VideoViewMirrorMode.off,
+                        ),
+                      );
+                    }
+
                     if (remoteTrack != null) {
                       return MeetingAmbientBackground(
                         child: VideoTrackRenderer(
                           remoteTrack,
-                          fit: VideoViewFit.cover,
+                          key: ValueKey('main_remote_'),
+                          fit: VideoViewFit.contain,
                         ),
                       );
                     }
@@ -256,13 +274,59 @@ class _LiveCallViewState extends State<LiveCallView> {
                   }),
                 ),
 
-                // ─── 3. Floating Picture-in-Picture Local Camera Preview ──────
+                // ─── 3. Floating Picture-in-Picture Video Preview ─────────────
                 Positioned(
                   top: 72.h,
                   right: 16.w,
                   child: Obx(() {
+                    final isLocalFullScreen = controller.isLocalCameraFullScreen.value;
+                    final remoteTrack = controller.remoteVideoTrack.value;
                     final localTrack = controller.localVideoTrack.value;
                     final isMuted = controller.isVideoMuted.value;
+
+                    if (isLocalFullScreen) {
+                      if (remoteTrack != null) {
+                        return MeetingPipView(
+                          localTrack: remoteTrack,
+                          isVideoMuted: false,
+                          isMicMuted: controller.isRemoteAudioMuted.value,
+                          label: controller.remoteParticipantName.value.isNotEmpty
+                              ? controller.remoteParticipantName.value
+                              : 'Responder',
+                          isFrontCamera: false,
+                          onTap: () => controller.toggleCameraFullScreen(),
+                        );
+                      }
+                      return GestureDetector(
+                        onTap: () => controller.toggleCameraFullScreen(),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(16.r),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1.w,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.fullscreen_exit_rounded, color: Colors.white, size: 14.sp),
+                              SizedBox(width: 4.w),
+                              Text(
+                                'Minimize',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
                     return MeetingPipView(
                       localTrack: localTrack,
@@ -271,6 +335,7 @@ class _LiveCallViewState extends State<LiveCallView> {
                       label: 'You',
                       isFrontCamera: controller.isFrontCamera.value,
                       onFlipCamera: () => controller.switchCamera(),
+                      onTap: () => controller.toggleCameraFullScreen(),
                     );
                   }),
                 ),

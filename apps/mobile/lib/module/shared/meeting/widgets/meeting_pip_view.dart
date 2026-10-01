@@ -64,7 +64,7 @@ class MeetingPipView extends StatelessWidget {
                 VideoTrackRenderer(
                   localTrack!,
                   key: ValueKey('pip_${localTrack!.sid}_$isFrontCamera'),
-                  fit: VideoViewFit.cover,
+                  fit: VideoViewFit.contain,
                   mirrorMode: dynamicMirrorMode,
                 ),
 

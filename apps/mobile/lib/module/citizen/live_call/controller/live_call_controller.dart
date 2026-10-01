@@ -98,6 +98,9 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   final RxBool isSpeakerOn = true.obs;
   CameraPosition _cameraPosition = CameraPosition.front;
   final RxBool isFrontCamera = true.obs;
+  final RxBool isLocalCameraFullScreen = false.obs;
+
+  void toggleCameraFullScreen() => isLocalCameraFullScreen.toggle();
 
   // ─── Host & Recording State ──────────────────────────────────────────
   final RxBool isHost = false.obs;

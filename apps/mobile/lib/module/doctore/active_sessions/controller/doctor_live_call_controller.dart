@@ -58,6 +58,9 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   final RxBool isSpeakerOn = true.obs;
   CameraPosition _cameraPosition = CameraPosition.front;
   final RxBool isFrontCamera = true.obs;
+  final RxBool isLocalCameraFullScreen = false.obs;
+
+  void toggleCameraFullScreen() => isLocalCameraFullScreen.toggle();
 
   // ─── Call Timer ──────────────────────────────────────────────────────
   final RxInt duration = 0.obs;

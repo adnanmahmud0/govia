@@ -48,15 +48,33 @@ class AttorneyLiveCallView extends GetView<AttorneyLiveCallController> {
           body: SafeArea(
             child: Stack(
               children: [
-                // ─── 1. Remote Video Layer or Modern Waiting Presence ─────────
+                // ─── 1. Remote / Local Video Layer or Modern Waiting Presence ───
                 Positioned.fill(
                   child: Obx(() {
+                    final isLocalFullScreen = controller.isLocalCameraFullScreen.value;
+                    final localTrack = controller.localVideoTrack.value;
                     final remoteTrack = controller.remoteVideoTrack.value;
+
+                    // If attorney toggled to view local camera full screen
+                    if (isLocalFullScreen && localTrack != null && !controller.isVideoMuted.value) {
+                      return MeetingAmbientBackground(
+                        child: VideoTrackRenderer(
+                          localTrack,
+                          key: ValueKey('atty_local__'),
+                          fit: VideoViewFit.contain,
+                          mirrorMode: controller.isFrontCamera.value
+                              ? VideoViewMirrorMode.mirror
+                              : VideoViewMirrorMode.off,
+                        ),
+                      );
+                    }
+
                     if (remoteTrack != null) {
                       return MeetingAmbientBackground(
                         child: VideoTrackRenderer(
                           remoteTrack,
-                          fit: VideoViewFit.cover,
+                          key: ValueKey('atty_remote_'),
+                          fit: VideoViewFit.contain,
                         ),
                       );
                     }
@@ -269,13 +287,59 @@ class AttorneyLiveCallView extends GetView<AttorneyLiveCallController> {
                   }),
                 ),
 
-                // ─── 4. Local Camera Floating Picture-in-Picture ──────────────────
+                // ─── 4. Floating Picture-in-Picture Video Preview ─────────────
                 Positioned(
                   top: 72.h,
                   right: 16.w,
                   child: Obx(() {
+                    final isLocalFullScreen = controller.isLocalCameraFullScreen.value;
+                    final remoteTrack = controller.remoteVideoTrack.value;
                     final localTrack = controller.localVideoTrack.value;
                     final isMuted = controller.isVideoMuted.value;
+
+                    if (isLocalFullScreen) {
+                      if (remoteTrack != null) {
+                        return MeetingPipView(
+                          localTrack: remoteTrack,
+                          isVideoMuted: false,
+                          isMicMuted: controller.isRemoteAudioMuted.value,
+                          label: controller.remoteParticipantName.value.isNotEmpty
+                              ? controller.remoteParticipantName.value
+                              : 'Citizen',
+                          isFrontCamera: false,
+                          onTap: () => controller.toggleCameraFullScreen(),
+                        );
+                      }
+                      return GestureDetector(
+                        onTap: () => controller.toggleCameraFullScreen(),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(16.r),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1.w,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.fullscreen_exit_rounded, color: Colors.white, size: 14.sp),
+                              SizedBox(width: 4.w),
+                              Text(
+                                'Minimize',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
                     return MeetingPipView(
                       localTrack: localTrack,
@@ -288,6 +352,7 @@ class AttorneyLiveCallView extends GetView<AttorneyLiveCallController> {
                               : 'You (Counsel)',
                       isFrontCamera: controller.isFrontCamera.value,
                       onFlipCamera: () => controller.switchCamera(),
+                      onTap: () => controller.toggleCameraFullScreen(),
                     );
                   }),
                 ),
