@@ -68,6 +68,8 @@ class MeetingModel {
   final String status;
   final String meetingType;
   final String? recordingUrl;
+  final String recordingStatus;
+  final String? recordingError;
   final String? sessionName;
   final String? token;
   final String? livekitUrl;
@@ -105,6 +107,8 @@ class MeetingModel {
     required this.status,
     required this.meetingType,
     this.recordingUrl,
+    this.recordingStatus = 'NOT_STARTED',
+    this.recordingError,
     this.sessionName,
     this.token,
     this.livekitUrl,
@@ -273,6 +277,9 @@ class MeetingModel {
       status: json['status']?.toString() ?? 'ACTIVE',
       meetingType: json['meetingType']?.toString() ?? 'INSTANT',
       recordingUrl: json['recordingUrl']?.toString(),
+      recordingStatus: json['recordingStatus']?.toString() ??
+          (json['recordingUrl']?.toString().isNotEmpty == true ? 'READY' : 'NOT_STARTED'),
+      recordingError: json['recordingError']?.toString(),
       sessionName: rName,
       token: json['token']?.toString() ??
           json['livekitToken']?.toString() ??
@@ -312,6 +319,8 @@ class MeetingModel {
       'status': status,
       'meetingType': meetingType,
       if (recordingUrl != null) 'recordingUrl': recordingUrl,
+      'recordingStatus': recordingStatus,
+      if (recordingError != null) 'recordingError': recordingError,
       if (sessionName != null) 'sessionName': sessionName,
       if (token != null) 'token': token,
       if (livekitUrl != null) 'livekitUrl': livekitUrl,

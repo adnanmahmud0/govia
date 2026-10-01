@@ -8,6 +8,7 @@ import 'package:gsabino365/core/services/auth_service.dart';
 import 'package:gsabino365/module/citizen/live_call/controller/live_call_controller.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_ambient_background.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_controls_bar.dart';
+import 'package:gsabino365/module/shared/meeting/widgets/meeting_closing_overlay.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_end_dialog.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_pip_view.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_qr_sheet.dart';
@@ -292,6 +293,11 @@ class _LiveCallViewState extends State<LiveCallView> {
                       onShowQr: () => MeetingQrSheet.show(context),
                     ),
                   ),
+                ),
+                Obx(
+                  () => controller.isEndingCall.value
+                      ? const MeetingClosingOverlay()
+                      : const SizedBox.shrink(),
                 ),
               ],
             ),

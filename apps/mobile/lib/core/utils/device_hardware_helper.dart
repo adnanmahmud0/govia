@@ -10,6 +10,25 @@ class DeviceHardwareHelper {
 
   static bool? _cachedIsSimulator;
   static bool? _cachedHasCamera;
+  static bool? _cachedUnsafeAndroidEmulatorAudio;
+
+  /// flutter_webrtc currently aborts in AudioRecord on Android 17 preview
+  /// x86_64 emulators. Physical devices are not affected by this guard.
+  static Future<bool> hasUnsafeAndroidEmulatorAudio() async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    if (_cachedUnsafeAndroidEmulatorAudio != null) {
+      return _cachedUnsafeAndroidEmulatorAudio!;
+    }
+    try {
+      final info = await DeviceInfoPlugin().androidInfo;
+      _cachedUnsafeAndroidEmulatorAudio =
+          !info.isPhysicalDevice && info.version.sdkInt >= 37;
+    } catch (e) {
+      debugPrint('[DeviceHardwareHelper] Android emulator check error: $e');
+      _cachedUnsafeAndroidEmulatorAudio = false;
+    }
+    return _cachedUnsafeAndroidEmulatorAudio!;
+  }
 
   /// Returns true if currently running inside an iOS Simulator.
   static Future<bool> isIosSimulator() async {

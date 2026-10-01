@@ -30,6 +30,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
   // ─── Session State ───────────────────────────────────────────────────
   final RxBool isLoading = true.obs;
+  final RxBool isEndingCall = false.obs;
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
   final Rxn<MeetingModel> currentMeeting = Rxn<MeetingModel>();
@@ -169,6 +170,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> joinIncomingOrExistingMeeting(dynamic args) async {
+    isEndingCall.value = false;
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
@@ -427,6 +429,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
   // ─── Start Govia (Create & Join Native LiveKit Session) ───────────────
   Future<void> startGoviaMeeting() async {
+    isEndingCall.value = false;
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
@@ -581,10 +584,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     final room = Room(
       roomOptions: const RoomOptions(
         // ── Low-Latency Configuration ─────────────────────────────────────
-        // adaptiveStream & dynacast disabled: in a 2-person call these features
-        // require simulcast layers that we don't publish. Leaving them on with
-        // simulcast=false causes the receiver-side adaptive logic to pause/resume
-        // the single track, which builds a growing jitter buffer (visible lag).
+        // Use the proven single-layer configuration for this deployment.
         adaptiveStream: false,
         dynacast: false,
         // ─────────────────────────────────────────────────────────────────
@@ -618,9 +618,6 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       await room.connect(
         url,
         token,
-        fastConnectOptions: FastConnectOptions(
-          microphone: const TrackOption(enabled: true),
-        ),
       ).timeout(const Duration(seconds: 8));
     } catch (e) {
       debugPrint('⚠️ LiveKit room.connect error: $e');
@@ -660,13 +657,18 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
       localVideoTrack.value = null;
     }
 
-    try {
-      await room.localParticipant
-          ?.setMicrophoneEnabled(true)
-          .timeout(const Duration(seconds: 5));
-      isMuted.value = false;
-    } catch (e) {
-      debugPrint('⚠️ Local microphone activation notice: $e');
+    if (await DeviceHardwareHelper.hasUnsafeAndroidEmulatorAudio()) {
+      isMuted.value = true;
+      debugPrint('Android 17 emulator: microphone disabled to avoid native WebRTC crash.');
+    } else {
+      try {
+        await room.localParticipant
+            ?.setMicrophoneEnabled(true)
+            .timeout(const Duration(seconds: 5));
+        isMuted.value = false;
+      } catch (e) {
+        debugPrint('⚠️ Local microphone activation notice: $e');
+      }
     }
 
     _updateTracks(room);
@@ -845,6 +847,10 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
   // ─── Hardware & Call Controls ────────────────────────────────────────
   Future<void> toggleMute() async {
+    if (await DeviceHardwareHelper.hasUnsafeAndroidEmulatorAudio()) {
+      Helpers.showWarning('Microphone is disabled on this Android 17 emulator. Use a physical device or Android 15/16 emulator for audio.');
+      return;
+    }
     final participant = _room?.localParticipant;
     if (participant == null) return;
 
@@ -1013,34 +1019,25 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
   // ─── End Meeting ─────────────────────────────────────────────────────
   Future<void> endMeeting() async {
+    if (isEndingCall.value) return;
+    isEndingCall.value = true;
     _timer?.cancel();
 
     final idToEnd = currentMeeting.value?.id.isNotEmpty == true
         ? currentMeeting.value!.id
         : (activeMeetingId ?? '');
 
-    // Step 1: Stop the Egress recording so LiveKit flushes the MP4 to S3.
-    // Do this BEFORE disconnecting so LiveKit knows the room is still valid.
-    if (isHost.value && isRecording.value && idToEnd.isNotEmpty) {
-      try {
-        await meetingRepo.stopRecording(idToEnd);
-        debugPrint('⏹ Egress recording stop requested for: $idToEnd');
-      } catch (e) {
-        debugPrint('⚠️ stopRecording error (non-fatal): $e');
-      }
-      // Short wait so LiveKit processes the stop before we disconnect
-      await Future.delayed(const Duration(milliseconds: 800));
-    }
-
-    // Step 2: If host — broadcast 'meeting_ended' to all guests
+    // The backend owns the single Egress stop/finalization operation. Sending a
+    // separate stop here caused duplicate stop requests and delayed completion.
+    // If host — broadcast 'meeting_ended' to all guests.
     if (isHost.value) {
       await _broadcastMeetingEnded();
     }
 
-    // Step 3: Leave LiveKit room
+    // Leave LiveKit room
     await _cleanupRoom();
 
-    // Step 4: Notify backend to mark COMPLETED & trigger S3 URL attachment
+    // Notify backend to mark COMPLETED and finalize storage asynchronously.
     if (idToEnd.isNotEmpty) {
       try {
         final ok = await meetingRepo.endMeeting(idToEnd);
@@ -1066,6 +1063,8 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
 
   /// Guest participant leaving session, or host leaving temporarily (initiating 5-minute auto-end timer)
   Future<void> leaveMeeting() async {
+    if (isEndingCall.value) return;
+    isEndingCall.value = true;
     _timer?.cancel();
     final mId = currentMeeting.value?.id.isNotEmpty == true
         ? currentMeeting.value!.id

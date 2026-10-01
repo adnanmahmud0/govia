@@ -37,6 +37,8 @@ export type IMeeting = {
   recordings?: IMeetingRecording[];
   sessionName?: string;
   egressId?: string;
+  recordingStatus?: 'NOT_STARTED' | 'STARTING' | 'RECORDING' | 'PROCESSING' | 'READY' | 'FAILED';
+  recordingError?: string;
   livekitToken?: string;
   token?: string;
   livekitUrl?: string;

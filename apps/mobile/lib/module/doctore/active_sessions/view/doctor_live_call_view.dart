@@ -9,6 +9,7 @@ import 'package:gsabino365/config/routes/app_pages.dart';
 import 'package:gsabino365/module/doctore/active_sessions/controller/doctor_live_call_controller.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_ambient_background.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_controls_bar.dart';
+import 'package:gsabino365/module/shared/meeting/widgets/meeting_closing_overlay.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_end_dialog.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_pip_view.dart';
 import 'package:gsabino365/module/shared/meeting/widgets/meeting_qr_sheet.dart';
@@ -253,6 +254,11 @@ class DoctorLiveCallView extends GetView<DoctorLiveCallController> {
                           onShowQr: () => MeetingQrSheet.show(context),
                         ),
                       ),
+                    ),
+                    Obx(
+                      () => controller.isEndingCall.value
+                          ? const MeetingClosingOverlay()
+                          : const SizedBox.shrink(),
                     ),
                   ],
                 ),

@@ -15,13 +15,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
 
-enum VideoQualityMode {
-  auto,
-  high1080,
-  medium720,
-  dataSaver480,
-}
-
 /// A resilient, full-featured in-app video player for Govia session recordings.
 /// Supports quality controls, network drop recovery, buffering indicators,
 /// offline caching for spotty networks, gesture seeking, and playback speeds.
@@ -84,8 +77,8 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
 
-  // Quality & Speed state
-  VideoQualityMode _selectedQuality = VideoQualityMode.auto;
+  // Playback speed state. Recording quality is the original cloud MP4; the UI
+  // must not claim to switch renditions that do not exist.
   double _playbackSpeed = 1.0;
 
   // Stored position for network reconnection
@@ -155,55 +148,9 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
     // 1. Initialize immediate network stream
     _initializePlayer(sourceUrl: url);
 
-    // 2. Automatically kick off background progressive caching into storage so playback remains 100% smooth
-    _startAutoBackgroundCaching(url);
-  }
-
-  void _startAutoBackgroundCaching(String url) async {
-    if (_isOfflineCached || _isDownloading) return;
-    try {
-      final dir = await getTemporaryDirectory();
-      final key = _getCacheKey(url);
-      final targetPath = '${dir.path}/govia_rec_$key.mp4';
-      final tempPartPath = '$targetPath.part';
-
-      if (mounted) {
-        setState(() {
-          _isDownloading = true;
-        });
-      }
-
-      final dio = Dio();
-      await dio.download(
-        url,
-        tempPartPath,
-        onReceiveProgress: (received, total) {
-          if (total > 0 && mounted) {
-            setState(() {
-              _downloadProgress = (received / total).clamp(0.0, 1.0);
-            });
-          }
-        },
-      );
-
-      final partFile = File(tempPartPath);
-      if (await partFile.exists() && await partFile.length() > 1024) {
-        await partFile.rename(targetPath);
-        if (mounted) {
-          setState(() {
-            _isOfflineCached = true;
-            _isDownloading = false;
-            _downloadProgress = 1.0;
-          });
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isDownloading = false;
-        });
-      }
-    }
+    // Do not download the entire recording while the player is streaming it.
+    // Two simultaneous transfers of the same video caused severe buffering on
+    // constrained connections. Offline caching remains an explicit user action.
   }
 
   Future<void> _initializePlayer({String? sourceUrl, File? sourceFile}) async {
@@ -464,29 +411,6 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
               Divider(color: Colors.white.withValues(alpha: 0.08)),
               SizedBox(height: 12.h),
 
-              // Quality Options
-              Text(
-                'STREAMING QUALITY',
-                style: GoogleFonts.inter(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
-                  color: const Color(0xFF94A3B8),
-                ),
-              ),
-              SizedBox(height: 8.h),
-              Wrap(
-                spacing: 8.w,
-                runSpacing: 8.h,
-                children: [
-                  _buildQualityChip(VideoQualityMode.auto, 'Auto (Recommended)', 'Adaptive buffer'),
-                  _buildQualityChip(VideoQualityMode.high1080, '1080p High', 'High definition'),
-                  _buildQualityChip(VideoQualityMode.medium720, '720p Balanced', 'Standard'),
-                  _buildQualityChip(VideoQualityMode.dataSaver480, 'Data Saver', '360p / 480p low net'),
-                ],
-              ),
-              SizedBox(height: 20.h),
-
               // Speed Options
               Text(
                 'PLAYBACK SPEED',
@@ -533,50 +457,6 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
         ),
       ),
       isScrollControlled: true,
-    );
-  }
-
-  Widget _buildQualityChip(VideoQualityMode mode, String label, String desc) {
-    final isSelected = _selectedQuality == mode;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedQuality = mode);
-        Get.back();
-        Helpers.showSuccess('Quality switched to: $label');
-        _startHideControlsTimer();
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF10B981).withValues(alpha: 0.18) : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF10B981) : Colors.transparent,
-            width: 1.2,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? const Color(0xFF10B981) : Colors.white,
-              ),
-            ),
-            Text(
-              desc,
-              style: GoogleFonts.inter(
-                fontSize: 9.5.sp,
-                color: const Color(0xFF94A3B8),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -776,21 +656,7 @@ class _GoviaVideoPlayerViewState extends State<GoviaVideoPlayerView> {
   // ─── Sub-widgets ───────────────────────────────────────────────────────────
 
   Widget _buildTopBar(bool isLandscape) {
-    String qualityLabel;
-    switch (_selectedQuality) {
-      case VideoQualityMode.auto:
-        qualityLabel = 'Auto';
-        break;
-      case VideoQualityMode.high1080:
-        qualityLabel = '1080p';
-        break;
-      case VideoQualityMode.medium720:
-        qualityLabel = '720p';
-        break;
-      case VideoQualityMode.dataSaver480:
-        qualityLabel = 'Saver';
-        break;
-    }
+    const qualityLabel = 'Original';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),

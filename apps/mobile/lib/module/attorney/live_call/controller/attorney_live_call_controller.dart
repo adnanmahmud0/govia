@@ -29,6 +29,7 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
 
   // ─── Session State ───────────────────────────────────────────────────
   final RxBool isLoading = true.obs;
+  final RxBool isEndingCall = false.obs;
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
   final RxBool isSessionJoined = false.obs;
@@ -188,6 +189,7 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   }
 
   Future<void> joinCallSession() async {
+    isEndingCall.value = false;
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
@@ -336,10 +338,7 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     final room = Room(
       roomOptions: const RoomOptions(
         // ── Low-Latency Configuration ──────────────────────────────────────
-        // Disabled adaptiveStream & dynacast: in a 2-person call these features
-        // require simulcast layers that we don't publish. Leaving them on with
-        // simulcast=false causes the receiver-side adaptive logic to pause/resume
-        // the single track, which builds a growing jitter buffer (visible lag).
+        // Use the proven single-layer configuration for this deployment.
         adaptiveStream: false,
         dynacast: false,
         // ──────────────────────────────────────────────────────────────────
@@ -372,9 +371,6 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     await room.connect(
       url,
       token,
-      fastConnectOptions: FastConnectOptions(
-        microphone: const TrackOption(enabled: true),
-      ),
     ).timeout(const Duration(seconds: 8));
 
     // Reset reconnect counter on successful connection
@@ -404,13 +400,18 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       localVideoTrack.value = null;
     }
 
-    try {
-      await room.localParticipant
-          ?.setMicrophoneEnabled(true)
-          .timeout(const Duration(seconds: 5));
-      isMuted.value = false;
-    } catch (e) {
-      debugPrint('⚠️ Attorney microphone activation notice: $e');
+    if (await DeviceHardwareHelper.hasUnsafeAndroidEmulatorAudio()) {
+      isMuted.value = true;
+      debugPrint('Android 17 emulator: microphone disabled to avoid native WebRTC crash.');
+    } else {
+      try {
+        await room.localParticipant
+            ?.setMicrophoneEnabled(true)
+            .timeout(const Duration(seconds: 5));
+        isMuted.value = false;
+      } catch (e) {
+        debugPrint('⚠️ Attorney microphone activation notice: $e');
+      }
     }
 
     _updateTracks(room);
@@ -597,6 +598,10 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   }
 
   Future<void> toggleMute() async {
+    if (await DeviceHardwareHelper.hasUnsafeAndroidEmulatorAudio()) {
+      Helpers.showWarning('Microphone is disabled on this Android 17 emulator. Use a physical device or Android 15/16 emulator for audio.');
+      return;
+    }
     final participant = _room?.localParticipant;
     if (participant == null) return;
     try {
@@ -686,6 +691,8 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
   Future<void> endCall() => leaveCall();
 
   Future<void> leaveCall() async {
+    if (isEndingCall.value) return;
+    isEndingCall.value = true;
     _timer?.cancel();
     final mId = meetingId ?? meeting?.id;
     if (mId != null && mId.isNotEmpty) {

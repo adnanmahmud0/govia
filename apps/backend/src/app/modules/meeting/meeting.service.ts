@@ -30,6 +30,85 @@ const s3 = new S3Client({
 });
 const S3_BUCKET = process.env.S3_BUCKET || process.env.AWS_BUCKET || 'govia-meeting-recordings';
 
+const recordingFinalizers = new Map<string, Promise<void>>();
+
+/** Reconcile a stopped Egress without holding the end-meeting HTTP request open. */
+const finalizeRecording = (meetingId: string, egressId: string) => {
+  if (recordingFinalizers.has(meetingId)) return recordingFinalizers.get(meetingId)!;
+  const task = (async () => {
+    try {
+      const dbSetting = await import('../storageSetting/storageSetting.model').then(m =>
+        m.StorageSetting.findOne().sort({ updatedAt: -1 })
+      );
+      const apiKey = dbSetting?.livekitApiKey || config.livekit.apiKey;
+      const apiSecret = dbSetting?.livekitApiSecret || config.livekit.apiSecret;
+      const livekitUrl = dbSetting?.livekitUrl || config.livekit.url;
+      const { EgressClient } = await import('livekit-server-sdk');
+      const host = livekitUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://');
+      const client = new EgressClient(host, apiKey, apiSecret);
+
+      // Long recordings and object storage uploads can take several minutes.
+      for (let attempt = 0; attempt < 40; attempt++) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 15000));
+        const [egress] = await client.listEgress({ egressId });
+        const file = egress?.fileResults?.[0];
+        if (file?.location) {
+          const meeting = await Meeting.findByIdAndUpdate(meetingId, {
+            recordingUrl: file.location,
+            recordingStatus: 'READY',
+            recordingError: '',
+            recordings: [{
+              id: egressId,
+              fileType: 'mp4', fileExtension: 'mp4',
+              fileSize: Number(file.size || 0),
+              playUrl: file.location, downloadUrl: file.location,
+              recordingType: 'livekit_egress',
+              recordingStart: egress.startedAt
+                ? new Date(Number(egress.startedAt) / 1000000).toISOString()
+                : new Date().toISOString(),
+              recordingEnd: egress.endedAt
+                ? new Date(Number(egress.endedAt) / 1000000).toISOString()
+                : new Date().toISOString(),
+            }],
+          }, { new: true });
+          if (meeting) {
+            socketHelper.emitToUser(meeting.userId.toString(), 'meeting_recording_ready', {
+              meetingId: meeting._id, recordingUrl: file.location,
+            });
+            if (meeting.conversationId) {
+              socketHelper.emitToConversation(meeting.conversationId.toString(), 'meeting_recording_ready', {
+                meetingId: meeting._id, recordingUrl: file.location,
+              });
+            }
+          }
+          return;
+        }
+        const status = Number(egress?.status ?? -1);
+        if (status === 4 || status === 5) {
+          await Meeting.findByIdAndUpdate(meetingId, {
+            recordingStatus: 'FAILED',
+            recordingError: egress?.error || 'LiveKit recording failed',
+          });
+          return;
+        }
+      }
+      await Meeting.findByIdAndUpdate(meetingId, {
+        recordingStatus: 'FAILED', recordingError: 'Recording finalization timed out',
+      });
+    } catch (error) {
+      debugError('[Meeting] Recording finalization error:', error);
+      await Meeting.findByIdAndUpdate(meetingId, {
+        recordingStatus: 'FAILED',
+        recordingError: error instanceof Error ? error.message : String(error),
+      }).catch(() => undefined);
+    } finally {
+      recordingFinalizers.delete(meetingId);
+    }
+  })();
+  recordingFinalizers.set(meetingId, task);
+  return task;
+};
+
 /**
  * Extract the S3 object key from any recording URL format:
  *   s3://bucket/key/file.mp4        → key/file.mp4
@@ -1140,78 +1219,25 @@ const endMeeting = async (userId: string, meetingId: string) => {
   meeting.status = 'COMPLETED';
   meeting.endedAt = new Date();
 
-  // ── Stop Egress and poll for S3 file URL ────────────────────────────────
-  // LiveKit Cloud cannot reach a private IP to deliver webhooks, so we poll
-  // the Egress API directly after stopping to get the recording S3 URL.
+  // Stop once and reconcile asynchronously so ending the call stays fast.
   if (meeting.egressId) {
     try {
-      await stopLiveKitRecording(meeting.egressId);
-      debug(`[Meeting] Stopped Egress ${meeting.egressId}. Polling for S3 file URL...`);
-
-      // Poll up to 30 seconds (6 × 5s) waiting for the egress to reach COMPLETE state
-      let dbSetting, apiKey, apiSecret, livekitUrl;
-      try {
-        dbSetting = await import('../storageSetting/storageSetting.model').then(m => m.StorageSetting.findOne().sort({ updatedAt: -1 }));
-        apiKey = dbSetting?.livekitApiKey || config.livekit.apiKey;
-        apiSecret = dbSetting?.livekitApiSecret || config.livekit.apiSecret;
-        livekitUrl = dbSetting?.livekitUrl || config.livekit.url;
-      } catch (_) {
-        apiKey = config.livekit.apiKey;
-        apiSecret = config.livekit.apiSecret;
-        livekitUrl = config.livekit.url;
-      }
-
-      const { EgressClient } = await import('livekit-server-sdk');
-      const host = livekitUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://');
-      const egressClient = new EgressClient(host, apiKey, apiSecret);
-
-      // Poll for up to 30 seconds
-      for (let attempt = 0; attempt < 6; attempt++) {
-        await new Promise(r => setTimeout(r, 5000));
-        try {
-          const egressList = await egressClient.listEgress({ egressId: meeting.egressId });
-          const egress = egressList[0];
-          if (egress?.fileResults && egress.fileResults.length > 0) {
-            const fileLocation = egress.fileResults[0].location || '';
-            const fileSize = Number(egress.fileResults[0].size || 0);
-            if (fileLocation) {
-              meeting.recordingUrl = fileLocation;
-              const recordingStart = egress.startedAt
-                ? new Date(Number(egress.startedAt) / 1000000).toISOString()
-                : (meeting.createdAt?.toISOString() || new Date().toISOString());
-              const recordingEnd = egress.endedAt
-                ? new Date(Number(egress.endedAt) / 1000000).toISOString()
-                : new Date().toISOString();
-              meeting.recordings = [{
-                id: meeting.egressId!,
-                fileType: 'mp4',
-                fileExtension: 'mp4',
-                fileSize,
-                playUrl: fileLocation,
-                downloadUrl: fileLocation,
-                recordingType: 'livekit_egress',
-                recordingStart,
-                recordingEnd,
-              }];
-              debug(`[Meeting] ✅ Recording S3 URL captured: ${fileLocation}`);
-              // Note: Folder auto-creation and auto-adding recordings on meeting completion disabled.
-              break;
-            }
-          }
-          // EgressStatus: 0=EGRESS_STARTING, 1=EGRESS_ACTIVE, 2=EGRESS_ENDING, 3=EGRESS_COMPLETE, 4=EGRESS_ABORTED, 5=EGRESS_FAILED
-          const status = Number(egress?.status ?? -1);
-          if (status >= 3) break; // COMPLETE, ABORTED, or FAILED — stop polling
-        } catch (pollErr) {
-          debugError('[Meeting] Egress poll error:', pollErr instanceof Error ? pollErr.message : String(pollErr));
-          break;
-        }
-      }
+      const stopInfo = await stopLiveKitRecording(meeting.egressId);
+      if (!stopInfo) throw new Error('LiveKit did not confirm recording stop');
+      meeting.recordingStatus = 'PROCESSING';
+      meeting.recordingError = '';
     } catch (err) {
+      meeting.recordingStatus = 'FAILED';
+      meeting.recordingError = (err as Error)?.message || String(err);
       debugError('[Meeting] Error stopping LiveKit egress on meeting end:', (err as Error)?.message || err);
     }
   }
 
   await meeting.save();
+
+  if (meeting.egressId && meeting.recordingStatus === 'PROCESSING') {
+    void finalizeRecording(meeting._id.toString(), meeting.egressId);
+  }
 
   // Close the LiveKit room so all active participants are disconnected and no one can join
   try {
@@ -1425,6 +1451,12 @@ const syncMeetingRecordings = async (meetingId: string, userId?: string) => {
     }
   }
 
+  if (meeting?.egressId && !meeting.recordingUrl) {
+    meeting.recordingStatus = 'PROCESSING';
+    await meeting.save();
+    void finalizeRecording(meeting._id.toString(), meeting.egressId);
+  }
+
   return {
     meeting,
     recordings: {
@@ -1514,13 +1546,19 @@ const startRecording = async (meetingId: string, _userId?: string) => {
 
   // Trigger LiveKit Egress room composite recording if S3 storage is configured
   const egressInfo = await startLiveKitRecording(meeting.roomName);
-  if (egressInfo?.egressId) {
-    meeting.egressId = String(egressInfo.egressId);
+  if (!egressInfo?.egressId) {
+    meeting.recordingStatus = 'FAILED';
+    meeting.recordingError = 'Unable to start LiveKit Egress. Check LiveKit and storage configuration.';
     await meeting.save();
-    debug(
-      `[Meeting] Saved egressId ${meeting.egressId} for meeting ${meeting._id}`
-    );
+    throw new ApiError(StatusCodes.SERVICE_UNAVAILABLE, meeting.recordingError);
   }
+
+  meeting.egressId = String(egressInfo.egressId);
+  meeting.recordingStatus = 'RECORDING';
+  meeting.recordingError = '';
+  await meeting.save();
+
+  debug(`[Meeting] Saved egressId ${meeting.egressId} for meeting ${meeting._id}`);
 
   // Notify active participants via socket that meeting recording is active
   if (meeting.conversationId) {
@@ -1536,7 +1574,7 @@ const startRecording = async (meetingId: string, _userId?: string) => {
     meetingId: meeting._id,
     egressId: meeting.egressId || '',
     recordingActive: true,
-    cloudEgress: Boolean(egressInfo?.egressId),
+    cloudEgress: true,
   };
 };
 
@@ -1550,7 +1588,14 @@ const stopRecording = async (meetingId: string, _userId?: string) => {
   }
 
   if (meeting.egressId) {
-    await stopLiveKitRecording(meeting.egressId);
+    const stopInfo = await stopLiveKitRecording(meeting.egressId);
+    if (!stopInfo) {
+      throw new ApiError(StatusCodes.BAD_GATEWAY, 'LiveKit did not confirm recording stop');
+    }
+    meeting.recordingStatus = 'PROCESSING';
+    meeting.recordingError = '';
+    await meeting.save();
+    void finalizeRecording(meeting._id.toString(), meeting.egressId);
   }
 
   return {
@@ -1603,6 +1648,8 @@ const handleLiveKitWebhook = async (
 
       if (fileLocation) {
         meeting.recordingUrl = fileLocation;
+        meeting.recordingStatus = 'READY';
+        meeting.recordingError = '';
         meeting.status = 'COMPLETED';
         meeting.endedAt = meeting.endedAt || new Date();
 

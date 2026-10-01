@@ -28,6 +28,7 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
 
   // ─── Session State ───────────────────────────────────────────────────
   final RxBool isLoading = true.obs;
+  final RxBool isEndingCall = false.obs;
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
   final RxBool isSessionJoined = false.obs;
@@ -142,6 +143,7 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   }
 
   Future<void> joinCallSession() async {
+    isEndingCall.value = false;
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
@@ -290,7 +292,6 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
         defaultVideoPublishOptions: VideoPublishOptions(
           simulcast: false,
           videoEncoding: VideoEncoding(
-            // 1.5 Mbps @ 30fps: instant transmission without keyframe buffer build-up
             maxBitrate: 1500000,
             maxFramerate: 30,
           ),
@@ -308,9 +309,6 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       await room.connect(
         url,
         token,
-        fastConnectOptions: FastConnectOptions(
-          microphone: const TrackOption(enabled: true),
-        ),
       ).timeout(const Duration(seconds: 8));
     } catch (e) {
       debugPrint('⚠️ Doctor room.connect error: $e');
@@ -340,13 +338,18 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
       localVideoTrack.value = null;
     }
 
-    try {
-      await room.localParticipant
-          ?.setMicrophoneEnabled(true)
-          .timeout(const Duration(seconds: 5));
-      isMuted.value = false;
-    } catch (e) {
-      debugPrint('⚠️ Doctor microphone activation notice: $e');
+    if (await DeviceHardwareHelper.hasUnsafeAndroidEmulatorAudio()) {
+      isMuted.value = true;
+      debugPrint('Android 17 emulator: microphone disabled to avoid native WebRTC crash.');
+    } else {
+      try {
+        await room.localParticipant
+            ?.setMicrophoneEnabled(true)
+            .timeout(const Duration(seconds: 5));
+        isMuted.value = false;
+      } catch (e) {
+        debugPrint('⚠️ Doctor microphone activation notice: $e');
+      }
     }
 
     _updateTracks(room);
@@ -469,6 +472,10 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   }
 
   Future<void> toggleMute() async {
+    if (await DeviceHardwareHelper.hasUnsafeAndroidEmulatorAudio()) {
+      Helpers.showWarning('Microphone is disabled on this Android 17 emulator. Use a physical device or Android 15/16 emulator for audio.');
+      return;
+    }
     final participant = _room?.localParticipant;
     if (participant == null) return;
     try {
@@ -558,6 +565,8 @@ class DoctorLiveCallController extends GetxController with WidgetsBindingObserve
   Future<void> endCall() => leaveCall();
 
   Future<void> leaveCall() async {
+    if (isEndingCall.value) return;
+    isEndingCall.value = true;
     _timer?.cancel();
     final mId = meetingId ?? meeting?.id;
     if (mId != null && mId.isNotEmpty) {

@@ -97,6 +97,16 @@ const meetingSchema = new Schema<IMeeting, MeetingModel>(
       default: '',
       index: true,
     },
+    recordingStatus: {
+      type: String,
+      enum: ['NOT_STARTED', 'STARTING', 'RECORDING', 'PROCESSING', 'READY', 'FAILED'],
+      default: 'NOT_STARTED',
+      index: true,
+    },
+    recordingError: {
+      type: String,
+      default: '',
+    },
     recordings: {
       type: [
         {
