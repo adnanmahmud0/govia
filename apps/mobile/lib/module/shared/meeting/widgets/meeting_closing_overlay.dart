@@ -7,10 +7,9 @@ class MeetingClosingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: PopScope(
-        canPop: false,
-        child: AbsorbPointer(
+    return PopScope(
+      canPop: false,
+      child: AbsorbPointer(
           child: ColoredBox(
             color: const Color(0xE6070B14),
             child: Center(

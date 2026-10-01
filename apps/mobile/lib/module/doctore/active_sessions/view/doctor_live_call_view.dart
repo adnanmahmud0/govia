@@ -255,10 +255,12 @@ class DoctorLiveCallView extends GetView<DoctorLiveCallController> {
                         ),
                       ),
                     ),
-                    Obx(
-                      () => controller.isEndingCall.value
-                          ? const MeetingClosingOverlay()
-                          : const SizedBox.shrink(),
+                    Positioned.fill(
+                      child: Obx(
+                        () => controller.isEndingCall.value
+                            ? const MeetingClosingOverlay()
+                            : const SizedBox.shrink(),
+                      ),
                     ),
                   ],
                 ),

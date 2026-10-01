@@ -294,10 +294,12 @@ class _LiveCallViewState extends State<LiveCallView> {
                     ),
                   ),
                 ),
-                Obx(
-                  () => controller.isEndingCall.value
-                      ? const MeetingClosingOverlay()
-                      : const SizedBox.shrink(),
+                Positioned.fill(
+                  child: Obx(
+                    () => controller.isEndingCall.value
+                        ? const MeetingClosingOverlay()
+                        : const SizedBox.shrink(),
+                  ),
                 ),
               ],
             ),
