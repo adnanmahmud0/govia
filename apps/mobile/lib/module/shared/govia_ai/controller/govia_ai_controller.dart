@@ -19,6 +19,8 @@ class GoviaAiController extends GetxController {
   final RxList<String> suggestedPrompts = <String>[].obs;
   final RxString userRole = 'CITIZEN'.obs;
 
+  final RxBool hasText = false.obs;
+
   ApiClient get _apiClient => Get.find<ApiClient>();
   AuthService get _authService => Get.find<AuthService>();
 
@@ -28,6 +30,10 @@ class GoviaAiController extends GetxController {
     messageController = TextEditingController();
     scrollController = ScrollController();
 
+    messageController.addListener(() {
+      hasText.value = messageController.text.trim().isNotEmpty;
+    });
+
     // Determine current user role
     final role = _authService.currentUser.value?.role ?? 'CITIZEN';
     userRole.value = role.toUpperCase();
@@ -36,6 +42,8 @@ class GoviaAiController extends GetxController {
     _initWelcomeMessage();
     fetchChatList();
   }
+
+
 
   void _setupRoleSuggestions(String role) {
     switch (role) {
@@ -84,14 +92,7 @@ class GoviaAiController extends GetxController {
   }
 
   void _initWelcomeMessage() {
-    messages.assignAll([
-      {
-        'text': 'Hello! I am your **GoVia AI Legal Assistant**.\n\nAsk me anything about your constitutional rights, police encounters, traffic stops, court procedures, bail bonds, or US statutes.\n\n*Tap any of the quick suggestions below or type your question.*',
-        'isUser': false,
-        'time': _formatCurrentTime(),
-        'status': 'Delivered',
-      }
-    ]);
+    messages.clear();
   }
 
   Future<void> fetchChatList() async {

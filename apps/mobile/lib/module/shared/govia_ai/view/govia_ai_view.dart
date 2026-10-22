@@ -10,14 +10,12 @@ class GoviaAiView extends GetView<GoviaAiController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(context),
       body: SafeArea(
         child: Column(
           children: [
-            _buildDisclaimerBanner(),
-            Expanded(child: _buildChatArea(context)),
-            _buildTypingIndicator(),
+            Expanded(child: _buildBody(context)),
             _buildInputArea(context),
           ],
         ),
@@ -29,14 +27,15 @@ class GoviaAiView extends GetView<GoviaAiController> {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
+      centerTitle: false,
       leadingWidth: 44.w,
       leading: Padding(
-        padding: EdgeInsets.only(left: 12.w),
+        padding: EdgeInsets.only(left: 10.w),
         child: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: const Color(0xFF0F3A79),
-            size: 20.sp,
+            color: const Color(0xFF0F172A),
+            size: 18.sp,
           ),
           onPressed: () => Get.back(),
         ),
@@ -44,170 +43,199 @@ class GoviaAiView extends GetView<GoviaAiController> {
       title: Row(
         children: [
           Container(
-            width: 36.r,
-            height: 36.r,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1550A6), Color(0xFF6366F1)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(10.r),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1550A6).withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+            width: 32.r,
+            height: 32.r,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1550A6),
+              shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.smart_toy_rounded,
-              color: Colors.white,
-              size: 20.sp,
+            child: Center(
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: Colors.white,
+                size: 16.sp,
+              ),
             ),
           ),
           SizedBox(width: 10.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'GoVia AI Copilot',
-                        style: GoogleFonts.inter(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF0A192F),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(width: 6.w),
-                    Obx(
-                      () => Container(
-                        padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(6.r),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
-                        ),
-                        child: Text(
-                          controller.userRole.value,
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5.sp,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1E40AF),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Govia AI',
+                style: GoogleFonts.inter(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
                 ),
-                SizedBox(height: 2.h),
-                Row(
-                  children: [
-                    Container(
-                      width: 7.r,
-                      height: 7.r,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 5.w),
-                    Text(
-                      'Active • Grounded in US Law',
-                      style: GoogleFonts.inter(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF059669),
-                      ),
-                    ),
-                  ],
+              ),
+              Text(
+                'Legal & Rights Assistant',
+                style: GoogleFonts.inter(
+                  fontSize: 11.sp,
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.add_comment_outlined, color: Color(0xFF1550A6)),
-          tooltip: 'New Conversation',
-          onPressed: () => controller.startNewChat(),
+          icon: Icon(Icons.history_rounded, color: const Color(0xFF475569), size: 22.sp),
+          tooltip: 'History',
+          onPressed: () => _showChatHistoryBottomSheet(context),
         ),
         IconButton(
-          icon: const Icon(Icons.history_rounded, color: Color(0xFF475569)),
-          tooltip: 'Chat History',
-          onPressed: () => _showChatHistoryBottomSheet(context),
+          icon: Icon(Icons.edit_note_rounded, color: const Color(0xFF1550A6), size: 24.sp),
+          tooltip: 'New Chat',
+          onPressed: () => controller.startNewChat(),
         ),
         SizedBox(width: 4.w),
       ],
       bottom: PreferredSize(
         preferredSize: Size.fromHeight(1.h),
-        child: Container(color: const Color(0xFFE2E8F0), height: 1.h),
+        child: Container(color: const Color(0xFFF1F5F9), height: 1.h),
       ),
     );
   }
 
-  Widget _buildDisclaimerBanner() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        border: Border(
-          bottom: BorderSide(color: const Color(0xFFDBEAFE), width: 1.h),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.shield_outlined,
-            color: const Color(0xFF1D4ED8),
-            size: 15.sp,
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Text(
-              'GoVia AI provides legal informational guidance. It does not replace formal legal counsel.',
-              style: GoogleFonts.inter(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF1E40AF),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatArea(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     return Obx(() {
-      final messages = controller.messages;
-      final showSuggestions = messages.length <= 1;
+      if (controller.messages.isEmpty) {
+        return _buildEmptyWelcomeState();
+      }
+
+      final msgCount = controller.messages.length;
+      final showTyping = controller.isProcessing.value;
 
       return ListView.builder(
         controller: controller.scrollController,
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        itemCount: messages.length + (showSuggestions ? 1 : 0),
+        itemCount: msgCount + (showTyping ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index < messages.length) {
-            final msg = messages[index];
+          if (index < msgCount) {
+            final msg = controller.messages[index];
             final isUser = msg['isUser'] as bool;
             final text = msg['text'] as String;
             final time = msg['time'] as String;
             return _buildMessageRow(context, text: text, isUser: isUser, time: time);
           } else {
-            return _buildSuggestionsSection();
+            return _buildTypingBubble();
           }
         },
       );
     });
+  }
+
+  Widget _buildEmptyWelcomeState() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(height: 20.h),
+          Container(
+            width: 52.r,
+            height: 52.r,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1550A6).withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: const Color(0xFF1550A6),
+                size: 24.sp,
+              ),
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'How can I help you today?',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            'Ask about your constitutional rights, traffic stops, court procedures, or legal guidance.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 12.5.sp,
+              color: const Color(0xFF64748B),
+              height: 1.45,
+            ),
+          ),
+          SizedBox(height: 28.h),
+          Obx(
+            () => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: 4.w, bottom: 10.h),
+                  child: Text(
+                    'Suggested Questions',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+                ...controller.suggestedPrompts.map((prompt) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 8.h),
+                    child: InkWell(
+                      onTap: () => controller.sendSuggestedPrompt(prompt),
+                      borderRadius: BorderRadius.circular(12.r),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 14.sp,
+                              color: const Color(0xFF64748B),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Text(
+                                prompt,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 11.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMessageRow(
@@ -218,57 +246,32 @@ class GoviaAiView extends GetView<GoviaAiController> {
   }) {
     if (isUser) {
       return Padding(
-        padding: EdgeInsets.only(bottom: 16.h, left: 40.w),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        padding: EdgeInsets.only(bottom: 12.h, left: 48.w),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1550A6), Color(0xFF0F3A79)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(18.r),
-                        topRight: Radius.circular(18.r),
-                        bottomLeft: Radius.circular(18.r),
-                        bottomRight: Radius.circular(4.r),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF1550A6).withValues(alpha: 0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      text,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        height: 1.45,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    time,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5.sp,
-                      color: const Color(0xFF94A3B8),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1550A6),
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Text(
+                text,
+                style: GoogleFonts.inter(
+                  fontSize: 13.5.sp,
+                  height: 1.45,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            SizedBox(height: 3.h),
+            Text(
+              time,
+              style: GoogleFonts.inter(
+                fontSize: 10.sp,
+                color: const Color(0xFF94A3B8),
               ),
             ),
           ],
@@ -276,84 +279,53 @@ class GoviaAiView extends GetView<GoviaAiController> {
       );
     } else {
       return Padding(
-        padding: EdgeInsets.only(bottom: 18.h, right: 32.w),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
+        padding: EdgeInsets.only(bottom: 14.h, right: 36.w),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 28.r,
-              height: 28.r,
-              margin: EdgeInsets.only(top: 2.h, right: 8.w),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Icon(Icons.bolt_rounded, color: Colors.white, size: 16.sp),
+              child: _buildFormattedText(text),
             ),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(4.r),
-                        topRight: Radius.circular(18.r),
-                        bottomLeft: Radius.circular(18.r),
-                        bottomRight: Radius.circular(18.r),
-                      ),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+            SizedBox(height: 4.h),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  time,
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                InkWell(
+                  onTap: () => controller.copyMessage(text),
+                  borderRadius: BorderRadius.circular(4.r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                    child: Row(
+                      children: [
+                        Icon(Icons.copy_rounded, size: 11.sp, color: const Color(0xFF94A3B8)),
+                        SizedBox(width: 3.w),
+                        Text(
+                          'Copy',
+                          style: GoogleFonts.inter(
+                            fontSize: 10.sp,
+                            color: const Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
-                    child: _buildFormattedText(text),
                   ),
-                  SizedBox(height: 4.h),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$time • GoVia Copilot',
-                        style: GoogleFonts.inter(
-                          fontSize: 10.5.sp,
-                          color: const Color(0xFF94A3B8),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      GestureDetector(
-                        onTap: () => controller.copyMessage(text),
-                        child: Row(
-                          children: [
-                            Icon(Icons.copy_rounded, size: 12.sp, color: const Color(0xFF64748B)),
-                            SizedBox(width: 4.w),
-                            Text(
-                              'Copy',
-                              style: GoogleFonts.inter(
-                                fontSize: 10.5.sp,
-                                color: const Color(0xFF64748B),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -361,24 +333,59 @@ class GoviaAiView extends GetView<GoviaAiController> {
     }
   }
 
+  Widget _buildTypingBubble() {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 14.h, right: 120.w),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 12.r,
+              height: 12.r,
+              child: const CircularProgressIndicator(
+                strokeWidth: 1.8,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1550A6)),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Text(
+              'Thinking...',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFormattedText(String text) {
-    // Split into paragraphs for readable display
     final lines = text.split('\n');
     final List<Widget> widgets = [];
 
     for (final line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
-        widgets.add(SizedBox(height: 8.h));
+        widgets.add(SizedBox(height: 6.h));
       } else if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
         final title = trimmed.replaceFirst(RegExp(r'^#+\s*'), '');
         widgets.add(
           Padding(
-            padding: EdgeInsets.only(top: 8.h, bottom: 4.h),
+            padding: EdgeInsets.only(top: 6.h, bottom: 3.h),
             child: Text(
               title,
               style: GoogleFonts.inter(
-                fontSize: 14.5.sp,
+                fontSize: 13.5.sp,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF0F172A),
               ),
@@ -389,14 +396,19 @@ class GoviaAiView extends GetView<GoviaAiController> {
         final content = trimmed.substring(2);
         widgets.add(
           Padding(
-            padding: EdgeInsets.only(left: 4.w, bottom: 4.h),
+            padding: EdgeInsets.only(left: 4.w, bottom: 3.h),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('• ', style: TextStyle(fontSize: 14.sp, color: const Color(0xFF1550A6), fontWeight: FontWeight.bold)),
-                Expanded(
-                  child: _buildRichText(content),
+                Text(
+                  '• ',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: const Color(0xFF1550A6),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+                Expanded(child: _buildRichText(content)),
               ],
             ),
           ),
@@ -404,33 +416,14 @@ class GoviaAiView extends GetView<GoviaAiController> {
       } else if (trimmed.startsWith(RegExp(r'^\d+\.\s+'))) {
         widgets.add(
           Padding(
-            padding: EdgeInsets.only(left: 4.w, bottom: 4.h),
+            padding: EdgeInsets.only(left: 4.w, bottom: 3.h),
             child: _buildRichText(trimmed),
-          ),
-        );
-      } else if (trimmed.startsWith('*Disclaimer:')) {
-        widgets.add(
-          Container(
-            margin: EdgeInsets.only(top: 10.h),
-            padding: EdgeInsets.all(10.r),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: Text(
-              trimmed.replaceAll('*', ''),
-              style: GoogleFonts.inter(
-                fontSize: 11.sp,
-                fontStyle: FontStyle.italic,
-                color: const Color(0xFF64748B),
-              ),
-            ),
           ),
         );
       } else {
         widgets.add(
           Padding(
-            padding: EdgeInsets.only(bottom: 4.h),
+            padding: EdgeInsets.only(bottom: 3.h),
             child: _buildRichText(trimmed),
           ),
         );
@@ -444,7 +437,6 @@ class GoviaAiView extends GetView<GoviaAiController> {
   }
 
   Widget _buildRichText(String raw) {
-    // Quick inline bold parser: **word**
     final parts = raw.split('**');
     if (parts.length <= 1) {
       return Text(
@@ -477,182 +469,83 @@ class GoviaAiView extends GetView<GoviaAiController> {
     return RichText(text: TextSpan(children: spans));
   }
 
-  Widget _buildSuggestionsSection() {
-    return Padding(
-      padding: EdgeInsets.only(top: 12.h, bottom: 20.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.lightbulb_outline_rounded, size: 16.sp, color: const Color(0xFFD97706)),
-              SizedBox(width: 6.w),
-              Text(
-                'Suggested Topics for ${controller.userRole.value}:',
-                style: GoogleFonts.inter(
-                  fontSize: 12.5.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF475569),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10.h),
-          Obx(
-            () => Wrap(
-              spacing: 8.w,
-              runSpacing: 8.h,
-              children: controller.suggestedPrompts.map((prompt) {
-                return ActionChip(
-                  elevation: 0,
-                  pressElevation: 1,
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                  avatar: const Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF1550A6)),
-                  label: Text(
-                    prompt,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B),
-                    ),
-                  ),
-                  onPressed: () => controller.sendSuggestedPrompt(prompt),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Obx(() {
-      if (!controller.isProcessing.value) return const SizedBox.shrink();
-      return Container(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 14.r,
-                height: 14.r,
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1550A6)),
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Text(
-                'GoVia Copilot is analyzing US statutes...',
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontStyle: FontStyle.italic,
-                  color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
   Widget _buildInputArea(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        left: 16.w,
-        right: 16.w,
-        top: 10.h,
-        bottom: 12.h,
+        left: 14.w,
+        right: 14.w,
+        top: 8.h,
+        bottom: 8.h,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: const Color(0xFFE2E8F0), width: 1.h)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(top: BorderSide(color: const Color(0xFFF1F5F9), width: 1.w)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(24.r),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: TextField(
-                controller: controller.messageController,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => controller.sendMessage(),
-                style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  color: const Color(0xFF0F172A),
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Ask about US laws, rights, procedures...',
-                  hintStyle: GoogleFonts.inter(
-                    color: const Color(0xFF94A3B8),
-                    fontSize: 13.sp,
+          Container(
+            padding: EdgeInsets.only(left: 14.w, right: 4.w, top: 2.h, bottom: 2.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(22.r),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller.messageController,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => controller.sendMessage(),
+                    style: GoogleFonts.inter(
+                      fontSize: 13.5.sp,
+                      color: const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Ask Govia AI...',
+                      hintStyle: GoogleFonts.inter(
+                        color: const Color(0xFF94A3B8),
+                        fontSize: 13.sp,
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 8.h),
+                    ),
                   ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 18.w,
-                    vertical: 12.h,
-                  ),
                 ),
-              ),
+                Obx(() {
+                  final isReady = controller.hasText.value && !controller.isProcessing.value;
+                  return Container(
+                    width: 32.r,
+                    height: 32.r,
+                    decoration: BoxDecoration(
+                      color: isReady ? const Color(0xFF1550A6) : const Color(0xFFE2E8F0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 18.sp,
+                        color: isReady ? Colors.white : const Color(0xFF94A3B8),
+                      ),
+                      onPressed: isReady ? () => controller.sendMessage() : null,
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
-          SizedBox(width: 8.w),
-          Obx(
-            () => Container(
-              width: 44.r,
-              height: 44.r,
-              decoration: BoxDecoration(
-                gradient: controller.isProcessing.value
-                    ? const LinearGradient(colors: [Color(0xFF94A3B8), Color(0xFF64748B)])
-                    : const LinearGradient(colors: [Color(0xFF1550A6), Color(0xFF2563EB)]),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1550A6).withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white),
-                onPressed: controller.isProcessing.value ? null : () => controller.sendMessage(),
-              ),
+          SizedBox(height: 6.h),
+          Text(
+            'GoVia AI provides informational guidance. Not legal counsel.',
+            style: GoogleFonts.inter(
+              fontSize: 10.sp,
+              color: const Color(0xFF94A3B8),
             ),
           ),
         ],
@@ -664,34 +557,34 @@ class GoviaAiView extends GetView<GoviaAiController> {
     controller.fetchChatList();
     Get.bottomSheet(
       Container(
-        height: 0.65.sh,
+        height: 0.6.sh,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24.r),
-            topRight: Radius.circular(24.r),
+            topLeft: Radius.circular(20.r),
+            topRight: Radius.circular(20.r),
           ),
         ),
         child: Column(
           children: [
             Container(
-              margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
-              width: 40.w,
+              margin: EdgeInsets.only(top: 10.h, bottom: 8.h),
+              width: 36.w,
               height: 4.h,
               decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
+                color: const Color(0xFFE2E8F0),
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Previous Conversations',
+                    'Conversations',
                     style: GoogleFonts.inter(
-                      fontSize: 16.sp,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF0F172A),
                     ),
@@ -701,13 +594,13 @@ class GoviaAiView extends GetView<GoviaAiController> {
                       Get.back();
                       controller.startNewChat();
                     },
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('New Chat'),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
             Expanded(
               child: Obx(() {
                 if (controller.isLoadingChats.value) {
@@ -715,27 +608,19 @@ class GoviaAiView extends GetView<GoviaAiController> {
                 }
                 if (controller.chatList.isEmpty) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline_rounded, size: 48.sp, color: const Color(0xFFCBD5E1)),
-                        SizedBox(height: 12.h),
-                        Text(
-                          'No previous conversations found.',
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            color: const Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'No previous conversations.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        color: const Color(0xFF94A3B8),
+                      ),
                     ),
                   );
                 }
                 return ListView.separated(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                   itemCount: controller.chatList.length,
-                  separatorBuilder: (_, _) => SizedBox(height: 8.h),
+                  separatorBuilder: (_, _) => SizedBox(height: 6.h),
                   itemBuilder: (context, index) {
                     final chat = controller.chatList[index];
                     final chatId = chat['_id']?.toString() ?? '';
@@ -745,36 +630,30 @@ class GoviaAiView extends GetView<GoviaAiController> {
                     return Container(
                       decoration: BoxDecoration(
                         color: isCurrent ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(10.r),
                         border: Border.all(
                           color: isCurrent ? const Color(0xFF93C5FD) : const Color(0xFFE2E8F0),
                         ),
                       ),
                       child: ListTile(
-                        leading: Container(
-                          padding: EdgeInsets.all(8.r),
-                          decoration: BoxDecoration(
-                            color: isCurrent ? const Color(0xFF1550A6) : const Color(0xFFE2E8F0),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.chat_outlined,
-                            size: 16.sp,
-                            color: isCurrent ? Colors.white : const Color(0xFF475569),
-                          ),
+                        dense: true,
+                        leading: Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 16.sp,
+                          color: isCurrent ? const Color(0xFF1550A6) : const Color(0xFF64748B),
                         ),
                         title: Text(
                           title,
                           style: GoogleFonts.inter(
-                            fontSize: 13.5.sp,
-                            fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 13.sp,
+                            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
                             color: const Color(0xFF0F172A),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                          icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
                           onPressed: () => controller.deleteChat(chatId),
                         ),
                         onTap: () {
