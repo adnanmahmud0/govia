@@ -47,6 +47,7 @@ class ApiConstants {
   // ─── User Endpoints ───────────────────────────────────────────────────────
   static const String signup = '/user/register';
   static const String profile = '/user/profile';
+  static const String specialists = '/user/specialists';
   static String userLookup(String identifier) => '/user/lookup/${Uri.encodeComponent(identifier)}';
 
   // ─── Meeting Endpoints ────────────────────────────────────────────────────

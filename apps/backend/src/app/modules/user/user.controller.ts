@@ -70,12 +70,25 @@ const createUserByAdmin = catchAsync(
 
 const getAllUsers = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
-    const result = await UserService.getAllUsersFromDB(req.query);
+    const result = await UserService.getAllUsersFromDB(req.query, req.user);
 
     sendResponse(res, {
       success: true,
       statusCode: StatusCodes.OK,
       message: 'Users retrieved successfully',
+      data: result,
+    });
+  }
+);
+
+const getSpecialists = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const result = await UserService.getSpecialistsFromDB(req.query);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'Specialists retrieved successfully',
       data: result,
     });
   }
@@ -144,6 +157,7 @@ export const UserController = {
   updateProfile,
   createUserByAdmin,
   getAllUsers,
+  getSpecialists,
   getSingleUser,
   updateUser,
   deleteUser,

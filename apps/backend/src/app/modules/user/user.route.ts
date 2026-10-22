@@ -36,7 +36,11 @@ router
 
 router
   .route('/')
-  .get(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), UserController.getAllUsers);
+  .get(auth(...allRoles), UserController.getAllUsers);
+
+router
+  .route('/specialists')
+  .get(auth(...allRoles), UserController.getSpecialists);
 
 router
   .route('/create-user')

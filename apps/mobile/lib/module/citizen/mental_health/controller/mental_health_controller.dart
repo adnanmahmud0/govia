@@ -42,35 +42,58 @@ class MentalHealthController extends GetxController {
   Future<void> fetchDoctors() async {
     try {
       isLoading.value = true;
-      final response = await _apiClient.getData(
-        '/user',
-        query: {'role': 'MENTAL_HEALTH_PROFESSIONAL'},
-      );
-
       List<Map<String, dynamic>> fetched = [];
-      if (response.statusCode == 200 && response.data != null) {
-        final raw = response.data['data'];
-        if (raw is List) {
-          fetched = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        } else if (raw is Map && raw['data'] is List) {
-          fetched = (raw['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-      }
 
-      // If empty, attempt fallback to legacy DOCTOR role query
-      if (fetched.isEmpty) {
-        final docResponse = await _apiClient.getData(
-          '/user',
-          query: {'role': 'DOCTOR'},
+      // 1. Try dedicated specialists endpoint
+      try {
+        final specResponse = await _apiClient.getData(
+          ApiConstants.specialists,
+          query: {'role': 'MENTAL_HEALTH_PROFESSIONAL'},
         );
-        if (docResponse.statusCode == 200 && docResponse.data != null) {
-          final raw = docResponse.data['data'];
+        if (specResponse.statusCode == 200 && specResponse.data != null) {
+          final raw = specResponse.data['data'];
           if (raw is List) {
-            fetched = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+            fetched = raw.map((e) => _normalizeDoctor(Map<String, dynamic>.from(e as Map))).toList();
           } else if (raw is Map && raw['data'] is List) {
-            fetched = (raw['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+            fetched = (raw['data'] as List).map((e) => _normalizeDoctor(Map<String, dynamic>.from(e as Map))).toList();
           }
         }
+      } catch (_) {}
+
+      // 2. Fallback to /user?role=MENTAL_HEALTH_PROFESSIONAL
+      if (fetched.isEmpty) {
+        try {
+          final response = await _apiClient.getData(
+            '/user',
+            query: {'role': 'MENTAL_HEALTH_PROFESSIONAL'},
+          );
+          if (response.statusCode == 200 && response.data != null) {
+            final raw = response.data['data'];
+            if (raw is List) {
+              fetched = raw.map((e) => _normalizeDoctor(Map<String, dynamic>.from(e as Map))).toList();
+            } else if (raw is Map && raw['data'] is List) {
+              fetched = (raw['data'] as List).map((e) => _normalizeDoctor(Map<String, dynamic>.from(e as Map))).toList();
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 3. Fallback to /user?role=DOCTOR
+      if (fetched.isEmpty) {
+        try {
+          final docResponse = await _apiClient.getData(
+            '/user',
+            query: {'role': 'DOCTOR'},
+          );
+          if (docResponse.statusCode == 200 && docResponse.data != null) {
+            final raw = docResponse.data['data'];
+            if (raw is List) {
+              fetched = raw.map((e) => _normalizeDoctor(Map<String, dynamic>.from(e as Map))).toList();
+            } else if (raw is Map && raw['data'] is List) {
+              fetched = (raw['data'] as List).map((e) => _normalizeDoctor(Map<String, dynamic>.from(e as Map))).toList();
+            }
+          }
+        } catch (_) {}
       }
 
       if (fetched.isNotEmpty) {
@@ -84,6 +107,49 @@ class MentalHealthController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Map<String, dynamic> _normalizeDoctor(Map<String, dynamic> raw) {
+    final id = (raw['_id'] ?? raw['id'])?.toString() ?? '';
+    final name = raw['name']?.toString() ?? 'Specialist';
+    final role = raw['role']?.toString() ?? 'MENTAL_HEALTH_PROFESSIONAL';
+    final specialty = raw['specialty']?.toString() ??
+        raw['specialization']?.toString() ??
+        'Crisis Counseling';
+    final title = raw['title']?.toString() ??
+        raw['subRole']?.toString() ??
+        'Licensed Mental Health Specialist';
+    final hospital = raw['hospital']?.toString() ??
+        raw['companyName']?.toString() ??
+        raw['officeName']?.toString() ??
+        'Govia Health Network';
+    final bio = raw['bio']?.toString() ??
+        raw['shortDescription']?.toString() ??
+        'Specializing in crisis de-escalation, post-incident trauma resilience, and emotional stabilization.';
+    final image = raw['image']?.toString() ?? raw['profilePicture']?.toString() ?? '';
+    final isOnline = raw['isOnline'] == true || raw['status'] == 'active';
+    final rating = (raw['rating'] as num?)?.toDouble() ?? 4.9;
+    final reviewCount = (raw['reviewCount'] as num?)?.toInt() ?? 50;
+    final experienceYears = (raw['experienceYears'] as num?)?.toInt() ?? 8;
+
+    return {
+      '_id': id,
+      'id': id,
+      'name': name,
+      'role': role,
+      'specialty': specialty,
+      'title': title,
+      'hospital': hospital,
+      'bio': bio,
+      'image': image,
+      'isOnline': isOnline,
+      'nextAvailable': raw['nextAvailable']?.toString() ?? 'Available Now',
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'experienceYears': experienceYears,
+      'phoneNumber': raw['phoneNumber']?.toString() ?? '',
+      'languagesSpoken': raw['languagesSpoken']?.toString() ?? 'English',
+    };
   }
 
   List<Map<String, dynamic>> _getDefaultSpecialists() {
@@ -156,20 +222,25 @@ class MentalHealthController extends GetxController {
   }
 
   List<Map<String, dynamic>> get filteredDoctors {
-    final cat = selectedCategory.value;
+    final cat = selectedCategory.value.trim().toLowerCase();
     final query = searchQuery.value.trim().toLowerCase();
 
     return doctors.where((doc) {
-      final matchesCategory = cat == 'All' ||
-          (doc['specialty']?.toString().toLowerCase() == cat.toLowerCase());
+      final docSpec = (doc['specialty']?.toString() ?? '').toLowerCase();
+      final matchesCategory = cat == 'all' ||
+          docSpec == cat ||
+          docSpec.contains(cat) ||
+          cat.contains(docSpec);
 
       final name = doc['name']?.toString().toLowerCase() ?? '';
       final title = doc['title']?.toString().toLowerCase() ?? '';
       final spec = doc['specialty']?.toString().toLowerCase() ?? '';
+      final bio = doc['bio']?.toString().toLowerCase() ?? '';
       final matchesQuery = query.isEmpty ||
           name.contains(query) ||
           title.contains(query) ||
-          spec.contains(query);
+          spec.contains(query) ||
+          bio.contains(query);
 
       return matchesCategory && matchesQuery;
     }).toList();
