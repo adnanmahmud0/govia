@@ -94,9 +94,12 @@ EOF
 fi
 
 if [ -f /adnan/govia/scripts/server/nginx-govia.conf ]; then
-  cp /adnan/govia/scripts/server/nginx-govia.conf /etc/nginx/sites-available/govia.conf
-  ln -sf /etc/nginx/sites-available/govia.conf /etc/nginx/sites-enabled/govia.conf
-  rm -f /etc/nginx/sites-enabled/default || true
+  # Only copy bare configuration if SSL certificates do not exist yet
+  if [ ! -f /etc/letsencrypt/live/api.govia.app/fullchain.pem ]; then
+    cp /adnan/govia/scripts/server/nginx-govia.conf /etc/nginx/sites-available/govia.conf
+    ln -sf /etc/nginx/sites-available/govia.conf /etc/nginx/sites-enabled/govia.conf
+    rm -f /etc/nginx/sites-enabled/default || true
+  fi
 fi
 
 # Test and enable/reload Nginx

@@ -10,12 +10,10 @@ import { USER_ROLES } from '../../../enums/user';
 import { SubscriptionService } from '../subscription/subscription.service';
 
 const FREE_OPENROUTER_MODELS = [
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemini-2.0-flash-exp:free',
-  'deepseek/deepseek-r1:free',
-  'qwen/qwen-2.5-coder-32b-instruct:free',
-  'mistralai/mistral-small-24b-instruct-2501:free',
   'openrouter/free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'mistralai/mistral-small-24b-instruct-2501:free',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
 ];
 
 const getRandomFreeModel = (): string => {
@@ -27,6 +25,11 @@ const getRandomFreeModel = (): string => {
 const openai = new OpenAI({
   apiKey: config.ai.apiKey,
   baseURL: config.ai.baseUrl,
+  timeout: 45000,
+  defaultHeaders: {
+    'HTTP-Referer': 'https://govia.app',
+    'X-Title': 'Govia Public Safety',
+  },
 });
 
 type Message = {

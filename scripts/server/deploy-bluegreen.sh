@@ -61,7 +61,7 @@ docker compose -f docker-compose.bluegreen.yml up -d adnan-govia-mongo
 
 # 4. Start Target Standby Environment
 echo "🚀 Booting ${TARGET_COLOR} containers on standby ports..."
-docker compose -f docker-compose.bluegreen.yml --profile "$TARGET_COLOR" up -d --remove-orphans
+docker compose -f docker-compose.bluegreen.yml --profile "$TARGET_COLOR" up -d
 
 # 5. Health Check Polling Loop (Max 90s)
 echo "⏳ Validating ${TARGET_COLOR} health (timeout: 90s)..."
@@ -115,8 +115,10 @@ EOF
   # Stop and remove previous color containers if they were running
   if [ "$CURRENT_COLOR" != "none" ] && [ "$CURRENT_COLOR" != "$TARGET_COLOR" ]; then
     echo "🛑 Tearing down previous (${CURRENT_COLOR}) containers..."
-    docker compose -f docker-compose.bluegreen.yml --profile "$CURRENT_COLOR" stop || true
-    docker compose -f docker-compose.bluegreen.yml --profile "$CURRENT_COLOR" rm -f || true
+    docker stop "adnan-govia-api-${CURRENT_COLOR}" "adnan-govia-admin-${CURRENT_COLOR}" 2>/dev/null || true
+    docker rm -f "adnan-govia-api-${CURRENT_COLOR}" "adnan-govia-admin-${CURRENT_COLOR}" 2>/dev/null || true
+    # Guarantee MongoDB container is running and healthy
+    docker compose -f docker-compose.bluegreen.yml up -d adnan-govia-mongo
   fi
 
   # Clean up any legacy unprofiled containers from old compose setup
