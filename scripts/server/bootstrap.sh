@@ -1,40 +1,62 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Govia Server Self-Bootstrapping Script (Idempotent)
+# Govia Server Self-Bootstrapping Script (Idempotent Setup)
 # ==============================================================================
 set -euo pipefail
 
 echo "========================================================"
-echo "🚀 Govia Production Server Bootstrap"
+echo "🚀 Govia Production Server Bootstrap (Idempotent Setup)"
 echo "========================================================"
 
-# 1. Memory Swapfile Setup (2GB swap if total swap < 2GB)
+# 1. Memory Swapfile Setup (2GB swap if total swap < 1.5GB)
 CURRENT_SWAP=$(free -m | awk '/Swap:/ {print $2}')
 if [ "$CURRENT_SWAP" -lt 1500 ]; then
-  echo "🧠 Creating 2GB Swapfile to prevent Out-Of-Memory spikes..."
+  echo "🧠 Configuring 2GB Swapfile to prevent Out-Of-Memory spikes..."
   if [ ! -f /swapfile ]; then
-    fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+    if ! fallocate -l 2G /swapfile 2>/dev/null; then
+      dd if=/dev/zero of=/swapfile bs=1M count=2048
+    fi
     chmod 600 /swapfile
     mkswap /swapfile
-    swapon /swapfile
+    swapon /swapfile || true
     if ! grep -q "/swapfile" /etc/fstab; then
       echo '/swapfile none swap sw 0 0' >> /etc/fstab
     fi
     echo "✅ 2GB Swapfile successfully activated!"
   else
-    swapon /swapfile || true
+    swapon /swapfile 2>/dev/null || true
   fi
 else
   echo "✅ Memory swap already present (${CURRENT_SWAP}MB)."
 fi
 
-# 2. Package Dependencies (Nginx, Certbot, UFW, Cron)
-echo "📦 Checking system packages..."
-apt-get update -qq
-DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nginx certbot python3-certbot-nginx ufw cron curl
+# 2. Package Dependencies (Wait for any in-flight background apt locks)
+echo "📦 Checking package manager locks and updating system packages..."
+while fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+  echo "⏳ Waiting for concurrent apt lock to release..."
+  sleep 2
+done
 
-# 3. Setup Govia Directories
-mkdir -p /adnan/govia/scripts
+apt-get update -qq
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+  curl ca-certificates gnupg lsb-release \
+  nginx certbot python3-certbot-nginx ufw cron
+
+# 3. Docker Engine & Docker Compose Plugin
+if ! command -v docker &>/dev/null; then
+  echo "🐳 Docker not found. Installing Docker Engine & Compose plugin..."
+  curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+  sh /tmp/get-docker.sh
+  systemctl enable docker
+  systemctl start docker
+  echo "✅ Docker successfully installed!"
+else
+  echo "✅ Docker is already installed: $(docker --version)"
+fi
+
+# 4. Setup Govia Production Directories
+echo "📁 Preparing directory structure..."
+mkdir -p /adnan/govia/scripts/server
 mkdir -p /adnan/govia/backups/mongodb
 
 # Copy backup script into production path
@@ -43,7 +65,7 @@ if [ -f /adnan/govia/scripts/server/backup-mongo.sh ]; then
   chmod +x /adnan/govia/scripts/backup-mongo.sh
 fi
 
-# 4. Schedule Automated Daily MongoDB Backup (02:00 AM UTC)
+# 5. Schedule Automated Daily MongoDB Backup (02:00 AM UTC, 7-day retention)
 CRON_JOB="0 2 * * * /adnan/govia/scripts/backup-mongo.sh >> /adnan/govia/backups/mongodb/backup.log 2>&1"
 if ! crontab -l 2>/dev/null | grep -Fq "backup-mongo.sh"; then
   echo "⏰ Registering daily MongoDB backup cron job..."
@@ -53,7 +75,7 @@ else
   echo "✅ Backup cron job is already scheduled."
 fi
 
-# 5. Setup Nginx Upstreams & Reverse Proxy
+# 6. Setup Nginx Upstreams & Reverse Proxy
 echo "🌐 Configuring Nginx Upstreams & Sites..."
 mkdir -p /etc/nginx/conf.d
 
@@ -77,12 +99,19 @@ if [ -f /adnan/govia/scripts/server/nginx-govia.conf ]; then
   rm -f /etc/nginx/sites-enabled/default || true
 fi
 
-# Test and reload Nginx
+# Test and enable/reload Nginx
+systemctl enable nginx || true
 if nginx -t 2>/dev/null; then
-  systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || echo "ℹ️ Nginx port 80 handled by existing reverse proxy. Direct ports 9777 and 8777 active."
+  systemctl restart nginx || systemctl reload nginx || true
+  echo "✅ Nginx reverse proxy active and configured."
+else
+  echo "⚠️ Nginx test warning. Will be reloaded during deployment."
 fi
 
-# 6. Firewall Configuration
+# Enable Certbot auto-renewal timer
+systemctl enable --now certbot.timer 2>/dev/null || true
+
+# 7. Firewall Configuration (UFW)
 echo "🛡️ Configuring UFW firewall rules..."
 ufw allow 22/tcp || true
 ufw allow 80/tcp || true
@@ -93,4 +122,13 @@ ufw allow 8777/tcp || true
 ufw allow 8778/tcp || true
 ufw --force enable || true
 
+# 8. Ensure MongoDB Container is Running (with 256MB WiredTiger memory limit)
+if [ -f /adnan/govia/docker-compose.bluegreen.yml ]; then
+  echo "🍃 Booting persistent MongoDB container (256MB cache cap)..."
+  cd /adnan/govia
+  docker compose -f docker-compose.bluegreen.yml up -d adnan-govia-mongo || true
+fi
+
+echo "========================================================"
 echo "🎉 Server bootstrap successfully completed!"
+echo "========================================================"

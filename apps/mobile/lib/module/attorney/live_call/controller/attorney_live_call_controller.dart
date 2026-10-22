@@ -230,7 +230,7 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
     }
 
     // 2. Resolve LiveKit URL & Token
-    String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-0f13ke90.livekit.cloud';
+    String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-g5vd2lvq.livekit.cloud';
     String? token;
 
     if (Get.arguments is MeetingModel) {
@@ -751,7 +751,7 @@ class AttorneyLiveCallController extends GetxController with WidgetsBindingObser
       meetingId = mId;
       roomName = map['roomName']?.toString() ?? 'govia_$meetingId';
       final token = map['token']?.toString();
-      final url = map['livekitUrl']?.toString() ?? dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-0f13ke90.livekit.cloud';
+      final url = map['livekitUrl']?.toString() ?? dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-g5vd2lvq.livekit.cloud';
       if (token != null && token.isNotEmpty) {
         await _connectLiveKit(url, token);
       }

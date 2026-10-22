@@ -6,54 +6,52 @@ set -euo pipefail
 
 cd /adnan/govia
 
+# Ensure GitHub Container Registry owner is lowercase
+export GH_REPO_OWNER="${GH_REPO_OWNER:-adnanmahmud0}"
+GH_REPO_OWNER=$(echo "$GH_REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+export GH_REPO_OWNER
+
 echo "========================================================"
 echo "🚀 Starting Govia Zero-Downtime Blue/Green Deployment"
 echo "========================================================"
 
-# Check if host Nginx is active
+# Ensure Nginx is running
 if ! systemctl is-active --quiet nginx 2>/dev/null; then
-  echo "ℹ️ Host Nginx is not active (shared reverse proxy detected). Deploying production stack directly on ports 9777 & 8777..."
-  docker compose -f docker-compose.prod.yml pull
-  docker compose -f docker-compose.prod.yml up -d --remove-orphans
-  docker image prune -f || true
-  sleep 5
-  docker compose -f docker-compose.prod.yml ps
-  echo "========================================================"
-  echo "🎉 GOVIA DEPLOYMENT SUCCESSFUL!"
-  echo "   👉 API:   http://127.0.0.1:9777/api/v1/docs"
-  echo "   👉 Admin: http://127.0.0.1:8777"
-  echo "========================================================"
-  exit 0
+  echo "🌐 Starting Nginx service..."
+  systemctl start nginx || true
 fi
 
 # 1. Determine currently active color
 ACTIVE_COLOR_FILE="/adnan/govia/.active_color"
-CURRENT_COLOR="blue"
 
-if [ -f "$ACTIVE_COLOR_FILE" ]; then
-  CURRENT_COLOR=$(cat "$ACTIVE_COLOR_FILE" | tr -d '[:space:]')
-fi
-
-# Determine standby (target) color and ports
-if [ "$CURRENT_COLOR" = "blue" ]; then
+if docker ps --format '{{.Names}}' | grep -q "adnan-govia-api-blue"; then
+  CURRENT_COLOR="blue"
   TARGET_COLOR="green"
   TARGET_API_PORT=9778
   TARGET_ADMIN_PORT=8778
-  PREV_API_PORT=9777
-  PREV_ADMIN_PORT=8777
-else
+elif docker ps --format '{{.Names}}' | grep -q "adnan-govia-api-green"; then
+  CURRENT_COLOR="green"
   TARGET_COLOR="blue"
   TARGET_API_PORT=9777
   TARGET_ADMIN_PORT=8777
-  PREV_API_PORT=9778
-  PREV_ADMIN_PORT=8778
+elif [ -f "$ACTIVE_COLOR_FILE" ] && [ "$(cat "$ACTIVE_COLOR_FILE" | tr -d '[:space:]')" = "green" ]; then
+  CURRENT_COLOR="green"
+  TARGET_COLOR="blue"
+  TARGET_API_PORT=9777
+  TARGET_ADMIN_PORT=8777
+else
+  # Clean server fallback: deploy to primary blue ports first
+  CURRENT_COLOR="none"
+  TARGET_COLOR="blue"
+  TARGET_API_PORT=9777
+  TARGET_ADMIN_PORT=8777
 fi
 
 echo "🟢 Currently active environment: ${CURRENT_COLOR}"
 echo "🎯 Target standby environment:   ${TARGET_COLOR} (API: ${TARGET_API_PORT} | Admin: ${TARGET_ADMIN_PORT})"
 
 # 2. Pull latest images from GHCR
-echo "📥 Pulling latest images..."
+echo "📥 Pulling latest images from GHCR..."
 docker compose -f docker-compose.bluegreen.yml pull adnan-govia-mongo || true
 docker compose -f docker-compose.bluegreen.yml --profile "$TARGET_COLOR" pull
 
@@ -62,7 +60,7 @@ echo "🍃 Ensuring MongoDB is running and healthy..."
 docker compose -f docker-compose.bluegreen.yml up -d adnan-govia-mongo
 
 # 4. Start Target Standby Environment
-echo "🚀 Booting ${TARGET_COLOR} containers..."
+echo "🚀 Booting ${TARGET_COLOR} containers on standby ports..."
 docker compose -f docker-compose.bluegreen.yml --profile "$TARGET_COLOR" up -d --remove-orphans
 
 # 5. Health Check Polling Loop (Max 90s)
@@ -80,7 +78,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 
   echo "   [Attempt ${ATTEMPT}/${MAX_ATTEMPTS}] API :${TARGET_API_PORT} -> HTTP ${API_STATUS} | Admin :${TARGET_ADMIN_PORT} -> HTTP ${ADMIN_STATUS}"
 
-  if [ "$API_STATUS" = "200" ] && { [ "$ADMIN_STATUS" = "200" ] || [ "$ADMIN_STATUS" = "307" ] || [ "$ADMIN_STATUS" = "308" ]; }; then
+  if [ "$API_STATUS" = "200" ] && [[ "$ADMIN_STATUS" =~ ^(200|301|302|307|308)$ ]]; then
     HEALTHY=1
     break
   fi
@@ -103,28 +101,35 @@ upstream govia_admin_upstream {
 }
 EOF
 
-  nginx -t && nginx -s reload
-  echo "🎉 Zero-downtime traffic switch completed via Nginx reload!"
+  if nginx -t; then
+    nginx -s reload || systemctl reload nginx
+    echo "🎉 Zero-downtime traffic switch completed via Nginx reload!"
+  else
+    echo "⚠️ Nginx test failed. Restarting Nginx service..."
+    systemctl restart nginx
+  fi
 
   # Record new active color
   echo "$TARGET_COLOR" > "$ACTIVE_COLOR_FILE"
 
-  # Stop and remove previous color containers
-  echo "🛑 Tearing down previous (${CURRENT_COLOR}) containers..."
-  docker compose -f docker-compose.bluegreen.yml --profile "$CURRENT_COLOR" stop || true
-  docker compose -f docker-compose.bluegreen.yml --profile "$CURRENT_COLOR" rm -f || true
+  # Stop and remove previous color containers if they were running
+  if [ "$CURRENT_COLOR" != "none" ] && [ "$CURRENT_COLOR" != "$TARGET_COLOR" ]; then
+    echo "🛑 Tearing down previous (${CURRENT_COLOR}) containers..."
+    docker compose -f docker-compose.bluegreen.yml --profile "$CURRENT_COLOR" stop || true
+    docker compose -f docker-compose.bluegreen.yml --profile "$CURRENT_COLOR" rm -f || true
+  fi
 
-  # Also remove any legacy unprofiled containers from old compose setup
+  # Clean up any legacy unprofiled containers from old compose setup
   docker rm -f adnan-govia-api adnan-govia-admin 2>/dev/null || true
 
-  # Clean up dangling images
+  # Clean up dangling images older than 24h
   echo "🧹 Pruning unused Docker images..."
-  docker image prune -f || true
+  docker image prune -af --filter "until=24h" || docker image prune -f || true
 
   echo "========================================================"
   echo "🎉 GOVIA DEPLOYMENT SUCCESSFUL! ACTIVE: ${TARGET_COLOR}"
-  echo "   👉 API:   http://127.0.0.1:${TARGET_API_PORT}/api/v1/docs"
-  echo "   👉 Admin: http://127.0.0.1:${TARGET_ADMIN_PORT}"
+  echo "   👉 API Backend:    http://127.0.0.1:${TARGET_API_PORT}/health"
+  echo "   👉 Admin Frontend: http://127.0.0.1:${TARGET_ADMIN_PORT}"
   echo "========================================================"
 else
   echo "❌ ERROR: Target environment (${TARGET_COLOR}) FAILED health check!"
@@ -138,6 +143,8 @@ else
   docker compose -f docker-compose.bluegreen.yml --profile "$TARGET_COLOR" stop || true
   docker compose -f docker-compose.bluegreen.yml --profile "$TARGET_COLOR" rm -f || true
 
-  echo "✅ Active (${CURRENT_COLOR}) environment remains LIVE with zero interruption."
+  if [ "$CURRENT_COLOR" != "none" ]; then
+    echo "✅ Active (${CURRENT_COLOR}) environment remains LIVE with zero interruption."
+  fi
   exit 1
 fi

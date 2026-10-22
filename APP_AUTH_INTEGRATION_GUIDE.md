@@ -1,8 +1,8 @@
 # Govia App Developer Authentication Integration Guide
 
 > **Target Audience**: Mobile Developers (Flutter / React Native / iOS / Android) & Frontend Engineers  
-> **Backend Base URL (Live Production)**: `http://172.252.13.197:9777/api/v1`  
-> **Interactive Swagger Documentation**: `http://172.252.13.197:9777/api/v1/docs`  
+> **Backend Base URL (Live Production)**: `https://api.govia.app/api/v1`  
+> **Interactive Swagger Documentation**: `https://api.govia.app/api/v1/docs`  
 > **Auth Header Format**: `Authorization: Bearer <accessToken>`
 
 ---
@@ -38,7 +38,7 @@ Every user account in Govia is tied to an **Email** and a **Role**. The role mus
 ### Base URLs by Environment
 | Environment | Base URL |
 | :--- | :--- |
-| **Live Production Server (VPS)** | `http://172.252.13.197:9777/api/v1` |
+| **Live Production Server (VPS)** | `https://api.govia.app/api/v1` |
 | **Android Emulator (Local Dev)** | `http://10.0.2.2:5000/api/v1` |
 | **iOS Simulator (Local Dev)** | `http://localhost:5000/api/v1` |
 | **Physical Device (WiFi)** | `http://<YOUR_COMPUTER_LAN_IP>:5000/api/v1` |
@@ -486,7 +486,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://172.252.13.197:9777/api/v1';
+  static const String baseUrl = 'https://api.govia.app/api/v1';
   final Dio dio = Dio(BaseOptions(
     baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 15),
@@ -680,7 +680,7 @@ class AuthService {
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://172.252.13.197:9777/api/v1',
+  baseURL: 'https://api.govia.app/api/v1',
   headers: { 'Content-Type': 'application/json' },
 });
 

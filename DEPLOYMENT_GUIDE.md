@@ -1,6 +1,6 @@
 # Govia Production Deployment & CI/CD Guide
 
-This guide provides step-by-step instructions for deploying the **Govia Monorepo** (Express API + Socket.IO, Next.js Admin Dashboard, and MongoDB) to your Ubuntu/Debian VPS (`172.252.13.197`) using Docker Compose and automated GitHub Actions CI/CD.
+This guide provides step-by-step instructions for deploying the **Govia Monorepo** (Express API + Socket.IO, Next.js Admin Dashboard, and MongoDB) to your Ubuntu/Debian VPS (`108.175.15.205`) using Docker Compose and automated GitHub Actions CI/CD.
 
 ---
 
@@ -16,7 +16,7 @@ To guarantee complete isolation on shared servers without port conflicts:
 
 ```
                               ┌────────────────────────────────────────────────────────┐
-                              │                 Remote VPS (172.252.13.197)            │
+                              │                 Remote VPS (108.175.15.205)            │
                               │                                                        │
 [ Client / App / Flutter ] ──►│ ──► Host Port 9777 ──► [ adnan-govia-api:5000 ]       │
                               │                                 │                      │
@@ -35,7 +35,7 @@ To enable one-click automated deployments on `git push origin main`, add the fol
 
 | Secret Name | Description | Example / Recommended Value |
 | :--- | :--- | :--- |
-| `VPS_SSH_HOST` | VPS Public IPv4 Address | `172.252.13.197` |
+| `VPS_SSH_HOST` | VPS Public IPv4 Address | `108.175.15.205` |
 | `VPS_SSH_USER` | SSH Username | `root` or `ubuntu` or `adnan` |
 | `VPS_SSH_KEY` | Private SSH Key for authentication | `-----BEGIN OPENSSH PRIVATE KEY----- ...` |
 | `VPS_SSH_PASSWORD` | SSH Password (if not using SSH Key) | `YourSecureVpsPassword` |
@@ -49,7 +49,7 @@ To enable one-click automated deployments on `git push origin main`, add the fol
 
 Connect to your VPS:
 ```bash
-ssh root@172.252.13.197
+ssh root@108.175.15.205
 ```
 
 ### 3.1 Install Docker & Docker Compose Plugin

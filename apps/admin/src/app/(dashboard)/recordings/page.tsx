@@ -801,7 +801,7 @@ export default function RecordingsPage() {
                     type="text"
                     value={formData.livekitUrl}
                     onChange={(e) => setFormData({ ...formData, livekitUrl: e.target.value })}
-                    placeholder="wss://govia-0f13ke90.livekit.cloud"
+                    placeholder="wss://govia-g5vd2lvq.livekit.cloud"
                     className="rounded-xl text-xs h-9 font-mono"
                   />
                 </div>
@@ -851,14 +851,14 @@ export default function RecordingsPage() {
                   </div>
                   <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2">
                     <code className="text-[11px] font-mono text-slate-700 truncate">
-                      http://172.252.13.197:9777/api/v1/meeting/webhook/livekit
+                      https://api.govia.app/api/v1/meeting/webhook/livekit
                     </code>
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        navigator.clipboard.writeText("http://172.252.13.197:9777/api/v1/meeting/webhook/livekit");
+                        navigator.clipboard.writeText("https://api.govia.app/api/v1/meeting/webhook/livekit");
                         toast.success("Webhook URL copied to clipboard");
                       }}
                       className="h-7 text-[11px] text-[#1554ad] font-bold"

@@ -168,7 +168,7 @@ jobs:
 
       - name: Deploy to Server via SSH
         env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST || '172.252.13.197' }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST || '108.175.15.205' }}
           SERVER_USER: ${{ secrets.SERVER_USER || 'root' }}
           SERVER_PASS: ${{ secrets.SERVER_PASSWORD }}
           SERVER_PORT: ${{ secrets.SERVER_SSH_PORT || '22' }}
@@ -367,7 +367,7 @@ Add the following secrets:
 
 | Secret Name | Value | Description |
 | :--- | :--- | :--- |
-| `SERVER_HOST` | `172.252.13.197` | Your VPS IP address |
+| `SERVER_HOST` | `108.175.15.205` | Your VPS IP address |
 | `SERVER_USER` | `root` | SSH user |
 | `SERVER_PASSWORD`| `YourVPSPassword` | Root SSH password |
 | `SERVER_SSH_PORT`| `22` | SSH Port (default: 22) |
@@ -406,7 +406,7 @@ Once you commit and push to the `main` branch:
 4. When finished, log in to your server to verify:
 
 ```bash
-ssh root@172.252.13.197
+ssh root@108.175.15.205
 
 # 1. Navigate to project folder
 cd /adnan/spotify-backend

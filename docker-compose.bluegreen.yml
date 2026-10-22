@@ -11,6 +11,7 @@ services:
     image: mongo:7.0
     container_name: adnan-govia-mongo
     restart: always
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     env_file:
       - .env
     environment:

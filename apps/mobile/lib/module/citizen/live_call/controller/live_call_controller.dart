@@ -197,7 +197,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     String? mId;
     String rName = 'govia_consultation';
     String? token;
-    String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-0f13ke90.livekit.cloud';
+    String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-g5vd2lvq.livekit.cloud';
 
     if (args is MeetingModel) {
       mId = args.id;
@@ -510,7 +510,7 @@ class LiveCallController extends GetxController with WidgetsBindingObserver {
     }
 
     // 3. Obtain LiveKit Token & URL
-    String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-0f13ke90.livekit.cloud';
+    String livekitUrl = dotenv.env['LIVEKIT_URL'] ?? 'wss://govia-g5vd2lvq.livekit.cloud';
     if (meeting.livekitUrl != null &&
         meeting.livekitUrl!.isNotEmpty &&
         !meeting.livekitUrl!.contains('govia.com')) {

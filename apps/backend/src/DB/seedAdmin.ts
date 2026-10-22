@@ -185,7 +185,7 @@ export const demoAccounts = [
     name: 'Super Administrator',
     email: config.super_admin.email || 'admin@govia.com',
     role: USER_ROLES.SUPER_ADMIN,
-    password: 'Password123!',
+    password: config.super_admin.password || 'Password123!',
     verified: true,
     status: 'active' as const,
     phoneNumber: '+1 (555) 010-0001',

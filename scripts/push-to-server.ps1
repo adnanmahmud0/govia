@@ -2,7 +2,7 @@
 # Direct Local to Server Push Script (PowerShell for Windows)
 # ==============================================================================
 param (
-    [string]$ServerHost = "172.252.13.197",
+    [string]$ServerHost = "108.175.15.205",
     [string]$ServerUser = "root",
     [string]$RemoteDir = "/adnan/govia"
 )

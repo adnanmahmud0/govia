@@ -39,7 +39,7 @@ export default {
   },
   livekit: {
     // LiveKit WebRTC Cloud credentials
-    url: process.env.LIVEKIT_URL || 'wss://govia-0f13ke90.livekit.cloud',
+    url: process.env.LIVEKIT_URL || 'wss://govia-g5vd2lvq.livekit.cloud',
     apiKey: process.env.LIVEKIT_API_KEY || 'API6NLt8C36WoQ8',
     apiSecret: process.env.LIVEKIT_API_SECRET || 'hhc2Hz8oTvHN6flpBOGWTxDBU2h9hOWHwRXUSh49DuY',
   },
