@@ -11,14 +11,14 @@ import { SubscriptionService } from '../subscription/subscription.service';
 
 const FREE_OPENROUTER_MODELS = [
   'openrouter/free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'mistralai/mistral-small-24b-instruct-2501:free',
-  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'google/gemma-4-31b-it:free',
+  'minimax/minimax-m3.1-flash:free',
+  'nvidia/nemotron-3.5-lightning:free',
 ];
 
 const getRandomFreeModel = (): string => {
-  const index = Math.floor(Math.random() * FREE_OPENROUTER_MODELS.length);
-  return FREE_OPENROUTER_MODELS[index];
+  // openrouter/free is the official dynamic router that automatically routes to healthy free models
+  return 'openrouter/free';
 };
 
 // Initialize the OpenAI client pointing to the provider URL (OpenRouter or OpenAI)
@@ -228,17 +228,21 @@ At the end of your guidance, include a brief one-line note:
 
     // Guard against rare models returning only safety classifications
     if (aiMessageContent.toLowerCase().includes('user safety:') || aiMessageContent.trim().length < 40) {
-      const retryResponse = await openai.chat.completions.create({
-        model: targetModel,
-        messages: [
-          ...messages,
-          { role: 'user', content: 'Please give a detailed, substantive explanation of my legal rights and steps to take.' }
-        ],
-        temperature: 0.7,
-      });
-      const retryContent = retryResponse.choices[0]?.message?.content;
-      if (retryContent && retryContent.trim().length > 40) {
-        aiMessageContent = retryContent;
+      try {
+        const retryResponse = await openai.chat.completions.create({
+          model: 'openrouter/free',
+          messages: [
+            ...messages,
+            { role: 'user', content: 'Please give a detailed, substantive explanation of my legal rights and steps to take.' }
+          ],
+          temperature: 0.7,
+        });
+        const retryContent = retryResponse.choices[0]?.message?.content;
+        if (retryContent && retryContent.trim().length > 40) {
+          aiMessageContent = retryContent;
+        }
+      } catch (retryErr) {
+        console.warn('[GoVia AI] Substantive retry failed, keeping initial response:', retryErr);
       }
     }
 
