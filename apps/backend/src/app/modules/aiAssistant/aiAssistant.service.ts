@@ -9,15 +9,8 @@ import { Types } from 'mongoose';
 import { USER_ROLES } from '../../../enums/user';
 import { SubscriptionService } from '../subscription/subscription.service';
 
-const FREE_OPENROUTER_MODELS = [
-  'openrouter/free',
-  'google/gemma-4-31b-it:free',
-  'minimax/minimax-m3.1-flash:free',
-  'nvidia/nemotron-3.5-lightning:free',
-];
-
 const getRandomFreeModel = (): string => {
-  // openrouter/free is the official dynamic router that automatically routes to healthy free models
+  // openrouter/free is OpenRouter's official dynamic router that automatically routes to healthy free models
   return 'openrouter/free';
 };
 
