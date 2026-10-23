@@ -38,7 +38,14 @@ const formatOfficerProfile = async (officer: Record<string, unknown>) => {
     avgRespect = +(sumRespect / totalCommendations).toFixed(1);
     avgDeescalation = +(sumDeesc / totalCommendations).toFixed(1);
     avgCommunication = +(sumComm / totalCommendations).toFixed(1);
-    avgRating = +((avgRespect + avgDeescalation + avgCommunication) / 3 / 2).toFixed(1); // Scale to 5 stars
+
+    const sumOverall = highlights.reduce((acc, h) => {
+      const o = (h as Record<string, unknown>).overallRating as number | undefined;
+      if (o) return acc + o;
+      const avgH = ((h.respectRating || 0) + (h.deEscalationRating || 0) + (h.communicationRating || 0)) / 3;
+      return acc + (avgH > 5 ? avgH / 2 : avgH);
+    }, 0);
+    avgRating = +(sumOverall / totalCommendations).toFixed(1);
   }
 
   const idStr = String(officer._id);
@@ -61,11 +68,12 @@ const formatOfficerProfile = async (officer: Record<string, unknown>) => {
     image: (officer.image as string) || '',
     languages: (officer.languagesSpoken as string) || 'English',
     phoneNumber: (officer.phoneNumber as string) || '',
-    rating: avgRating,
-    respectRating: avgRespect,
-    deescalationRating: avgDeescalation,
-    communicationRating: avgCommunication,
-    totalCommendations,
+    allowCitizenRatings: officer.allowCitizenRatings !== false,
+    rating: officer.allowCitizenRatings === false ? 0 : avgRating,
+    respectRating: officer.allowCitizenRatings === false ? 0 : avgRespect,
+    deescalationRating: officer.allowCitizenRatings === false ? 0 : avgDeescalation,
+    communicationRating: officer.allowCitizenRatings === false ? 0 : avgCommunication,
+    totalCommendations: officer.allowCitizenRatings === false ? 0 : totalCommendations,
     verified: (officer.verified as boolean) ?? true,
     status: 'ACTIVE_DUTY',
   };
@@ -92,7 +100,7 @@ const getOfficersFromDB = async (searchQuery?: string) => {
 
   const officers = await User.find(query)
     .select(
-      '_id name subRole badgeNumber assignedNumber departmentOrPrecinct licenseNumber image shortHexId languagesSpoken phoneNumber verified'
+      '_id name subRole badgeNumber assignedNumber departmentOrPrecinct licenseNumber image shortHexId languagesSpoken phoneNumber verified allowCitizenRatings'
     )
     .sort({ name: 1 })
     .lean();
@@ -150,7 +158,7 @@ const lookupOfficerByIdentifier = async (rawIdentifier: string) => {
     $or: conditions,
   })
     .select(
-      '_id name subRole badgeNumber assignedNumber departmentOrPrecinct licenseNumber image shortHexId languagesSpoken phoneNumber verified'
+      '_id name subRole badgeNumber assignedNumber departmentOrPrecinct licenseNumber image shortHexId languagesSpoken phoneNumber verified allowCitizenRatings'
     )
     .lean();
 
@@ -158,7 +166,7 @@ const lookupOfficerByIdentifier = async (rawIdentifier: string) => {
   if (!officer && /^[0-9a-fA-F]{8}$/.test(cleaned)) {
     const allPolice = await User.find({ role: USER_ROLES.POLICE, status: 'active' })
       .select(
-        '_id name subRole badgeNumber assignedNumber departmentOrPrecinct licenseNumber image shortHexId languagesSpoken phoneNumber verified'
+        '_id name subRole badgeNumber assignedNumber departmentOrPrecinct licenseNumber image shortHexId languagesSpoken phoneNumber verified allowCitizenRatings'
       )
       .lean();
     const target = cleaned.toLowerCase();
@@ -183,6 +191,12 @@ const createHeroHighlightToDB = async (payload: IHeroHighlight) => {
   if (payload.officerId) {
     const officer = await User.findById(payload.officerId).lean();
     if (officer) {
+      if (officer.allowCitizenRatings === false) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'This officer has turned off community ratings and reviews.'
+        );
+      }
       if (!payload.officerName || payload.officerName === 'Officer') {
         payload.officerName = officer.name;
       }
@@ -202,6 +216,44 @@ const createHeroHighlightToDB = async (payload: IHeroHighlight) => {
         payload.officerRank = officer.subRole;
       }
     }
+  } else if (payload.badgeNumber) {
+    // If citizen entered a badge manually, check if an officer with this badge has disabled ratings
+    const cleanBadge = payload.badgeNumber.replace('#', '').trim();
+    const officer = await User.findOne({
+      role: USER_ROLES.POLICE,
+      badgeNumber: new RegExp(`^#?${cleanBadge}$`, 'i'),
+    }).lean();
+
+    if (officer) {
+      if (officer.allowCitizenRatings === false) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'This officer has turned off community ratings and reviews.'
+        );
+      }
+      payload.officerId = officer._id as unknown as Types.ObjectId;
+    }
+  }
+
+  // Ensure overallRating and defaults
+  if (payload.overallRating) {
+    if (!payload.respectRating) payload.respectRating = payload.overallRating;
+    if (!payload.deEscalationRating) payload.deEscalationRating = payload.overallRating;
+    if (!payload.communicationRating) payload.communicationRating = payload.overallRating;
+  } else if (payload.respectRating) {
+    payload.overallRating = payload.respectRating > 5 ? +(payload.respectRating / 2).toFixed(1) : payload.respectRating;
+  } else {
+    payload.overallRating = 5;
+    payload.respectRating = 5;
+    payload.deEscalationRating = 5;
+    payload.communicationRating = 5;
+  }
+
+  if (!payload.incidentDate) {
+    payload.incidentDate = new Date();
+  }
+  if (!payload.incidentLocation) {
+    payload.incidentLocation = 'Current Location';
   }
 
   const result = await HeroHighlight.create(payload);
@@ -222,6 +274,7 @@ const createHeroHighlightToDB = async (payload: IHeroHighlight) => {
         metadata: {
           highlightId: result._id.toString(),
           citizenName,
+          overallRating: payload.overallRating,
           respectRating: payload.respectRating,
           deEscalationRating: payload.deEscalationRating,
         },
@@ -254,6 +307,9 @@ const getHeroHighlightsFromDB = async () => {
   return result.map(h => {
     const popOfficer = h.officerId as IPopulatedOfficer | undefined;
     const hRecord = h as Record<string, unknown>;
+    const overallRating =
+      (hRecord.overallRating as number | undefined) ||
+      (h.respectRating ? (h.respectRating > 5 ? +(h.respectRating / 2).toFixed(1) : h.respectRating) : 5);
 
     return {
       id: h._id.toString(),
@@ -267,9 +323,10 @@ const getHeroHighlightsFromDB = async () => {
       story: h.whatDidOfficerDoWell,
       incidentDate: h.incidentDate,
       incidentLocation: h.incidentLocation,
-      respectRating: h.respectRating,
-      deescalationRating: h.deEscalationRating,
-      communicationRating: h.communicationRating,
+      overallRating,
+      respectRating: h.respectRating || overallRating,
+      deescalationRating: h.deEscalationRating || overallRating,
+      communicationRating: h.communicationRating || overallRating,
       likes: h.likes || (h.salutes ? h.salutes.length : 0),
       salutes: h.salutes || [],
       uploadedBy: h.uploadedBy,

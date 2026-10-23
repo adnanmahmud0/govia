@@ -11,7 +11,7 @@ const createConfiguredTransporter = async () => {
     return nodemailer.createTransport({
       host: config.email.host,
       port: Number(config.email.port ?? 587),
-      secure: false,
+      secure: Number(config.email.port) === 465,
       auth: {
         user: config.email.user,
         pass: config.email.pass,
@@ -42,8 +42,12 @@ const sendEmail = async (values: ISendEmail) => {
       errorLogger.error('Email transport missing configuration. Check EMAIL_HOST, EMAIL_USER, and EMAIL_PASS');
       return;
     }
+    const fromAddress = values.from || config.email.from || '"Govia" <no-reply@govia.app>';
+    const replyToAddress = values.replyTo || 'support@govia.app';
+
     const info = await transporter.sendMail({
-      from: config.email.from || 'no-reply@example.com',
+      from: fromAddress,
+      replyTo: replyToAddress,
       to: values.to,
       subject: values.subject,
       html: values.html,

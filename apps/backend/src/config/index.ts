@@ -27,10 +27,10 @@ export default {
     jwt_refresh_expire_in: process.env.JWT_REFRESH_EXPIRE_IN || '7d',
   },
   email: {
-    from: process.env.EMAIL_FROM,
+    from: process.env.EMAIL_FROM || '"Govia" <no-reply@govia.app>',
     user: process.env.EMAIL_USER,
-    port: process.env.EMAIL_PORT,
-    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT || 587,
+    host: process.env.EMAIL_HOST || 'email-smtp.eu-north-1.amazonaws.com',
     pass: process.env.EMAIL_PASS,
   },
   super_admin: {
