@@ -11,7 +11,7 @@ const updatePricingProfile = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Service pricing profile updated successfully.',
+    message: 'Profile updated successfully.',
     data: result,
   });
 });
@@ -24,7 +24,7 @@ const createPayoutOnboard = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Stripe Express onboarding link generated.',
+    message: result.message,
     data: result,
   });
 });
@@ -36,7 +36,7 @@ const getPayoutStatus = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Stripe account status retrieved.',
+    message: 'Payouts feature is disabled.',
     data: result,
   });
 });
@@ -48,7 +48,7 @@ const getPayoutDashboardLink = catchAsync(async (req: Request, res: Response) =>
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Stripe dashboard login link generated.',
+    message: 'Payouts feature is disabled.',
     data: result,
   });
 });
@@ -74,6 +74,30 @@ const createCheckoutSession = catchAsync(async (req: Request, res: Response) => 
     success: true,
     message: 'Checkout session created.',
     data: result,
+  });
+});
+
+const createServiceCheckoutSession = catchAsync(async (req: Request, res: Response) => {
+  const citizenId = req.user.id;
+  const result = await ProviderPaymentService.createServiceCheckoutSession(citizenId, req.body);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Service checkout session created.',
+    data: result,
+  });
+});
+
+const selectPreferredProvider = catchAsync(async (req: Request, res: Response) => {
+  const citizenId = req.user.id;
+  const result = await ProviderPaymentService.selectPreferredProvider(citizenId, req.body);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: result.message,
+    data: result.preferredProvider,
   });
 });
 
@@ -106,7 +130,7 @@ const verifySession = catchAsync(async (req: Request, res: Response) => {
             <div class="icon">✓</div>
             <h2>Service Activated!</h2>
             <div class="badge">GoVia 24/7 Coverage Active</div>
-            <p>Your preferred provider has been successfully linked to your profile with 30-day emergency priority dispatch.</p>
+            <p>Your service coverage has been activated for 30 days. You can now select your preferred provider in the app.</p>
             <a class="btn" href="govia://payment-complete">Return to GoVia App</a>
           </div>
         </body>
@@ -130,26 +154,48 @@ const handleWebhook = async (req: Request & { rawBody?: string }, res: Response)
   res.status(StatusCodes.OK).json(result);
 };
 
-const getCommission = catchAsync(async (req: Request, res: Response) => {
+const getServiceCharge = catchAsync(async (_req: Request, res: Response) => {
+  const result = await ProviderPaymentService.getServiceChargeSetting();
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Platform service charges retrieved.',
+    data: result,
+  });
+});
+
+const updateServiceCharge = catchAsync(async (req: Request, res: Response) => {
+  const adminId = req.user.id;
+  const result = await ProviderPaymentService.updateServiceChargeSetting(req.body, adminId);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Platform service charges updated successfully.',
+    data: result,
+  });
+});
+
+const getCommission = catchAsync(async (_req: Request, res: Response) => {
   const result = await ProviderPaymentService.getCommissionSetting();
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Commission setting retrieved.',
+    message: 'Commission & service charge settings retrieved.',
     data: result,
   });
 });
 
 const updateCommission = catchAsync(async (req: Request, res: Response) => {
   const adminId = req.user.id;
-  const percent = Number(req.body.platformCommissionPercent);
-  const result = await ProviderPaymentService.updateCommissionSetting(percent, adminId);
+  const result = await ProviderPaymentService.updateServiceChargeSetting(req.body, adminId);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Commission setting updated successfully.',
+    message: 'Settings updated successfully.',
     data: result,
   });
 });
@@ -173,8 +219,12 @@ export const ProviderPaymentController = {
   getPayoutDashboardLink,
   getProviderDirectory,
   createCheckoutSession,
+  createServiceCheckoutSession,
+  selectPreferredProvider,
   verifySession,
   handleWebhook,
+  getServiceCharge,
+  updateServiceCharge,
   getCommission,
   updateCommission,
   getTransactions,

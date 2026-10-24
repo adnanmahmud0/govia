@@ -64,7 +64,7 @@ const items: Array<{
   { href: "/gift-code", label: "Gift Code", Icon: Gift },
   { href: "/subscription", label: "Subscription", Icon: CreditCard },
   { href: "/referrals", label: "Citizen Referrals", Icon: Award },
-  { href: "/provider-finance", label: "Provider Payouts", Icon: DollarSign },
+  { href: "/provider-finance", label: "Service Charges", Icon: DollarSign },
   { href: "/subpoena", label: "Subpoena", Icon: FileSignature },
   { href: "/profile", label: "Profile", Icon: User },
 ];

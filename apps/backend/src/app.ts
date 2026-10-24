@@ -6,6 +6,8 @@ import globalErrorHandler from './app/middlewares/globalErrorHandler';
 import { DocsRoutes } from './docs/docs.router';
 import router, { V1Routes } from './routes';
 import { Morgan } from './shared/morgen';
+import { getPrivacyPolicyHtml } from './app/modules/legal/privacyPolicy.html';
+import { getTermsOfServiceHtml } from './app/modules/legal/termsOfService.html';
 
 const app = express();
 
@@ -58,6 +60,17 @@ app.use('/api/v1', DocsRoutes);
 // Versioned API Routes (/api/v1/* and /api/*)
 app.use('/api', router);
 app.use('/api/v1', V1Routes);
+
+// Public Privacy Policy & Terms of Service (Google Play & Web Compliance)
+app.get(['/privacy-policy', '/privacy', '/api/v1/privacy-policy', '/api/privacy-policy'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(getPrivacyPolicyHtml());
+});
+
+app.get(['/terms-of-service', '/terms', '/api/v1/terms-of-service', '/api/terms-of-service'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(getTermsOfServiceHtml());
+});
 
 // Lightweight Docker & reverse proxy health check
 app.get('/health', (_req: Request, res: Response) => {

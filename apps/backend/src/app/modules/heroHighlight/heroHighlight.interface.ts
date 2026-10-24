@@ -8,12 +8,13 @@ export type IHeroHighlight = {
   agency: string;
   carNumber?: string;
   officerAvatar?: string;
-  respectRating: number;
-  deEscalationRating: number;
-  communicationRating: number;
+  overallRating?: number;
+  respectRating?: number;
+  deEscalationRating?: number;
+  communicationRating?: number;
   whatDidOfficerDoWell: string;
-  incidentDate: Date;
-  incidentLocation: string;
+  incidentDate?: Date;
+  incidentLocation?: string;
   shareWithAgency?: boolean;
   includeInMetrics?: boolean;
   shareWithCourt?: boolean;

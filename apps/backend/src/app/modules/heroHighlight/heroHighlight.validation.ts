@@ -13,33 +13,31 @@ const createHeroHighlightZodSchema = z.object({
     }),
     carNumber: z.string().optional().default(''),
     officerAvatar: z.string().optional(),
+    overallRating: z
+      .number()
+      .min(1, 'Rating must be at least 1')
+      .max(5, 'Rating must be at most 5')
+      .optional(),
     respectRating: z
-      .number({
-        required_error: 'Respect Rating is required',
-      })
+      .number()
       .min(0, 'Rating must be at least 0')
-      .max(10, 'Rating must be at most 10'),
+      .max(10, 'Rating must be at most 10')
+      .optional(),
     deEscalationRating: z
-      .number({
-        required_error: 'De-escalation Rating is required',
-      })
+      .number()
       .min(0, 'Rating must be at least 0')
-      .max(10, 'Rating must be at most 10'),
+      .max(10, 'Rating must be at most 10')
+      .optional(),
     communicationRating: z
-      .number({
-        required_error: 'Communication Rating is required',
-      })
+      .number()
       .min(0, 'Rating must be at least 0')
-      .max(10, 'Rating must be at most 10'),
+      .max(10, 'Rating must be at most 10')
+      .optional(),
     whatDidOfficerDoWell: z.string({
       required_error: 'Feedback is required',
     }),
-    incidentDate: z.string({
-      required_error: 'Incident Date is required',
-    }),
-    incidentLocation: z.string({
-      required_error: 'Incident Location is required',
-    }),
+    incidentDate: z.string().optional(),
+    incidentLocation: z.string().optional(),
     shareWithAgency: z.boolean().optional(),
     includeInMetrics: z.boolean().optional(),
     shareWithCourt: z.boolean().optional(),

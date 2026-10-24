@@ -241,31 +241,8 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
 
           SizedBox(height: 16.h),
 
-          // Step 2: Performance Ratings
-          _buildSectionCard(
-            icon: Icons.star_rounded,
-            title: 'Performance Rating',
-            subtitle: 'Rate the officer conduct during your interaction',
-            children: [
-              Obx(() => _buildRatingSlider(
-                label: 'Respect & Professionalism',
-                value: controller.respectRating.value,
-                onChanged: (val) => controller.respectRating.value = val,
-              )),
-              SizedBox(height: 16.h),
-              Obx(() => _buildRatingSlider(
-                label: 'De-escalation & Calm Conduct',
-                value: controller.deescalationRating.value,
-                onChanged: (val) => controller.deescalationRating.value = val,
-              )),
-              SizedBox(height: 16.h),
-              Obx(() => _buildRatingSlider(
-                label: 'Clear Communication',
-                value: controller.communicationRating.value,
-                onChanged: (val) => controller.communicationRating.value = val,
-              )),
-            ],
-          ),
+          // Step 2: Single Overall Rating (1 to 5)
+          _buildOverallRatingSection(),
 
           SizedBox(height: 16.h),
 
@@ -304,67 +281,79 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
 
           SizedBox(height: 16.h),
 
-          // Step 4: Incident Details
-          _buildSectionCard(
-            icon: Icons.access_time_rounded,
-            title: 'Incident Details',
-            children: [
-              _buildInputField(
-                label: 'Date of Interaction',
-                hint: 'MM/DD/YYYY',
-                controller: controller.dateController,
-                suffixIcon: Icons.calendar_today_outlined,
-              ),
-              SizedBox(height: 14.h),
-              _buildInputField(
-                label: 'Location / Cross Streets',
-                hint: 'e.g. 5th & Elm Street, Downtown',
-                controller: controller.locationController,
-                suffixIcon: Icons.location_on_outlined,
-              ),
-            ],
-          ),
-
-          SizedBox(height: 16.h),
-
-          // Step 5: Sharing Options
-          _buildSectionCard(
-            icon: Icons.send_and_archive_rounded,
-            title: 'Official Notification & Sharing',
-            children: [
-              Obx(() => _buildCheckboxItem(
-                label: "Share with officer's agency leadership",
-                value: controller.shareWithAgency.value,
-                onChanged: (val) => controller.shareWithAgency.value = val ?? false,
-              )),
-              Obx(() => _buildCheckboxItem(
-                label: 'Include in official department metrics',
-                value: controller.includeInMetrics.value,
-                onChanged: (val) => controller.includeInMetrics.value = val ?? false,
-              )),
-              Obx(() => _buildCheckboxItem(
-                label: 'Share with the court record (GPS tagged)',
-                value: controller.shareWithCourt.value,
-                onChanged: (val) => controller.shareWithCourt.value = val ?? false,
-              )),
-            ],
+          // Auto-captured metadata notice
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, color: const Color(0xFF1550A6), size: 16.sp),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    'Incident timestamp and current GPS location are automatically attached to this commendation.',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5.sp,
+                      color: const Color(0xFF475569),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
 
           SizedBox(height: 24.h),
 
           // Submit Button
           Obx(
-            () => CustomButton(
-              text: controller.isSubmitting.value ? 'Submitting Commendation...' : 'Submit Commendation',
-              onPressed: controller.isSubmitting.value ? () {} : () => controller.submitHeroHighlight(),
-              backgroundColor: const Color(0xFF1550A6),
-              borderRadius: 24,
-              icon: Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 18.sp,
-              ),
-            ),
+            () {
+              final isRatingsOff = controller.selectedOfficer.value != null &&
+                  controller.selectedOfficer.value!['allowCitizenRatings'] == false;
+
+              if (isRatingsOff) {
+                return Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(24.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.block_rounded, color: const Color(0xFF64748B), size: 18.sp),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'Ratings Disabled by Officer',
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return CustomButton(
+                text: controller.isSubmitting.value ? 'Submitting Commendation...' : 'Submit Commendation',
+                onPressed: controller.isSubmitting.value ? () {} : () => controller.submitHeroHighlight(),
+                backgroundColor: const Color(0xFF1550A6),
+                borderRadius: 24,
+                icon: Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 18.sp,
+                ),
+              );
+            },
           ),
           SizedBox(height: 32.h),
         ],
@@ -605,6 +594,7 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
 
   // ──────────────────────── VERIFIED OFFICER PROFILE CARD ────────────────────────
   Widget _buildSelectedOfficerCard(Map<String, dynamic> officer) {
+    final allowRatings = officer['allowCitizenRatings'] != false;
     final name = (officer['name'] ?? 'Officer').toString();
     final rank = (officer['rank'] ?? 'Patrol Officer').toString();
     final badge = (officer['badgeNumber'] ?? '').toString();
@@ -733,7 +723,10 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                           _buildWhiteChip('BADGE #${badge.replaceFirst('#', '')}', Icons.verified_rounded),
                         if (car.isNotEmpty && car != 'N/A')
                           _buildWhiteChip('CAR: $car', Icons.directions_car_rounded),
-                        _buildWhiteChip('${rating.toStringAsFixed(1)} ★', Icons.star_rounded),
+                        if (allowRatings)
+                          _buildWhiteChip('${rating.toStringAsFixed(1)} ★', Icons.star_rounded)
+                        else
+                          _buildWhiteChip('Ratings Disabled', Icons.do_not_disturb_on_rounded),
                       ],
                     ),
                   ],
@@ -757,7 +750,7 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                     SizedBox(width: 4.w),
                     Flexible(
                       child: Text(
-                        '$total Commendations',
+                        allowRatings ? '$total Commendations' : 'Ratings Off',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
@@ -796,6 +789,34 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
               ),
             ],
           ),
+
+          if (!allowRatings) ...[
+            SizedBox(height: 12.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: const Color(0xFFDC2626), size: 16.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      'This officer has turned off citizen ratings & reviews.',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF991B1B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -992,6 +1013,7 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
   }
 
   Widget _buildOfficerListItem(Map<String, dynamic> item) {
+    final allowRatings = item['allowCitizenRatings'] != false;
     final name = (item['name'] ?? 'Officer').toString();
     final rank = (item['rank'] ?? 'Patrol Officer').toString();
     final badge = (item['badgeNumber'] ?? '').toString();
@@ -1045,7 +1067,24 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
                     SizedBox(width: 4.w),
                     Icon(Icons.verified_rounded, color: const Color(0xFF10B981), size: 14.sp),
                     SizedBox(width: 6.w),
-                    Text('$rating ★', style: GoogleFonts.inter(fontSize: 11.5.sp, fontWeight: FontWeight.w700, color: const Color(0xFFD97706))),
+                    if (allowRatings)
+                      Text('$rating ★', style: GoogleFonts.inter(fontSize: 11.5.sp, fontWeight: FontWeight.w700, color: const Color(0xFFD97706)))
+                    else
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                        child: Text(
+                          'Ratings Off',
+                          style: GoogleFonts.inter(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 SizedBox(height: 2.h),
@@ -1490,93 +1529,149 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
     );
   }
 
-  Widget _buildRatingSlider({
-    required String label,
-    required double value,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildOverallRatingSection() {
+    return _buildSectionCard(
+      icon: Icons.star_rounded,
+      title: 'Overall Performance Rating',
+      subtitle: 'Select an overall rating from 1 to 5 stars',
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 13.5.sp,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF475569),
-                ),
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(6.r),
-              ),
-              child: Text(
-                '${value.toStringAsFixed(1)} / 10',
-                style: GoogleFonts.inter(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1550A6),
-                ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 4.h),
-        SliderTheme(
-          data: SliderThemeData(
-            activeTrackColor: const Color(0xFF1550A6),
-            inactiveTrackColor: const Color(0xFFE2E8F0),
-            thumbColor: const Color(0xFF1550A6),
-            overlayColor: const Color(0xFF1550A6).withValues(alpha: 0.12),
-            trackHeight: 6.h,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-          ),
-          child: Slider(
-            value: value,
-            min: 1,
-            max: 10,
-            divisions: 18,
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
+        Obx(() {
+          final rating = controller.overallRating.value;
 
-  Widget _buildCheckboxItem({
-    required String label,
-    required bool value,
-    required ValueChanged<bool?>? onChanged,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 2.h),
-      child: Row(
-        children: [
-          Checkbox(
-            value: value,
-            onChanged: onChanged,
-            activeColor: const Color(0xFF1550A6),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.r)),
-          ),
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 13.5.sp,
-                color: const Color(0xFF475569),
-                fontWeight: FontWeight.w500,
+          String description;
+          Color statusColor;
+          if (rating >= 4.8) {
+            description = 'Exceptional Service & Conduct';
+            statusColor = const Color(0xFF16A34A);
+          } else if (rating >= 4.0) {
+            description = 'Great & Professional Conduct';
+            statusColor = const Color(0xFF2563EB);
+          } else if (rating >= 3.0) {
+            description = 'Good & Courteous Conduct';
+            statusColor = const Color(0xFFD97706);
+          } else if (rating >= 2.0) {
+            description = 'Fair / Standard Interaction';
+            statusColor = const Color(0xFFEA580C);
+          } else {
+            description = 'Basic Conduct';
+            statusColor = const Color(0xFFDC2626);
+          }
+
+          return Column(
+            children: [
+              // Rating Badge & Description
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, color: const Color(0xFFF59E0B), size: 18.sp),
+                        SizedBox(width: 4.w),
+                        Text(
+                          '${rating.toStringAsFixed(1)} / 5.0',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
+
+              SizedBox(height: 16.h),
+
+              // Interactive 5 Large Stars
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starIndex = index + 1;
+                  final isFilled = rating >= starIndex;
+                  final isHalf = !isFilled && rating >= (starIndex - 0.5);
+
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      controller.overallRating.value = starIndex.toDouble();
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w),
+                      child: Icon(
+                        isFilled
+                            ? Icons.star_rounded
+                            : (isHalf ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                        color: (isFilled || isHalf) ? const Color(0xFFF59E0B) : const Color(0xFFCBD5E1),
+                        size: 38.sp,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+
+              SizedBox(height: 12.h),
+
+              // Smooth 1 to 5 Slider
+              SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: const Color(0xFF1550A6),
+                  inactiveTrackColor: const Color(0xFFE2E8F0),
+                  thumbColor: const Color(0xFF1550A6),
+                  overlayColor: const Color(0xFF1550A6).withValues(alpha: 0.12),
+                  trackHeight: 6.h,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                ),
+                child: Slider(
+                  value: rating,
+                  min: 1.0,
+                  max: 5.0,
+                  divisions: 8,
+                  onChanged: (val) {
+                    controller.overallRating.value = val;
+                  },
+                ),
+              ),
+
+              // 1 to 5 labels
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('1 Star', style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+                    Text('2', style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+                    Text('3', style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+                    Text('4', style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+                    Text('5 Stars', style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }),
+      ],
     );
   }
 
@@ -1648,8 +1743,9 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
     final location = hero['location']?.toString() ?? '';
     final story = hero['story']?.toString() ?? '';
     final avatar = hero['officerAvatar']?.toString() ?? '';
-    final respect = (hero['respectRating'] as num?)?.toDouble() ?? 9.0;
-    final deesc = (hero['deescalationRating'] as num?)?.toDouble() ?? 9.5;
+    final respect = (hero['respectRating'] as num?)?.toDouble() ?? 5.0;
+    final overall = (hero['overallRating'] as num?)?.toDouble() ??
+        (respect > 5 ? (respect / 2) : respect);
     final likes = (hero['likes'] as num?)?.toInt() ?? 0;
     final isSaluted = hero['saluted'] == true || controller.salutedHeroIds.contains(hero['id']);
     final id = hero['id']?.toString() ?? '';
@@ -1734,12 +1830,32 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
 
           SizedBox(height: 12.h),
 
-          // Rating pills row
+          // Rating pill row
           Row(
             children: [
-              _buildMetricPill('Respect', '${respect.toStringAsFixed(1)}/10', const Color(0xFF1550A6)),
-              SizedBox(width: 8.w),
-              _buildMetricPill('De-escalation', '${deesc.toStringAsFixed(1)}/10', const Color(0xFF0D9488)),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star_rounded, color: const Color(0xFFD97706), size: 15.sp),
+                    SizedBox(width: 4.w),
+                    Text(
+                      '${overall.toStringAsFixed(1)} / 5 Overall Rating',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFB45309),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               if (location.isNotEmpty) ...[
                 const Spacer(),
                 Icon(Icons.location_on_outlined, size: 13.sp, color: const Color(0xFF94A3B8)),
@@ -1802,20 +1918,6 @@ class HighlightHeroView extends GetView<HighlightHeroController> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMetricPill(String label, String value, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: Text(
-        '$label: $value',
-        style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }

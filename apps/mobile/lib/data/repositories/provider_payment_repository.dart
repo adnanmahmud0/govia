@@ -5,6 +5,7 @@ import 'package:gsabino365/data/models/provider_directory_item.dart';
 
 class ProviderPaymentRepository {
   final ApiClient apiClient;
+  String? lastErrorMessage;
 
   ProviderPaymentRepository({required this.apiClient});
 
@@ -40,6 +41,64 @@ class ProviderPaymentRepository {
     return [];
   }
 
+  /// GET /provider-payment/service-charge
+  Future<Map<String, dynamic>?> getServiceChargeSettings() async {
+    try {
+      final response = await apiClient.getData(ApiConstants.providerServiceCharge);
+      if (response.statusCode == 200 && response.data?['data'] != null) {
+        return Map<String, dynamic>.from(response.data['data']);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// POST /provider-payment/service-checkout
+  Future<Map<String, dynamic>?> createServiceCheckoutSession({
+    required String role,
+    String? providerId,
+  }) async {
+    lastErrorMessage = null;
+    final payload = <String, dynamic>{
+      'role': role,
+    };
+    if (providerId != null && providerId.isNotEmpty) {
+      payload['providerId'] = providerId;
+    }
+    final response = await apiClient.postData(
+      ApiConstants.providerServiceCheckout,
+      payload,
+    );
+    if (response.statusCode == 200 && response.data?['data'] != null) {
+      return Map<String, dynamic>.from(response.data['data']);
+    }
+    lastErrorMessage = response.data?['message']?.toString() ??
+        'Failed to initialize service checkout session.';
+    return null;
+  }
+
+  /// POST /provider-payment/select-preferred
+  Future<Map<String, dynamic>?> selectPreferredProvider({
+    required String providerId,
+    required String role,
+  }) async {
+    lastErrorMessage = null;
+    final response = await apiClient.postData(
+      ApiConstants.providerSelectPreferred,
+      {
+        'providerId': providerId,
+        'role': role,
+      },
+    );
+    if (response.statusCode == 200 && response.data != null) {
+      return response.data['data'] != null
+          ? Map<String, dynamic>.from(response.data['data'])
+          : <String, dynamic>{};
+    }
+    lastErrorMessage = response.data?['message']?.toString() ??
+        'Could not link preferred provider.';
+    return null;
+  }
+
   /// GET /provider-payment/pricing-profile
   Future<Map<String, dynamic>?> getPricingProfile() async {
     final response = await apiClient.getData(ApiConstants.providerPricingProfile);
@@ -49,8 +108,6 @@ class ProviderPaymentRepository {
     return null;
   }
 
-  String? lastErrorMessage;
-
   /// PATCH /provider-payment/pricing-profile
   Future<Response> updatePricingProfile({
     double? serviceFee,
@@ -58,56 +115,22 @@ class ProviderPaymentRepository {
     String? shortDescription,
   }) async {
     final data = <String, dynamic>{};
-    if (serviceFee != null) data['serviceFee'] = serviceFee;
-    if (monthlyServiceFee != null) data['monthlyServiceFee'] = monthlyServiceFee;
     if (shortDescription != null) data['shortDescription'] = shortDescription;
 
     final res = await apiClient.patchData(ApiConstants.providerPricingProfile, data);
     if (res.statusCode != 200) {
-      // Fallback to putData if backend accepts PUT
       return await apiClient.putData(ApiConstants.providerPricingProfile, data);
     }
     return res;
   }
 
-  /// POST /provider-payment/payout/onboard
-  Future<Map<String, dynamic>?> createPayoutAccount() async {
-    lastErrorMessage = null;
-    final response = await apiClient.postData(ApiConstants.providerPayoutAccount, {});
-    if (response.statusCode == 200 && response.data?['data'] != null) {
-      return Map<String, dynamic>.from(response.data['data']);
-    }
-    lastErrorMessage = response.data?['message']?.toString() ??
-        'Failed to generate Stripe onboarding link (Status: ${response.statusCode})';
-    return null;
-  }
-
-  /// GET /provider-payment/payout/status
-  Future<Map<String, dynamic>?> getPayoutStatus() async {
-    final response = await apiClient.getData(ApiConstants.providerPayoutStatus);
-    if (response.statusCode == 200 && response.data?['data'] != null) {
-      return Map<String, dynamic>.from(response.data['data']);
-    }
-    return null;
-  }
-
-  /// GET /provider-payment/payout/dashboard-link
-  Future<String?> getPayoutDashboardLink() async {
-    lastErrorMessage = null;
-    final response = await apiClient.getData(ApiConstants.providerPayoutDashboard);
-    if (response.statusCode == 200 && response.data?['data'] != null) {
-      return response.data['data']['url']?.toString();
-    }
-    lastErrorMessage = response.data?['message']?.toString() ??
-        'Could not load Stripe dashboard link (Status: ${response.statusCode})';
-    return null;
-  }
-
-  /// POST /provider-payment/checkout-session
-  Future<Map<String, dynamic>?> createCheckoutSession(String providerId) async {
+  /// POST /provider-payment/checkout-session (Backward-compatible)
+  Future<Map<String, dynamic>?> createCheckoutSession(String providerId, {String? role}) async {
+    final payload = <String, dynamic>{'providerId': providerId};
+    if (role != null) payload['role'] = role;
     final response = await apiClient.postData(
       ApiConstants.providerCheckoutSession,
-      {'providerId': providerId},
+      payload,
     );
     if (response.statusCode == 200 && response.data?['data'] != null) {
       return Map<String, dynamic>.from(response.data['data']);
@@ -117,13 +140,17 @@ class ProviderPaymentRepository {
 
   /// POST /provider-payment/verify-session
   Future<Map<String, dynamic>?> verifySession(String sessionId) async {
-    final response = await apiClient.postData(
-      ApiConstants.providerVerifySession,
-      {'sessionId': sessionId},
+    final response = await apiClient.getData(
+      '${ApiConstants.providerVerifySession}/$sessionId',
     );
     if (response.statusCode == 200 && response.data?['data'] != null) {
       return Map<String, dynamic>.from(response.data['data']);
     }
     return null;
   }
+
+  // Deprecated payout stubs
+  Future<Map<String, dynamic>?> createPayoutAccount() async => null;
+  Future<Map<String, dynamic>?> getPayoutStatus() async => {'payoutsEnabled': false};
+  Future<String?> getPayoutDashboardLink() async => null;
 }

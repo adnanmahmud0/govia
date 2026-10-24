@@ -25,13 +25,14 @@ const getStripe = (): Stripe => {
   return stripeClient;
 };
 
-// ─── 1. Provider Pricing & Bio Profile ──────────────────────────────────
+// ─── 1. Provider Profile Bio (Service Pricing removed) ─────────────────────
 const updatePricingProfile = async (
   userId: string,
   payload: {
+    shortDescription?: string;
+    // serviceFee and monthlyServiceFee are ignored as providers cannot set their fees
     serviceFee?: number;
     monthlyServiceFee?: number;
-    shortDescription?: string;
   }
 ) => {
   const user = await User.findById(userId);
@@ -43,141 +44,56 @@ const updatePricingProfile = async (
   if (role !== USER_ROLES.ATTORNEY && role !== USER_ROLES.BAIL_BONDSMAN) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
-      'Only Attorneys and Bail Bondsmen can set service pricing.'
+      'Only Attorneys and Bail Bondsmen can access provider profile settings.'
     );
   }
 
-  if (payload.serviceFee !== undefined) user.serviceFee = payload.serviceFee;
-  if (payload.monthlyServiceFee !== undefined) user.monthlyServiceFee = payload.monthlyServiceFee;
-  if (payload.shortDescription !== undefined) user.shortDescription = payload.shortDescription;
+  if (payload.shortDescription !== undefined) {
+    user.shortDescription = payload.shortDescription;
+  }
 
   await user.save();
   return user;
 };
 
-// ─── 2. Stripe Connect Express Onboarding ──────────────────────────────
+// ─── 2. Payouts Deprecation / No-Op Handlers ──────────────────────────────
 const createStripeExpressAccount = async (
-  userId: string,
-  returnUrl?: string
+  _userId: string,
+  _returnUrl?: string
 ) => {
-  const stripe = getStripe();
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'User not found.');
-  }
-
-  const role = user.role?.toUpperCase();
-  if (role !== USER_ROLES.ATTORNEY && role !== USER_ROLES.BAIL_BONDSMAN) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Only Attorneys and Bail Bondsmen can onboard with Stripe Connect.'
-    );
-  }
-
-  let accountId = user.stripeAccountId;
-
-  if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: 'express',
-      country: 'US',
-      email: user.email,
-      business_type: 'individual',
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-      metadata: {
-        userId: user._id.toString(),
-        role: user.role,
-        name: user.name,
-      },
-    });
-
-    accountId = account.id;
-    user.stripeAccountId = accountId;
-    user.stripeAccountStatus = 'PENDING';
-    await user.save();
-  }
-
-  // Generate Stripe Connect onboarding Account Link
-  const baseAppUrl = returnUrl || 'https://api.govia.org/api/v1/provider/payout/onboard-callback';
-  const accountLink = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${baseAppUrl}?status=refresh&userId=${userId}`,
-    return_url: `${baseAppUrl}?status=return&userId=${userId}`,
-    type: 'account_onboarding',
-  });
-
   return {
-    accountId,
-    onboardingUrl: accountLink.url,
+    message: 'Provider payouts and Stripe Connect onboarding are disabled on this platform.',
+    accountId: '',
+    onboardingUrl: '',
   };
 };
 
-const getStripeAccountStatus = async (userId: string) => {
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'User not found.');
-  }
-
-  if (!user.stripeAccountId) {
-    return {
-      hasAccount: false,
-      onboarded: false,
-      payoutsEnabled: false,
-      status: 'NOT_CREATED',
-    };
-  }
-
-  const stripe = getStripe();
-  try {
-    const account = await stripe.accounts.retrieve(user.stripeAccountId);
-    const payoutsEnabled = account.payouts_enabled ?? false;
-    const detailsSubmitted = account.details_submitted ?? false;
-
-    user.payoutsEnabled = payoutsEnabled;
-    user.stripeAccountStatus = payoutsEnabled
-      ? 'ACTIVE'
-      : detailsSubmitted
-      ? 'PENDING'
-      : 'RESTRICTED';
-    await user.save();
-
-    return {
-      hasAccount: true,
-      accountId: user.stripeAccountId,
-      onboarded: detailsSubmitted,
-      payoutsEnabled,
-      status: user.stripeAccountStatus,
-      defaultCurrency: account.default_currency || 'usd',
-    };
-  } catch (e: unknown) {
-    logger.error('Error fetching Stripe account status:', e);
-    return {
-      hasAccount: true,
-      accountId: user.stripeAccountId,
-      onboarded: false,
-      payoutsEnabled: false,
-      status: user.stripeAccountStatus || 'PENDING',
-    };
-  }
+const getStripeAccountStatus = async (_userId: string) => {
+  return {
+    hasAccount: false,
+    onboarded: false,
+    payoutsEnabled: false,
+    status: 'DISABLED',
+  };
 };
 
-const getStripeDashboardLink = async (userId: string) => {
-  const user = await User.findById(userId);
-  if (!user || !user.stripeAccountId) {
-    throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-      'No Stripe account found. Please set up payouts first.'
-    );
-  }
-
-  const stripe = getStripe();
-  const loginLink = await stripe.accounts.createLoginLink(user.stripeAccountId);
-  return { url: loginLink.url };
+const getStripeDashboardLink = async (_userId: string) => {
+  return {
+    url: '',
+    message: 'Provider payout dashboard is disabled.',
+  };
 };
 
-// ─── 3. Public Marketplace Directory for Citizens ──────────────────────
+const processEncounterAutoPayout = async (
+  _meetingId: string,
+  _hostCitizenId: string,
+  _providerUserId: string
+) => {
+  // Payout transfer logic removed - all service charges are managed centrally via Admin.
+  return;
+};
+
+// ─── 3. Public Directory for Citizens ──────────────────────────────────
 const getProviderDirectory = async (query: {
   role?: string;
   state?: string;
@@ -217,14 +133,13 @@ const getProviderDirectory = async (query: {
   const total = await User.countDocuments(filter);
   const providers = await User.find(filter)
     .select(
-      'name role email image phoneNumber lawFirmName companyName officeName barAssociationNumber specialization licensedStatesToPractice serviceFee monthlyServiceFee shortDescription stripeAccountId payoutsEnabled createdAt'
+      'name role email image phoneNumber lawFirmName companyName officeName barAssociationNumber specialization licensedStatesToPractice shortDescription createdAt'
     )
-    .sort({ payoutsEnabled: -1, monthlyServiceFee: -1, createdAt: -1 })
+    .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
 
   const formatted = providers.map((p) => {
-    // Generate reliable star rating & review count for display
     const hash = p._id.toString().split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     const rating = (4.7 + (hash % 4) * 0.1).toFixed(1);
     const reviewsCount = 18 + (hash % 85);
@@ -236,17 +151,17 @@ const getProviderDirectory = async (query: {
       image: p.image || '',
       company: p.lawFirmName || p.companyName || p.officeName || 'Independent Practice',
       licenseNumber: p.barAssociationNumber || '',
-      specialization: p.specialization || (p.role === 'ATTORNEY' ? 'Civil Rights & Criminal Defense' : '24/7 Bail Bond Underwriting'),
+      specialization:
+        p.specialization ||
+        (p.role === 'ATTORNEY' ? 'Civil Rights & Criminal Defense' : '24/7 Bail Bond Underwriting'),
       licensedStates: p.licensedStatesToPractice || 'Nationwide Coverage',
-      serviceFee: p.serviceFee ?? 0,
-      monthlyServiceFee: p.monthlyServiceFee ?? 0,
       shortDescription:
         p.shortDescription && p.shortDescription.trim().length > 0
           ? p.shortDescription
           : p.role === 'ATTORNEY'
           ? 'Dedicated legal counsel providing instant roadside emergency guidance and defense representation.'
           : 'Rapid-response licensed bail bond agency available 24/7 for immediate release assistance.',
-      isStripeVerified: Boolean(p.payoutsEnabled),
+      isStripeVerified: true,
       rating: parseFloat(rating),
       reviewsCount,
     };
@@ -263,35 +178,77 @@ const getProviderDirectory = async (query: {
   };
 };
 
-// ─── 4. Platform Commission Management ──────────────────────────────────
-const getCommissionSetting = async () => {
+// ─── 4. Admin Platform Service Charges & Commission Management ───────────
+const getServiceChargeSetting = async () => {
   let setting = await CommissionSetting.findOne();
   if (!setting) {
-    setting = await CommissionSetting.create({ platformCommissionPercent: 10 });
+    setting = await CommissionSetting.create({
+      attorneyServiceFee: 50,
+      bailBondsmanServiceFee: 30,
+      platformCommissionPercent: 10,
+    });
+  } else {
+    // Ensure default values if older schema had nulls
+    let changed = false;
+    if (setting.attorneyServiceFee === undefined || setting.attorneyServiceFee === null) {
+      setting.attorneyServiceFee = 50;
+      changed = true;
+    }
+    if (setting.bailBondsmanServiceFee === undefined || setting.bailBondsmanServiceFee === null) {
+      setting.bailBondsmanServiceFee = 30;
+      changed = true;
+    }
+    if (changed) await setting.save();
   }
   return setting;
 };
 
-const updateCommissionSetting = async (percent: number, adminId: string) => {
+const updateServiceChargeSetting = async (
+  payload: {
+    attorneyServiceFee?: number;
+    bailBondsmanServiceFee?: number;
+    platformCommissionPercent?: number;
+  },
+  adminId: string
+) => {
   let setting = await CommissionSetting.findOne();
   if (!setting) {
     setting = await CommissionSetting.create({
-      platformCommissionPercent: percent,
+      attorneyServiceFee: payload.attorneyServiceFee ?? 50,
+      bailBondsmanServiceFee: payload.bailBondsmanServiceFee ?? 30,
+      platformCommissionPercent: payload.platformCommissionPercent ?? 10,
       updatedBy: new Types.ObjectId(adminId),
     });
   } else {
-    setting.platformCommissionPercent = percent;
+    if (payload.attorneyServiceFee !== undefined) {
+      setting.attorneyServiceFee = payload.attorneyServiceFee;
+    }
+    if (payload.bailBondsmanServiceFee !== undefined) {
+      setting.bailBondsmanServiceFee = payload.bailBondsmanServiceFee;
+    }
+    if (payload.platformCommissionPercent !== undefined) {
+      setting.platformCommissionPercent = payload.platformCommissionPercent;
+    }
     setting.updatedBy = new Types.ObjectId(adminId);
     await setting.save();
   }
   return setting;
 };
 
-// ─── 5. Citizen Checkout Session Creation ──────────────────────────────
-const createCheckoutSession = async (
+const getCommissionSetting = async () => {
+  return getServiceChargeSetting();
+};
+
+const updateCommissionSetting = async (percent: number, adminId: string) => {
+  return updateServiceChargeSetting({ platformCommissionPercent: percent }, adminId);
+};
+
+// ─── 5. Citizen Service Checkout Session Creation ───────────────────────
+const createServiceCheckoutSession = async (
   citizenId: string,
   payload: {
-    providerId: string;
+    role: 'ATTORNEY' | 'BAIL_BONDSMAN';
+    providerId?: string;
     successUrl?: string;
     cancelUrl?: string;
   }
@@ -302,31 +259,24 @@ const createCheckoutSession = async (
     throw new ApiError(StatusCodes.NOT_FOUND, 'Citizen user not found.');
   }
 
-  const provider = await User.findById(payload.providerId);
-  if (!provider) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Selected provider not found.');
-  }
-
-  const role = provider.role?.toUpperCase();
+  const role = payload.role.toUpperCase() as 'ATTORNEY' | 'BAIL_BONDSMAN';
   if (role !== USER_ROLES.ATTORNEY && role !== USER_ROLES.BAIL_BONDSMAN) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      'Selected user is not an Attorney or Bail Bondsman.'
+      'Invalid role. Must be ATTORNEY or BAIL_BONDSMAN.'
     );
   }
 
-  const monthlyFee = Number(provider.monthlyServiceFee) || 0;
-  if (monthlyFee <= 0) {
+  const setting = await getServiceChargeSetting();
+  const serviceFee =
+    role === 'ATTORNEY' ? setting.attorneyServiceFee : setting.bailBondsmanServiceFee;
+
+  if (serviceFee <= 0) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      'This provider has not set a monthly service charge.'
+      'Service charge has not been configured by platform admin.'
     );
   }
-
-  const commissionSetting = await getCommissionSetting();
-  const commissionRate = commissionSetting.platformCommissionPercent / 100;
-  const platformFee = parseFloat((monthlyFee * commissionRate).toFixed(2));
-  const providerAmount = parseFloat((monthlyFee - platformFee).toFixed(2));
 
   const roleTitle = role === 'ATTORNEY' ? 'Attorney' : 'Bail Bondsman';
   const transactionId = `TX-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -343,11 +293,10 @@ const createCheckoutSession = async (
         price_data: {
           currency: 'usd',
           product_data: {
-            name: `Preferred ${roleTitle}: ${provider.name}`,
-            description: `Monthly retainer for 24/7 priority emergency dispatch on GoVia.`,
-            images: provider.image ? [provider.image] : [],
+            name: `GoVia Preferred ${roleTitle} Protection Service`,
+            description: `30-Day Platform Service Charge to retain a Preferred ${roleTitle} for 24/7 priority emergency dispatch.`,
           },
-          unit_amount: Math.round(monthlyFee * 100),
+          unit_amount: Math.round(serviceFee * 100),
         },
         quantity: 1,
       },
@@ -359,12 +308,12 @@ const createCheckoutSession = async (
     metadata: {
       transactionId,
       citizenId: citizen._id.toString(),
-      providerId: provider._id.toString(),
+      providerId: payload.providerId || '',
       role,
-      type: 'MONTHLY_RETAINER',
-      grossAmount: monthlyFee.toString(),
-      platformFee: platformFee.toString(),
-      providerAmount: providerAmount.toString(),
+      type: 'SERVICE_CHARGE',
+      grossAmount: serviceFee.toString(),
+      platformFee: serviceFee.toString(),
+      providerAmount: '0',
     },
   });
 
@@ -372,12 +321,12 @@ const createCheckoutSession = async (
   await ProviderTransaction.create({
     transactionId,
     citizenId: citizen._id,
-    providerId: provider._id,
-    role: role as 'ATTORNEY' | 'BAIL_BONDSMAN',
-    type: 'MONTHLY_RETAINER',
-    grossAmount: monthlyFee,
-    platformFee,
-    providerAmount,
+    providerId: payload.providerId ? new Types.ObjectId(payload.providerId) : undefined,
+    role,
+    type: 'SERVICE_CHARGE',
+    grossAmount: serviceFee,
+    platformFee: serviceFee,
+    providerAmount: 0,
     currency: 'usd',
     status: 'PENDING',
     stripeSessionId: session.id,
@@ -388,10 +337,40 @@ const createCheckoutSession = async (
     sessionUrl: session.url,
     checkoutUrl: session.url,
     transactionId,
+    serviceFee,
   };
 };
 
-// ─── 6. Verify Session & Activate Provider ─────────────────────────────
+// Backward-compatible checkout session caller
+const createCheckoutSession = async (
+  citizenId: string,
+  payload: {
+    providerId?: string;
+    role?: 'ATTORNEY' | 'BAIL_BONDSMAN';
+    successUrl?: string;
+    cancelUrl?: string;
+  }
+) => {
+  let targetRole: 'ATTORNEY' | 'BAIL_BONDSMAN' = payload.role || 'ATTORNEY';
+
+  if (!payload.role && payload.providerId) {
+    const prov = await User.findById(payload.providerId);
+    if (prov?.role === USER_ROLES.BAIL_BONDSMAN) {
+      targetRole = 'BAIL_BONDSMAN';
+    } else {
+      targetRole = 'ATTORNEY';
+    }
+  }
+
+  return createServiceCheckoutSession(citizenId, {
+    role: targetRole,
+    providerId: payload.providerId,
+    successUrl: payload.successUrl,
+    cancelUrl: payload.cancelUrl,
+  });
+};
+
+// ─── 6. Verify Session & Activate Service Coverage ─────────────────────
 const verifyAndActivateSession = async (citizenId: string, sessionId: string) => {
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -419,16 +398,14 @@ const verifyAndActivateSession = async (citizenId: string, sessionId: string) =>
     return {
       success: true,
       isPaid: true,
-      message: 'Provider is already activated.',
+      message: 'Service coverage is already active.',
       transaction,
     };
   }
 
-  const provider = await User.findById(transaction.providerId);
   const citizen = await User.findById(transaction.citizenId);
-
-  if (!citizen || !provider) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Citizen or provider not found.');
+  if (!citizen) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Citizen user not found.');
   }
 
   // Mark transaction complete
@@ -442,198 +419,160 @@ const verifyAndActivateSession = async (citizenId: string, sessionId: string) =>
       : session.payment_intent?.id;
   transaction.periodStart = now;
   transaction.periodEnd = periodEnd;
+  await transaction.save();
 
-  // Activate on citizen profile
+  // Activate coverage dates on citizen profile
   if (transaction.role === 'ATTORNEY') {
-    citizen.preferredAttorney = provider._id.toString();
     citizen.preferredAttorneyActiveUntil = periodEnd;
+    if (transaction.providerId) {
+      citizen.preferredAttorney = transaction.providerId.toString();
+    }
   } else {
-    citizen.preferredBailBondsman = provider._id.toString();
     citizen.preferredBailBondsmanActiveUntil = periodEnd;
+    if (transaction.providerId) {
+      citizen.preferredBailBondsman = transaction.providerId.toString();
+    }
   }
   await citizen.save();
 
-  // Execute payout transfer to provider's connected Stripe account if ready
-  if (provider.stripeAccountId && provider.payoutsEnabled && transaction.providerAmount > 0) {
-    try {
-      const transfer = await stripe.transfers.create({
-        amount: Math.round(transaction.providerAmount * 100),
-        currency: 'usd',
-        destination: provider.stripeAccountId,
-        description: `Monthly Retainer from ${citizen.name} (Ref: ${transaction.transactionId})`,
-        metadata: {
-          transactionId: transaction.transactionId,
-          citizenId: citizen._id.toString(),
-        },
-      });
-      transaction.stripeTransferId = transfer.id;
-    } catch (transferErr: unknown) {
-      logger.error('⚠️ Stripe Connect Transfer error for retainer:', transferErr);
-      transaction.failureReason = transferErr instanceof Error ? transferErr.message : 'Transfer failed';
-    }
-  }
+  // Payout transfer logic removed: 100% of service charge is retained by GoVia platform
 
-  await transaction.save();
+  const roleLabel = transaction.role === 'ATTORNEY' ? 'Attorney' : 'Bail Bondsman';
 
-  // Send real-time notification to provider
+  // Send real-time notification to citizen
   try {
-    const roleLabel = transaction.role === 'ATTORNEY' ? 'Attorney' : 'Bail Bondsman';
     await NotificationService.createNotification({
-      userId: provider._id.toString(),
+      userId: citizen._id.toString(),
       type: 'PAYMENT_RECEIVED',
-      title: 'New Preferred Retainer Activated! 💼',
-      subtitle: `${citizen.name} has retained you as their Preferred ${roleLabel}. Payout: $${transaction.providerAmount.toFixed(2)}.`,
-      resourceType: 'payout',
+      title: `${roleLabel} Protection Service Active! 🛡️`,
+      subtitle: `Your Preferred ${roleLabel} protection coverage is active for the next 30 days. You can now select your preferred provider.`,
+      resourceType: 'system',
       resourceId: transaction.transactionId,
       metadata: {
         transactionId: transaction.transactionId,
-        amount: transaction.providerAmount,
-        citizenName: citizen.name,
+        amount: transaction.grossAmount,
+        activeUntil: periodEnd.toISOString(),
       },
     });
 
-    socketHelper.emitToUser(provider._id.toString(), 'preferred_provider_activated', {
+    socketHelper.emitToUser(citizen._id.toString(), 'service_coverage_activated', {
+      role: transaction.role,
+      activeUntil: periodEnd.toISOString(),
       transactionId: transaction.transactionId,
-      citizen: {
-        id: citizen._id.toString(),
-        name: citizen.name,
-      },
-      amount: transaction.providerAmount,
     });
   } catch (notifErr) {
-    logger.warn('Non-fatal: notification failed:', notifErr);
+    logger.warn('Non-fatal notification error:', notifErr);
   }
 
   return {
     success: true,
     isPaid: true,
-    message: 'Preferred provider successfully activated!',
+    message: `Preferred ${roleLabel} service coverage successfully activated!`,
     transaction,
   };
 };
 
-// ─── 7. Auto-Payout on Meeting End (Encounter Service Fee) ───────────────
-const processEncounterAutoPayout = async (
-  meetingId: string,
-  hostCitizenId: string,
-  providerUserId: string
+// ─── 7. Gated Preferred Provider Selection ─────────────────────────────
+const selectPreferredProvider = async (
+  citizenId: string,
+  payload: {
+    providerId: string;
+    role: 'ATTORNEY' | 'BAIL_BONDSMAN';
+  }
 ) => {
+  const citizen = await User.findById(citizenId);
+  if (!citizen) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Citizen user not found.');
+  }
+
+  const role = payload.role.toUpperCase() as 'ATTORNEY' | 'BAIL_BONDSMAN';
+  const roleLabel = role === 'ATTORNEY' ? 'Attorney' : 'Bail Bondsman';
+
+  // Check active coverage
+  const now = new Date();
+  const coverageEnd =
+    role === 'ATTORNEY'
+      ? citizen.preferredAttorneyActiveUntil
+      : citizen.preferredBailBondsmanActiveUntil;
+
+  const isCovered = coverageEnd && new Date(coverageEnd) > now;
+  if (!isCovered) {
+    throw new ApiError(
+      StatusCodes.PAYMENT_REQUIRED,
+      `Active ${roleLabel} service coverage required. Please pay the service charge in the app before setting your preferred provider.`
+    );
+  }
+
+  const provider = await User.findById(payload.providerId);
+  if (!provider) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Selected provider not found.');
+  }
+
+  if (provider.role !== role) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Selected provider is not an ${roleLabel}.`
+    );
+  }
+
+  if (role === 'ATTORNEY') {
+    citizen.preferredAttorney = provider._id.toString();
+  } else {
+    citizen.preferredBailBondsman = provider._id.toString();
+  }
+
+  await citizen.save();
+
+  // Notify provider
   try {
-    const provider = await User.findById(providerUserId);
-    const citizen = await User.findById(hostCitizenId);
-
-    if (!provider || !citizen) return;
-
-    const role = provider.role?.toUpperCase();
-    if (role !== USER_ROLES.ATTORNEY && role !== USER_ROLES.BAIL_BONDSMAN) return;
-
-    const serviceFee = Number(provider.serviceFee) || 0;
-    if (serviceFee <= 0) return;
-
-    // Check if provider has active Stripe payouts
-    if (!provider.stripeAccountId || !provider.payoutsEnabled) {
-      logger.warn(`⚠️ Cannot auto-payout provider ${provider._id}: Stripe payouts not enabled.`);
-      return;
-    }
-
-    const commissionSetting = await getCommissionSetting();
-    const commissionRate = commissionSetting.platformCommissionPercent / 100;
-    const platformFee = parseFloat((serviceFee * commissionRate).toFixed(2));
-    const providerAmount = parseFloat((serviceFee - platformFee).toFixed(2));
-
-    const transactionId = `ENC-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    const stripe = getStripe();
-
-    const transfer = await stripe.transfers.create({
-      amount: Math.round(providerAmount * 100),
-      currency: 'usd',
-      destination: provider.stripeAccountId,
-      description: `Emergency Encounter fee from ${citizen.name} (Call #${meetingId.slice(-6)})`,
-      metadata: {
-        meetingId,
-        transactionId,
-        citizenId: citizen._id.toString(),
-        type: 'ENCOUNTER_FEE',
-      },
-    });
-
-    const transaction = await ProviderTransaction.create({
-      transactionId,
-      citizenId: citizen._id,
-      providerId: provider._id,
-      role: role as 'ATTORNEY' | 'BAIL_BONDSMAN',
-      type: 'ENCOUNTER_FEE',
-      grossAmount: serviceFee,
-      platformFee,
-      providerAmount,
-      currency: 'usd',
-      status: 'COMPLETED',
-      stripeTransferId: transfer.id,
-      meetingId: new Types.ObjectId(meetingId),
-    });
-
-    logger.info(`✅ Auto-payout transferred $${providerAmount} to ${provider.name} for meeting ${meetingId} (tx: ${transaction.transactionId})`);
-
-    // Notify provider
     await NotificationService.createNotification({
       userId: provider._id.toString(),
-      type: 'PAYMENT_RECEIVED',
-      title: 'Encounter Payout Deposited! 💰',
-      subtitle: `You earned $${providerAmount.toFixed(2)} for emergency encounter consultation #${meetingId.slice(-6)}.`,
-      resourceType: 'payout',
-      resourceId: transactionId,
-      metadata: {
-        transactionId,
-        amount: providerAmount,
-        meetingId,
-      },
+      type: 'SYSTEM',
+      title: 'Designated Preferred Provider 🤝',
+      subtitle: `${citizen.name} has selected you as their Preferred ${roleLabel} for 24/7 priority emergency dispatch.`,
+      resourceType: 'system',
+      resourceId: citizen._id.toString(),
     });
 
-    socketHelper.emitToUser(provider._id.toString(), 'encounter_payout_completed', {
-      transactionId,
-      amount: providerAmount,
-      meetingId,
+    socketHelper.emitToUser(provider._id.toString(), 'preferred_provider_linked', {
+      citizen: {
+        id: citizen._id.toString(),
+        name: citizen.name,
+      },
+      role,
     });
-  } catch (error: unknown) {
-    logger.error('⚠️ processEncounterAutoPayout error:', error);
+  } catch (err) {
+    logger.warn('Non-fatal notification error:', err);
   }
+
+  return {
+    success: true,
+    message: `Successfully linked ${provider.name} as your Preferred ${roleLabel}.`,
+    preferredProvider: {
+      id: provider._id.toString(),
+      name: provider.name,
+      role: provider.role,
+      image: provider.image,
+      company: provider.lawFirmName || provider.companyName || provider.officeName,
+    },
+  };
 };
 
 // ─── 8. Stripe Webhook Handler ─────────────────────────────────────────
 const handleStripeWebhook = async (signature: string, rawBody: Buffer | string) => {
   const stripe = getStripe();
   const webhookSecret = config.stripe.webhookSecret;
-  const connectWebhookSecret = config.stripe.connectWebhookSecret;
 
   let event: Stripe.Event | null = null;
 
-  if (webhookSecret || connectWebhookSecret) {
-    if (webhookSecret) {
-      try {
-        event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-      } catch (err: unknown) {
-        if (connectWebhookSecret) {
-          try {
-            event = stripe.webhooks.constructEvent(rawBody, signature, connectWebhookSecret);
-          } catch {
-            logger.error('⚠️ Stripe Webhook signature verification failed for both account and connect secrets.');
-            throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid webhook signature.');
-          }
-        } else {
-          logger.error('⚠️ Stripe Webhook signature verification failed:', err);
-          throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid webhook signature.');
-        }
-      }
-    } else if (connectWebhookSecret) {
-      try {
-        event = stripe.webhooks.constructEvent(rawBody, signature, connectWebhookSecret);
-      } catch (err: unknown) {
-        logger.error('⚠️ Stripe Connect Webhook signature verification failed:', err);
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid connect webhook signature.');
-      }
+  if (webhookSecret) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    } catch (err: unknown) {
+      logger.error('⚠️ Stripe Webhook signature verification failed:', err);
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid webhook signature.');
     }
   } else {
-    // If webhook secrets not configured yet, parse body safely for test mode
     try {
       event = JSON.parse(rawBody.toString()) as Stripe.Event;
     } catch {
@@ -655,37 +594,6 @@ const handleStripeWebhook = async (signature: string, rawBody: Buffer | string) 
       break;
     }
 
-    case 'account.updated': {
-      const account = event.data.object as Stripe.Account;
-      const userId = account.metadata?.userId;
-      if (userId) {
-        const user = await User.findById(userId);
-        if (user) {
-          user.payoutsEnabled = account.payouts_enabled ?? false;
-          user.stripeAccountStatus = account.payouts_enabled
-            ? 'ACTIVE'
-            : account.details_submitted
-            ? 'PENDING'
-            : 'RESTRICTED';
-          await user.save();
-          logger.info(`Updated Stripe status for provider ${user.name}: ${user.stripeAccountStatus}`);
-        }
-      }
-      break;
-    }
-
-    case 'payout.paid': {
-      const payout = event.data.object as Stripe.Payout;
-      logger.info(`💰 Stripe Express Payout successfully deposited: $${((payout.amount || 0) / 100).toFixed(2)} (${payout.id})`);
-      break;
-    }
-
-    case 'payout.failed': {
-      const payout = event.data.object as Stripe.Payout;
-      logger.warn(`⚠️ Stripe Express Payout failed: $${((payout.amount || 0) / 100).toFixed(2)} (${payout.id}): ${payout.failure_message}`);
-      break;
-    }
-
     default:
       logger.info(`Unhandled Stripe webhook event: ${event.type}`);
   }
@@ -693,7 +601,7 @@ const handleStripeWebhook = async (signature: string, rawBody: Buffer | string) 
   return { received: true };
 };
 
-// ─── 9. Transactions Listing for Admin & Providers ─────────────────────
+// ─── 9. Transactions Listing for Admin & Citizens ──────────────────────
 const getTransactions = async (query: {
   userId?: string;
   role?: string;
@@ -742,10 +650,14 @@ export const ProviderPaymentService = {
   getStripeAccountStatus,
   getStripeDashboardLink,
   getProviderDirectory,
+  getServiceChargeSetting,
+  updateServiceChargeSetting,
   getCommissionSetting,
   updateCommissionSetting,
+  createServiceCheckoutSession,
   createCheckoutSession,
   verifyAndActivateSession,
+  selectPreferredProvider,
   processEncounterAutoPayout,
   handleStripeWebhook,
   getTransactions,

@@ -7,9 +7,10 @@ export interface HeroHighlight {
   badgeNumber?: string;
   agency: string;
   carNumber: string;
-  respectRating: number;
-  deEscalationRating: number;
-  communicationRating: number;
+  overallRating?: number;
+  respectRating?: number;
+  deEscalationRating?: number;
+  communicationRating?: number;
   whatDidOfficerDoWell: string;
   incidentDate: string;
   incidentLocation: string;

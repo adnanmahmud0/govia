@@ -13,4 +13,5 @@ class StorageConstants {
   static const String languageCode = 'language_code';
   static const String userRole = 'user_role';
   static const String resetToken = 'reset_token';
+  static const String allowCitizenRatings = 'allow_citizen_ratings';
 }

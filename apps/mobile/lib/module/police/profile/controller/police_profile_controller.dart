@@ -4,7 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gsabino365/config/constants/api_constants.dart';
+import 'package:gsabino365/config/constants/storage_constants.dart';
 import 'package:gsabino365/core/services/auth_service.dart';
+import 'package:gsabino365/core/services/storage_service.dart';
 import 'package:gsabino365/core/widgets/user_qr_card_dialog.dart';
 import 'package:gsabino365/data/models/user_model.dart';
 
@@ -23,13 +25,23 @@ class PoliceProfileController extends GetxController {
   final RxString avatarUrl = ''.obs;
   final RxString shortHexId = ''.obs;
   final RxString fullId = ''.obs;
+  final RxBool allowCitizenRatings = true.obs;
+  final RxBool isUpdatingRatingSetting = false.obs;
 
   @override
   void onInit() {
     super.onInit();
+    _loadLocalRatingPreference();
     ever<UserModel?>(_authService.currentUser, _syncUserData);
     _syncUserData(_authService.currentUser.value);
     _refreshProfile();
+  }
+
+  Future<void> _loadLocalRatingPreference() async {
+    final localVal = await StorageService.getBool(StorageConstants.allowCitizenRatings);
+    if (localVal != null) {
+      allowCitizenRatings.value = localVal;
+    }
   }
 
   void _syncUserData(UserModel? user) {
@@ -64,6 +76,9 @@ class PoliceProfileController extends GetxController {
     if (user.id != null && user.id!.isNotEmpty) {
       fullId.value = user.id!;
     }
+    if (user.allowCitizenRatings != null) {
+      allowCitizenRatings.value = user.allowCitizenRatings!;
+    }
   }
 
   Future<void> _refreshProfile() async {
@@ -71,6 +86,37 @@ class PoliceProfileController extends GetxController {
       final user = await _authService.fetchProfile();
       if (user != null) _syncUserData(user);
     } catch (_) {}
+  }
+
+  Future<void> toggleCitizenRatings(bool newValue) async {
+    if (isUpdatingRatingSetting.value) return;
+    isUpdatingRatingSetting.value = true;
+    allowCitizenRatings.value = newValue;
+    await StorageService.setBool(StorageConstants.allowCitizenRatings, newValue);
+
+    // Synchronize currentUser locally
+    final current = _authService.currentUser.value;
+    if (current != null) {
+      final updatedUser = current.copyWith(allowCitizenRatings: newValue);
+      _authService.currentUser.value = updatedUser;
+      await StorageService.setMap(StorageConstants.userData, updatedUser.toJson());
+    }
+
+    try {
+      await _authService.updateProfile({
+        'allowCitizenRatings': newValue,
+      });
+    } catch (_) {}
+
+    Get.rawSnackbar(
+      message: newValue
+          ? 'Citizen ratings and reviews are now ON'
+          : 'Citizen ratings and reviews are now OFF',
+      duration: const Duration(seconds: 2),
+      backgroundColor: newValue ? const Color(0xFF047857) : const Color(0xFF334155),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    isUpdatingRatingSetting.value = false;
   }
 
   void copyHexId() {

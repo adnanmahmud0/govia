@@ -277,8 +277,14 @@ class AuthService extends GetxService {
     try {
       final response = await _userRepo.getProfile();
       if (response.statusCode == 200 && response.data != null) {
-        final user = _userRepo.parseUser(response);
+        var user = _userRepo.parseUser(response);
         if (user != null) {
+          if (user.allowCitizenRatings == null) {
+            final savedVal = await StorageService.getBool(StorageConstants.allowCitizenRatings);
+            if (savedVal != null) {
+              user = user.copyWith(allowCitizenRatings: savedVal);
+            }
+          }
           currentUser.value = user;
           await StorageService.setMap(
             StorageConstants.userData,
@@ -308,8 +314,14 @@ class AuthService extends GetxService {
     try {
       final response = await _userRepo.updateProfile(data);
       if (response.statusCode == 200 && response.data != null) {
-        final user = _userRepo.parseUser(response);
+        var user = _userRepo.parseUser(response);
         if (user != null) {
+          final effectiveRatings = data.containsKey('allowCitizenRatings')
+              ? data['allowCitizenRatings'] as bool?
+              : (user.allowCitizenRatings ?? currentUser.value?.allowCitizenRatings);
+          if (effectiveRatings != null) {
+            user = user.copyWith(allowCitizenRatings: effectiveRatings);
+          }
           currentUser.value = user;
           await StorageService.setMap(
             StorageConstants.userData,

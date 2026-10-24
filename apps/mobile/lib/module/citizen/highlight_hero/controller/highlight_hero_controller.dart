@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:gsabino365/core/services/api_client.dart';
+import 'package:gsabino365/core/services/location_service.dart';
 import 'package:gsabino365/core/utils/helpers.dart';
 import 'package:gsabino365/data/repositories/hero_highlight_repository.dart';
 
@@ -33,12 +34,10 @@ class HighlightHeroController extends GetxController {
   final RxBool isLoadingOfficers = false.obs;
   final RxBool isLookingUpOfficer = false.obs;
 
-  // Rating Sliders (1 to 10)
-  final RxDouble respectRating = 9.0.obs;
-  final RxDouble deescalationRating = 9.5.obs;
-  final RxDouble communicationRating = 9.0.obs;
+  // Single Overall Rating (1 to 5)
+  final RxDouble overallRating = 5.0.obs;
 
-  // Sharing Checkboxes
+  // Sharing Settings (auto-included, hidden from UI)
   final RxBool shareWithAgency = true.obs;
   final RxBool includeInMetrics = true.obs;
   final RxBool shareWithCourt = true.obs;
@@ -69,6 +68,16 @@ class HighlightHeroController extends GetxController {
 
     loadOfficers();
     loadHeroFeed();
+    _autoFetchLocation();
+  }
+
+  Future<void> _autoFetchLocation() async {
+    try {
+      final pos = await LocationService.getCurrentLocation();
+      if (pos != null) {
+        locationController.text = LocationService.formatCoordinates(pos.latitude, pos.longitude);
+      }
+    } catch (_) {}
   }
 
   String _formatToday() {
@@ -127,10 +136,17 @@ class HighlightHeroController extends GetxController {
     agencyController.text = (officer['agency'] ?? '').toString();
     carController.text = (officer['carNumber'] ?? '').toString();
 
-    Helpers.showSuccess(
-      'Selected ${officer['rank'] ?? 'Officer'} ${officer['name']}',
-      title: 'Officer Identified',
-    );
+    if (officer['allowCitizenRatings'] == false) {
+      Helpers.showWarning(
+        '${officer['name'] ?? 'This officer'} has turned off citizen ratings and reviews.',
+        title: 'Ratings Disabled',
+      );
+    } else {
+      Helpers.showSuccess(
+        'Selected ${officer['rank'] ?? 'Officer'} ${officer['name']}',
+        title: 'Officer Identified',
+      );
+    }
   }
 
   void clearSelectedOfficer() {
@@ -263,6 +279,15 @@ class HighlightHeroController extends GetxController {
       return;
     }
 
+    // Check if selected officer opted out of citizen ratings and reviews
+    if (selectedOfficer.value != null && selectedOfficer.value!['allowCitizenRatings'] == false) {
+      Helpers.showWarning(
+        'This officer has turned off citizen ratings and reviews. Commendations cannot be submitted for this account.',
+        title: 'Ratings Disabled',
+      );
+      return;
+    }
+
     isSubmitting.value = true;
     HapticFeedback.mediumImpact();
 
@@ -274,12 +299,13 @@ class HighlightHeroController extends GetxController {
       'agency': agency,
       'carNumber': car.isNotEmpty ? car : 'UNIT-01',
       if (selectedOfficer.value?['image'] != null) 'officerAvatar': selectedOfficer.value!['image'],
-      'respectRating': respectRating.value,
-      'deEscalationRating': deescalationRating.value,
-      'communicationRating': communicationRating.value,
+      'overallRating': overallRating.value,
+      'respectRating': overallRating.value,
+      'deEscalationRating': overallRating.value,
+      'communicationRating': overallRating.value,
       'whatDidOfficerDoWell': feedback,
       'incidentDate': date.isNotEmpty ? date : _formatToday(),
-      'incidentLocation': location.isNotEmpty ? location : 'City Center',
+      'incidentLocation': location.isNotEmpty ? location : 'Current Location',
       'shareWithAgency': shareWithAgency.value,
       'includeInMetrics': includeInMetrics.value,
       'shareWithCourt': shareWithCourt.value,
@@ -300,6 +326,7 @@ class HighlightHeroController extends GetxController {
           'location': payload['incidentLocation'],
           'date': 'Just now',
           'story': payload['whatDidOfficerDoWell'],
+          'overallRating': payload['overallRating'],
           'respectRating': payload['respectRating'],
           'deescalationRating': payload['deEscalationRating'],
           'likes': 1,
@@ -319,6 +346,7 @@ class HighlightHeroController extends GetxController {
           'location': payload['incidentLocation'],
           'date': 'Just now',
           'story': payload['whatDidOfficerDoWell'],
+          'overallRating': payload['overallRating'],
           'respectRating': payload['respectRating'],
           'deescalationRating': payload['deEscalationRating'],
           'likes': 1,
@@ -330,6 +358,7 @@ class HighlightHeroController extends GetxController {
       // Reset form & state
       clearSelectedOfficer();
       feedbackController.clear();
+      overallRating.value = 5.0;
 
       // Switch to Community Highlights tab
       selectedTab.value = 1;
@@ -399,9 +428,10 @@ class HighlightHeroController extends GetxController {
         'shortHexId': 'A11134E8',
         'image': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
         'rating': 4.9,
-        'respectRating': 9.6,
-        'deescalationRating': 9.8,
-        'communicationRating': 9.4,
+        'overallRating': 4.9,
+        'respectRating': 4.9,
+        'deescalationRating': 5.0,
+        'communicationRating': 4.8,
         'totalCommendations': 18,
         'verified': true,
       },
@@ -416,9 +446,10 @@ class HighlightHeroController extends GetxController {
         'shortHexId': 'A11134EC',
         'image': 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80',
         'rating': 5.0,
-        'respectRating': 9.9,
-        'deescalationRating': 9.7,
-        'communicationRating': 9.9,
+        'overallRating': 5.0,
+        'respectRating': 5.0,
+        'deescalationRating': 5.0,
+        'communicationRating': 5.0,
         'totalCommendations': 26,
         'verified': true,
       },
@@ -435,8 +466,9 @@ class HighlightHeroController extends GetxController {
         'location': '5th & Elm Street, Downtown',
         'date': 'Yesterday',
         'story': 'Officer Miller demonstrated extraordinary patience during a roadside traffic stop at night. He introduced himself respectfully, explained the reason for the stop with complete clarity, and made our entire family feel safe and respected.',
-        'respectRating': 9.8,
-        'deescalationRating': 10.0,
+        'overallRating': 4.9,
+        'respectRating': 4.9,
+        'deescalationRating': 5.0,
         'likes': 48,
         'saluted': false,
         'officerAvatar': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
@@ -449,8 +481,9 @@ class HighlightHeroController extends GetxController {
         'location': 'Interstate 35 North Exit',
         'date': '3 days ago',
         'story': 'Helped change a flat tire in heavy rain without hesitation. Kept traffic diverted safely and provided hazard escort until roadside assistance arrived.',
-        'respectRating': 10.0,
-        'deescalationRating': 9.6,
+        'overallRating': 5.0,
+        'respectRating': 5.0,
+        'deescalationRating': 5.0,
         'likes': 74,
         'saluted': true,
         'officerAvatar': 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80',

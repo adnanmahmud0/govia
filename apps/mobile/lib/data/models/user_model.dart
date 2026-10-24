@@ -28,6 +28,7 @@ class UserModel {
   final String? didCarNumberChange;
   final String? newCarNumber;
   final String? licenseNumber;
+  final bool? allowCitizenRatings;
   final String? shortHexId;
   final String? country;
   final String? gender;
@@ -75,6 +76,7 @@ class UserModel {
     this.didCarNumberChange,
     this.newCarNumber,
     this.licenseNumber,
+    this.allowCitizenRatings,
     this.shortHexId,
     this.country,
     this.gender,
@@ -124,6 +126,11 @@ class UserModel {
       didCarNumberChange: json['didCarNumberChange'],
       newCarNumber: json['newCarNumber'],
       licenseNumber: json['licenseNumber'],
+      allowCitizenRatings: json['allowCitizenRatings'] is bool
+          ? json['allowCitizenRatings'] as bool
+          : (json['allowCitizenRatings'] != null
+              ? json['allowCitizenRatings'].toString().toLowerCase() == 'true'
+              : null),
       shortHexId: json['shortHexId']?.toString() ??
           (json['id'] != null || json['_id'] != null
               ? ((json['id'] ?? json['_id']).toString().length >= 8
@@ -195,6 +202,7 @@ class UserModel {
       'didCarNumberChange': didCarNumberChange,
       'newCarNumber': newCarNumber,
       'licenseNumber': licenseNumber,
+      'allowCitizenRatings': allowCitizenRatings,
       'shortHexId': shortHexId,
       'country': country,
       'gender': gender,
@@ -214,5 +222,103 @@ class UserModel {
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
+  }
+
+  UserModel copyWith({
+    String? id,
+    String? name,
+    String? role,
+    String? email,
+    String? image,
+    String? status,
+    bool? verified,
+    String? subRole,
+    String? phoneNumber,
+    String? phone,
+    String? languagesSpoken,
+    String? preferredAttorney,
+    String? preferredBailBondsman,
+    String? licensedStatesToPractice,
+    String? barAssociationNumber,
+    String? lawFirmName,
+    String? officeName,
+    String? datePassedTheBar,
+    String? medicalLicenseNumber,
+    String? specialization,
+    String? specialty,
+    String? companyName,
+    String? businessAddress,
+    String? badgeNumber,
+    String? assignedNumber,
+    String? departmentOrPrecinct,
+    String? didCarNumberChange,
+    String? newCarNumber,
+    String? licenseNumber,
+    bool? allowCitizenRatings,
+    String? shortHexId,
+    String? country,
+    String? gender,
+    String? dateOfBirth,
+    String? profilePicture,
+    bool? isOnboardingCompleted,
+    double? serviceFee,
+    double? monthlyServiceFee,
+    String? shortDescription,
+    String? stripeAccountId,
+    String? stripeAccountStatus,
+    bool? payoutsEnabled,
+    DateTime? preferredAttorneyActiveUntil,
+    DateTime? preferredBailBondsmanActiveUntil,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      email: email ?? this.email,
+      image: image ?? this.image,
+      status: status ?? this.status,
+      verified: verified ?? this.verified,
+      subRole: subRole ?? this.subRole,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      phone: phone ?? this.phone,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      preferredAttorney: preferredAttorney ?? this.preferredAttorney,
+      preferredBailBondsman: preferredBailBondsman ?? this.preferredBailBondsman,
+      licensedStatesToPractice: licensedStatesToPractice ?? this.licensedStatesToPractice,
+      barAssociationNumber: barAssociationNumber ?? this.barAssociationNumber,
+      lawFirmName: lawFirmName ?? this.lawFirmName,
+      officeName: officeName ?? this.officeName,
+      datePassedTheBar: datePassedTheBar ?? this.datePassedTheBar,
+      medicalLicenseNumber: medicalLicenseNumber ?? this.medicalLicenseNumber,
+      specialization: specialization ?? this.specialization,
+      specialty: specialty ?? this.specialty,
+      companyName: companyName ?? this.companyName,
+      businessAddress: businessAddress ?? this.businessAddress,
+      badgeNumber: badgeNumber ?? this.badgeNumber,
+      assignedNumber: assignedNumber ?? this.assignedNumber,
+      departmentOrPrecinct: departmentOrPrecinct ?? this.departmentOrPrecinct,
+      didCarNumberChange: didCarNumberChange ?? this.didCarNumberChange,
+      newCarNumber: newCarNumber ?? this.newCarNumber,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      allowCitizenRatings: allowCitizenRatings ?? this.allowCitizenRatings,
+      shortHexId: shortHexId ?? this.shortHexId,
+      country: country ?? this.country,
+      gender: gender ?? this.gender,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      profilePicture: profilePicture ?? this.profilePicture,
+      isOnboardingCompleted: isOnboardingCompleted ?? this.isOnboardingCompleted,
+      serviceFee: serviceFee ?? this.serviceFee,
+      monthlyServiceFee: monthlyServiceFee ?? this.monthlyServiceFee,
+      shortDescription: shortDescription ?? this.shortDescription,
+      stripeAccountId: stripeAccountId ?? this.stripeAccountId,
+      stripeAccountStatus: stripeAccountStatus ?? this.stripeAccountStatus,
+      payoutsEnabled: payoutsEnabled ?? this.payoutsEnabled,
+      preferredAttorneyActiveUntil: preferredAttorneyActiveUntil ?? this.preferredAttorneyActiveUntil,
+      preferredBailBondsmanActiveUntil: preferredBailBondsmanActiveUntil ?? this.preferredBailBondsmanActiveUntil,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

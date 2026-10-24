@@ -73,9 +73,11 @@ export default function HeroHighlightPage() {
     }
 
     const avg =
-      ((h.respectRating || 0) + (h.deEscalationRating || 0) + (h.communicationRating || 0)) / 3;
-    if (filter === "5star") return avg >= 4.7;
-    if (filter === "highdeescalation") return (h.deEscalationRating || 0) >= 4.5;
+      h.overallRating ??
+      (((h.respectRating || 0) + (h.deEscalationRating || 0) + (h.communicationRating || 0)) / 3);
+    const normalizedAvg = avg > 5 ? avg / 2 : avg;
+    if (filter === "5star") return normalizedAvg >= 4.7;
+    if (filter === "highdeescalation") return (h.overallRating || h.deEscalationRating || 0) >= 4.5;
     return true;
   });
 
@@ -215,8 +217,10 @@ export default function HeroHighlightPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filteredHighlights.map((hero) => {
-            const avgRating =
-              ((hero.respectRating || 5) + (hero.deEscalationRating || 5) + (hero.communicationRating || 5)) / 3;
+            const rawAvg =
+              hero.overallRating ??
+              (((hero.respectRating || 5) + (hero.deEscalationRating || 5) + (hero.communicationRating || 5)) / 3);
+            const avgRating = rawAvg > 5 ? rawAvg / 2 : rawAvg;
             const initials = (hero.officerName || "Officer")
               .split(" ")
               .map((n) => n[0])
@@ -349,20 +353,19 @@ export default function HeroHighlightPage() {
             {/* Ratings breakdown */}
             <div>
               <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
-                Performance Ratings
+                Overall Rating
               </p>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-500">Respect</p>
-                  <p className="text-lg font-bold text-slate-800 mt-1">{selectedHighlight.respectRating} / 5</p>
+              <div className="bg-amber-50/60 border border-amber-200/60 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-amber-800 font-semibold">Commendation Score</p>
+                  <p className="text-xs text-slate-500">Citizen verified overall rating (1 to 5 scale)</p>
                 </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-500">De-escalation</p>
-                  <p className="text-lg font-bold text-slate-800 mt-1">{selectedHighlight.deEscalationRating} / 5</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-500">Communication</p>
-                  <p className="text-lg font-bold text-slate-800 mt-1">{selectedHighlight.communicationRating} / 5</p>
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                  <span className="text-xl font-extrabold text-slate-800">
+                    {Number(selectedHighlight.overallRating ?? selectedHighlight.respectRating ?? 5).toFixed(1)}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">/ 5.0</span>
                 </div>
               </div>
             </div>

@@ -108,6 +108,30 @@ const updateProfileToDB = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
+  // Prevent non-admin users from tampering with coverage dates or pricing fees directly
+  const isAdmin = user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPER_ADMIN;
+  if (!isAdmin) {
+    delete payload.serviceFee;
+    delete payload.monthlyServiceFee;
+    delete payload.preferredAttorneyActiveUntil;
+    delete payload.preferredBailBondsmanActiveUntil;
+
+    const now = new Date();
+    if (payload.preferredAttorney && payload.preferredAttorney.trim() !== '' && payload.preferredAttorney !== isExistUser.preferredAttorney) {
+      const isCovered = isExistUser.preferredAttorneyActiveUntil && new Date(isExistUser.preferredAttorneyActiveUntil) > now;
+      if (!isCovered) {
+        throw new ApiError(StatusCodes.PAYMENT_REQUIRED, 'Active Attorney Legal Protection service coverage required. Please pay the service charge first.');
+      }
+    }
+
+    if (payload.preferredBailBondsman && payload.preferredBailBondsman.trim() !== '' && payload.preferredBailBondsman !== isExistUser.preferredBailBondsman) {
+      const isCovered = isExistUser.preferredBailBondsmanActiveUntil && new Date(isExistUser.preferredBailBondsmanActiveUntil) > now;
+      if (!isCovered) {
+        throw new ApiError(StatusCodes.PAYMENT_REQUIRED, 'Active Bail Bondsman service coverage required. Please pay the service charge first.');
+      }
+    }
+  }
+
   //unlink file here
   if (payload.image) {
     if (isExistUser.image) {

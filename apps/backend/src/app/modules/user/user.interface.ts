@@ -29,6 +29,7 @@ export type IUser = {
   didCarNumberChange?: string;
   newCarNumber?: string;
   licenseNumber?: string;
+  allowCitizenRatings?: boolean;
   shortHexId?: string;
   serviceFee?: number;
   monthlyServiceFee?: number;

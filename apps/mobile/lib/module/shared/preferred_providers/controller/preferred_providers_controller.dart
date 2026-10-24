@@ -38,6 +38,11 @@ class PreferredProvidersController extends GetxController {
   final RxBool isLoadingDirectory = false.obs;
   final RxBool isProcessingCheckout = false.obs;
 
+  // Platform service fee settings (set by admin)
+  final RxDouble attorneyServiceFee = 50.0.obs;
+  final RxDouble bailBondsmanServiceFee = 30.0.obs;
+  final RxBool isLoadingServiceCharge = false.obs;
+
   // Active coverage dates
   final Rxn<DateTime> attorneyActiveUntil = Rxn<DateTime>();
   final Rxn<DateTime> bailBondsmanActiveUntil = Rxn<DateTime>();
@@ -53,6 +58,7 @@ class PreferredProvidersController extends GetxController {
     _apiClient = Get.isRegistered<ApiClient>() ? Get.find<ApiClient>() : Get.put(ApiClient());
     providerPaymentRepo = ProviderPaymentRepository(apiClient: _apiClient);
     _loadInitialData();
+    _fetchServiceCharges();
   }
 
   void _loadInitialData() {
@@ -136,13 +142,66 @@ class PreferredProvidersController extends GetxController {
   Future<void> refreshProviders() async {
     await _authService.getProfile();
     _loadInitialData();
-    await _fetchRecentContacts();
+    await Future.wait([
+      _fetchRecentContacts(),
+      _fetchServiceCharges(),
+    ]);
   }
 
-  // ──────────────────────── AUTO-SAVE LOGIC ────────────────────────
+  Future<void> _fetchServiceCharges() async {
+    try {
+      isLoadingServiceCharge.value = true;
+      final settings = await providerPaymentRepo.getServiceChargeSettings();
+      if (settings != null) {
+        if (settings['attorneyServiceFee'] != null) {
+          attorneyServiceFee.value = (settings['attorneyServiceFee'] as num).toDouble();
+        }
+        if (settings['bailBondsmanServiceFee'] != null) {
+          bailBondsmanServiceFee.value = (settings['bailBondsmanServiceFee'] as num).toDouble();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching service charges: $e');
+    } finally {
+      isLoadingServiceCharge.value = false;
+    }
+  }
+
+  bool isCoverageActive({required bool forAttorney}) {
+    final expiry = forAttorney ? attorneyActiveUntil.value : bailBondsmanActiveUntil.value;
+    if (expiry == null) return false;
+    return expiry.isAfter(DateTime.now());
+  }
+
+  int getCoverageRemainingDays({required bool forAttorney}) {
+    final expiry = forAttorney ? attorneyActiveUntil.value : bailBondsmanActiveUntil.value;
+    if (expiry == null) return 0;
+    final diff = expiry.difference(DateTime.now()).inDays;
+    return diff > 0 ? diff : 0;
+  }
+
+  // ──────────────────────── AUTO-SAVE & SELECTION LOGIC ────────────────────────
 
   Future<void> setProvider(Map<String, dynamic> profile, {required bool forAttorney}) async {
+    if (!isCoverageActive(forAttorney: forAttorney)) {
+      openServiceChargeRequiredModal(forAttorney: forAttorney);
+      return;
+    }
+
     final name = (profile['name'] ?? profile['userName'] ?? 'Connected Provider').toString();
+    final id = (profile['id'] ?? profile['_id'] ?? '').toString();
+
+    if (id.isNotEmpty) {
+      await selectProviderAsPreferred(
+        providerId: id,
+        providerName: name,
+        forAttorney: forAttorney,
+        image: profile['image']?.toString() ?? profile['profilePicture']?.toString(),
+        company: profile['company']?.toString() ?? profile['lawFirmName']?.toString(),
+      );
+      return;
+    }
+
     final enrichedProfile = Map<String, dynamic>.from(profile);
     enrichedProfile['name'] = name;
     enrichedProfile['connected'] = true;
@@ -162,6 +221,64 @@ class PreferredProvidersController extends GetxController {
       '$name has been connected and saved.',
       title: forAttorney ? 'Attorney Connected' : 'Bail Bondsman Connected',
     );
+  }
+
+  Future<void> selectProviderAsPreferred({
+    required String providerId,
+    required String providerName,
+    required bool forAttorney,
+    String? image,
+    String? company,
+  }) async {
+    if (!isCoverageActive(forAttorney: forAttorney)) {
+      openServiceChargeRequiredModal(forAttorney: forAttorney);
+      return;
+    }
+
+    isSaving.value = true;
+    try {
+      final role = forAttorney ? 'ATTORNEY' : 'BAIL_BONDSMAN';
+      final res = await providerPaymentRepo.selectPreferredProvider(
+        providerId: providerId,
+        role: role,
+      );
+
+      if (res != null) {
+        await _authService.getProfile();
+        _loadInitialData();
+
+        final profile = {
+          'id': providerId,
+          'name': providerName,
+          'image': image ?? '',
+          'role': role,
+          'company': company ?? '',
+          'connected': true,
+          'connectedAt': DateTime.now().toIso8601String(),
+        };
+
+        if (forAttorney) {
+          attorneyProfile.value = profile;
+          attorneyController.text = providerName;
+        } else {
+          bailBondsmanProfile.value = profile;
+          bailBondsmanController.text = providerName;
+        }
+
+        Helpers.showSuccess(
+          '$providerName has been set as your preferred ${forAttorney ? "Attorney" : "Bail Bondsman"}.',
+          title: 'Provider Selected',
+        );
+      } else {
+        Helpers.showError(
+          providerPaymentRepo.lastErrorMessage ?? 'Could not select provider. Please try again.',
+        );
+      }
+    } catch (e) {
+      Helpers.showError('Could not set preferred provider: $e');
+    } finally {
+      isSaving.value = false;
+    }
   }
 
   Future<void> disconnectProvider({required bool forAttorney}) async {
@@ -209,6 +326,11 @@ class PreferredProvidersController extends GetxController {
   // ──────────────────────── ACTION 1: SCAN QR CODE ────────────────────────
 
   void openQrScanner({required bool forAttorney}) {
+    if (!isCoverageActive(forAttorney: forAttorney)) {
+      openServiceChargeRequiredModal(forAttorney: forAttorney);
+      return;
+    }
+
     bool hasScanned = false;
     final scannerController = MobileScannerController();
 
@@ -349,6 +471,11 @@ class PreferredProvidersController extends GetxController {
   // ──────────────────────── ACTION 2: LOOKUP USER ID ────────────────────────
 
   void openIdLookupDialog({required bool forAttorney}) {
+    if (!isCoverageActive(forAttorney: forAttorney)) {
+      openServiceChargeRequiredModal(forAttorney: forAttorney);
+      return;
+    }
+
     final inputCtrl = TextEditingController();
 
     Get.dialog(
@@ -480,6 +607,11 @@ class PreferredProvidersController extends GetxController {
   // ──────────────────────── ACTION 3: FROM RECENT CHAT CONTACTS ─────────────
 
   Future<void> openRecentContactsSheet({required bool forAttorney}) async {
+    if (!isCoverageActive(forAttorney: forAttorney)) {
+      openServiceChargeRequiredModal(forAttorney: forAttorney);
+      return;
+    }
+
     await _fetchRecentContacts();
 
     Get.bottomSheet(
@@ -553,7 +685,7 @@ class PreferredProvidersController extends GetxController {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'Use QR scan or User ID to link your provider',
+                          'Use directory, QR scan, or User ID to link your provider',
                           style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                         ),
                       ],
@@ -682,19 +814,6 @@ class PreferredProvidersController extends GetxController {
     }
   }
 
-  bool isCoverageActive({required bool forAttorney}) {
-    final expiry = forAttorney ? attorneyActiveUntil.value : bailBondsmanActiveUntil.value;
-    if (expiry == null) return false;
-    return expiry.isAfter(DateTime.now());
-  }
-
-  int getCoverageRemainingDays({required bool forAttorney}) {
-    final expiry = forAttorney ? attorneyActiveUntil.value : bailBondsmanActiveUntil.value;
-    if (expiry == null) return 0;
-    final diff = expiry.difference(DateTime.now()).inDays;
-    return diff > 0 ? diff : 0;
-  }
-
   // ──────────────────────── ACTION 4: BROWSE PROVIDER DIRECTORY ─────────────
 
   Future<void> openProviderMarketplaceSheet({required bool forAttorney}) async {
@@ -744,7 +863,7 @@ class PreferredProvidersController extends GetxController {
                       ),
                       SizedBox(height: 2.h),
                       Text(
-                        'Browse verified providers, pricing & bios',
+                        'Browse verified practitioners in the GoVia network',
                         style: GoogleFonts.inter(
                           fontSize: 12.sp,
                           color: const Color(0xFF64748B),
@@ -815,7 +934,7 @@ class PreferredProvidersController extends GetxController {
                           ),
                           SizedBox(height: 4.h),
                           Text(
-                            'Providers must link their Stripe payout account to appear in the directory.',
+                            'Verified practitioners in this category will appear here.',
                             style: GoogleFonts.inter(
                               fontSize: 12.sp,
                               color: const Color(0xFF94A3B8),
@@ -877,6 +996,7 @@ class PreferredProvidersController extends GetxController {
     required bool forAttorney,
   }) {
     final avatar = provider.image;
+    final bool hasCoverage = isCoverageActive(forAttorney: forAttorney);
 
     return Container(
       decoration: BoxDecoration(
@@ -943,7 +1063,7 @@ class PreferredProvidersController extends GetxController {
                     ),
                     SizedBox(height: 2.h),
                     Text(
-                      provider.company,
+                      provider.company.isNotEmpty ? provider.company : 'Licensed Practitioner',
                       style: GoogleFonts.inter(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w500,
@@ -1005,39 +1125,36 @@ class PreferredProvidersController extends GetxController {
 
           SizedBox(height: 14.h),
 
-          // Pricing Badges & Retain Action
+          // Specialization Badges & Preferred Action
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          '\$${provider.monthlyServiceFee.toStringAsFixed(0)}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1550A6),
-                          ),
-                        ),
-                        Text(
-                          '/mo retainer',
-                          style: GoogleFonts.inter(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
                     Text(
-                      '\$${provider.serviceFee.toStringAsFixed(0)}/encounter',
+                      provider.specialization.isNotEmpty
+                          ? provider.specialization
+                          : (forAttorney ? 'Legal Defense' : 'Bail Bond Release'),
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1550A6),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      provider.licensedStates.isNotEmpty
+                          ? 'Licensed: ${provider.licensedStates}'
+                          : 'GoVia Verified Network',
                       style: GoogleFonts.inter(
                         fontSize: 11.sp,
-                        color: const Color(0xFF94A3B8),
+                        color: const Color(0xFF64748B),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -1052,7 +1169,17 @@ class PreferredProvidersController extends GetxController {
                 ),
                 onPressed: () {
                   Get.back(); // close marketplace sheet
-                  openActivationConfirmModal(context, provider, forAttorney: forAttorney);
+                  if (hasCoverage) {
+                    selectProviderAsPreferred(
+                      providerId: provider.id,
+                      providerName: provider.name,
+                      forAttorney: forAttorney,
+                      image: provider.image,
+                      company: provider.company,
+                    );
+                  } else {
+                    openServiceChargeRequiredModal(forAttorney: forAttorney);
+                  }
                 },
                 child: Text(
                   'Select as Preferred',
@@ -1070,13 +1197,13 @@ class PreferredProvidersController extends GetxController {
     );
   }
 
-  // ──────────────────────── ACTION 5: ACTIVATION & STRIPE CHECKOUT ───────────
+  // ──────────────────────── ACTION 5: SERVICE CHARGE MODAL & CHECKOUT ───────
 
-  void openActivationConfirmModal(
-    BuildContext context,
-    ProviderDirectoryItem provider, {
-    required bool forAttorney,
-  }) {
+  void openServiceChargeRequiredModal({required bool forAttorney}) {
+    final fee = forAttorney ? attorneyServiceFee.value : bailBondsmanServiceFee.value;
+    final roleTitle = forAttorney ? 'Preferred Attorney' : 'Preferred Bail Bondsman';
+    final serviceName = forAttorney ? 'Legal Defense Protection' : '24/7 Bail Bond Release';
+
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
@@ -1107,7 +1234,7 @@ class PreferredProvidersController extends GetxController {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Activate Preferred Coverage',
+                          'Coverage Required',
                           style: GoogleFonts.outfit(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.w700,
@@ -1115,7 +1242,7 @@ class PreferredProvidersController extends GetxController {
                           ),
                         ),
                         Text(
-                          forAttorney ? 'Legal Defense Protection' : '24/7 Bail Bond Release',
+                          serviceName,
                           style: GoogleFonts.inter(
                             fontSize: 12.sp,
                             color: const Color(0xFF64748B),
@@ -1129,99 +1256,38 @@ class PreferredProvidersController extends GetxController {
 
               SizedBox(height: 18.h),
 
-              // Provider Summary Box
               Container(
-                padding: EdgeInsets.all(12.w),
+                padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12.r),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    CircleAvatar(
-                      radius: 20.r,
-                      backgroundColor: const Color(0xFF1550A6).withValues(alpha: 0.1),
-                      child: Text(
-                        provider.name.isNotEmpty ? provider.name[0].toUpperCase() : 'P',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1550A6),
-                        ),
-                      ),
+                    Text(
+                      '30-Day Platform Service Charge:',
+                      style: GoogleFonts.inter(fontSize: 12.5.sp, color: const Color(0xFF475569)),
                     ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            provider.name,
-                            style: GoogleFonts.inter(
-                              fontSize: 13.5.sp,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                          Text(
-                            provider.company,
-                            style: GoogleFonts.inter(
-                              fontSize: 11.5.sp,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
+                    Text(
+                      '\$${fee.toStringAsFixed(0)}/mo',
+                      style: GoogleFonts.outfit(
+                        fontSize: 17.sp,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1550A6),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              SizedBox(height: 16.h),
-
-              // Fee Breakdown
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '30-Day Retainer Fee:',
-                    style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF475569)),
-                  ),
-                  Text(
-                    '\$${provider.monthlyServiceFee.toStringAsFixed(2)}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1550A6),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 6.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Per-Encounter Rate:',
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF64748B)),
-                  ),
-                  Text(
-                    '\$${provider.serviceFee.toStringAsFixed(2)} / call',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-
               SizedBox(height: 14.h),
 
               Text(
-                'To activate ${provider.name} as your preferred provider, complete payment for your monthly retainer via Stripe. Your coverage will be active immediately.',
+                'To designate and retain a $roleTitle, please pay the monthly platform service charge. This activates your 30-day emergency legal coverage and priority dispatch.',
                 style: GoogleFonts.inter(
-                  fontSize: 11.5.sp,
+                  fontSize: 12.sp,
                   color: const Color(0xFF64748B),
                   height: 1.45,
                 ),
@@ -1229,7 +1295,6 @@ class PreferredProvidersController extends GetxController {
 
               SizedBox(height: 20.h),
 
-              // Action Buttons
               Row(
                 children: [
                   Expanded(
@@ -1254,19 +1319,19 @@ class PreferredProvidersController extends GetxController {
                     flex: 2,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF635BFF), // Stripe purple
+                        backgroundColor: const Color(0xFF635BFF),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                       ),
                       onPressed: () {
                         Get.back();
-                        startStripeCheckout(provider, forAttorney: forAttorney);
+                        startPlatformServiceCheckout(forAttorney: forAttorney);
                       },
                       icon: const Icon(Icons.payment_rounded, color: Colors.white, size: 18),
                       label: Text(
-                        'Activate & Pay',
+                        'Pay & Activate',
                         style: GoogleFonts.inter(
-                          fontSize: 13.5.sp,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -1282,16 +1347,22 @@ class PreferredProvidersController extends GetxController {
     );
   }
 
-  Future<void> startStripeCheckout(
-    ProviderDirectoryItem provider, {
+  Future<void> startPlatformServiceCheckout({
     required bool forAttorney,
+    String? providerId,
   }) async {
     isProcessingCheckout.value = true;
     try {
-      final session = await providerPaymentRepo.createCheckoutSession(provider.id);
+      final role = forAttorney ? 'ATTORNEY' : 'BAIL_BONDSMAN';
+      final session = await providerPaymentRepo.createServiceCheckoutSession(
+        role: role,
+        providerId: providerId,
+      );
       final rawUrl = session?['checkoutUrl'] ?? session?['sessionUrl'] ?? session?['url'];
       if (session == null || rawUrl == null) {
-        Helpers.showError('Could not create payment session. Please try again.');
+        Helpers.showError(
+          providerPaymentRepo.lastErrorMessage ?? 'Could not create payment session. Please try again.',
+        );
         return;
       }
 
@@ -1303,16 +1374,16 @@ class PreferredProvidersController extends GetxController {
 
       await StripeWebviewModal.show(
         context: activeContext,
-          initialUrl: checkoutUrl,
-          title: 'Activate Preferred Provider',
-          onPaymentSuccess: (sessionId) async {
-            final targetSessionId = sessionId.isNotEmpty ? sessionId : expectedSessionId;
-            await _completePaymentVerification(targetSessionId, provider, forAttorney: forAttorney);
-          },
-          onPaymentCancel: () {
-            Helpers.showError('Payment cancelled. Provider was not activated.');
-          },
-        );
+        initialUrl: checkoutUrl,
+        title: forAttorney ? 'Activate Attorney Coverage' : 'Activate Bail Coverage',
+        onPaymentSuccess: (sessionId) async {
+          final targetSessionId = sessionId.isNotEmpty ? sessionId : expectedSessionId;
+          await _completeServicePaymentVerification(targetSessionId, forAttorney: forAttorney);
+        },
+        onPaymentCancel: () {
+          Helpers.showError('Payment cancelled. Coverage was not activated.');
+        },
+      );
     } catch (e) {
       Helpers.showError('Payment error: $e');
     } finally {
@@ -1320,9 +1391,8 @@ class PreferredProvidersController extends GetxController {
     }
   }
 
-  Future<void> _completePaymentVerification(
-    String sessionId,
-    ProviderDirectoryItem provider, {
+  Future<void> _completeServicePaymentVerification(
+    String sessionId, {
     required bool forAttorney,
   }) async {
     try {
@@ -1331,27 +1401,9 @@ class PreferredProvidersController extends GetxController {
         await _authService.getProfile();
         _loadInitialData();
 
-        final profile = {
-          'id': provider.id,
-          'name': provider.name,
-          'image': provider.image,
-          'role': provider.role,
-          'company': provider.company,
-          'serviceFee': provider.serviceFee,
-          'monthlyServiceFee': provider.monthlyServiceFee,
-          'connected': true,
-        };
-
-        if (forAttorney) {
-          attorneyProfile.value = profile;
-          attorneyController.text = provider.name;
-        } else {
-          bailBondsmanProfile.value = profile;
-          bailBondsmanController.text = provider.name;
-        }
-
+        final roleName = forAttorney ? 'Attorney' : 'Bail Bondsman';
         Helpers.showSuccess(
-          '${provider.name} is now your active Preferred Provider for 30 days!',
+          'Your preferred $roleName coverage is now active for 30 days! You can now select your preferred provider.',
           title: 'Coverage Activated! 🎉',
         );
       } else {
@@ -1360,6 +1412,23 @@ class PreferredProvidersController extends GetxController {
     } catch (e) {
       debugPrint('Error verifying session: $e');
     }
+  }
+
+  // Backward compatibility wrapper for old references
+  void openActivationConfirmModal(
+    BuildContext context,
+    ProviderDirectoryItem provider, {
+    required bool forAttorney,
+  }) {
+    openServiceChargeRequiredModal(forAttorney: forAttorney);
+  }
+
+  // Backward compatibility wrapper for old references
+  Future<void> startStripeCheckout(
+    ProviderDirectoryItem provider, {
+    required bool forAttorney,
+  }) async {
+    await startPlatformServiceCheckout(forAttorney: forAttorney, providerId: provider.id);
   }
 
   @override

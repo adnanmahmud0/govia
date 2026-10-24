@@ -8,12 +8,24 @@ import {
 
 const commissionSettingSchema = new Schema<ICommissionSetting, CommissionSettingModel>(
   {
+    attorneyServiceFee: {
+      type: Number,
+      default: 50,
+      min: 0,
+      required: true,
+    },
+    bailBondsmanServiceFee: {
+      type: Number,
+      default: 30,
+      min: 0,
+      required: true,
+    },
     platformCommissionPercent: {
       type: Number,
       default: 10,
       min: 0,
       max: 100,
-      required: true,
+      required: false,
     },
     updatedBy: {
       type: Schema.Types.ObjectId,
@@ -45,7 +57,7 @@ const providerTransactionSchema = new Schema<IProviderTransaction, ProviderTrans
     providerId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
     },
     role: {
       type: String,
@@ -54,7 +66,8 @@ const providerTransactionSchema = new Schema<IProviderTransaction, ProviderTrans
     },
     type: {
       type: String,
-      enum: ['MONTHLY_RETAINER', 'ENCOUNTER_FEE'],
+      enum: ['MONTHLY_RETAINER', 'SERVICE_CHARGE', 'ENCOUNTER_FEE'],
+      default: 'SERVICE_CHARGE',
       required: true,
     },
     grossAmount: {
@@ -64,12 +77,12 @@ const providerTransactionSchema = new Schema<IProviderTransaction, ProviderTrans
     },
     platformFee: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0,
     },
     providerAmount: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0,
     },
     currency: {

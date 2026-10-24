@@ -361,13 +361,46 @@ class PoliceProfileView extends GetView<PoliceProfileController> {
                           Expanded(
                             child: _buildStatCard(
                               title: 'COMMUNITY RATING',
-                              child: Text(
-                                '4.9 ★',
-                                style: GoogleFonts.inter(
-                                  fontSize: 24.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF0F172A),
-                                ),
+                              child: Obx(
+                                () => controller.allowCitizenRatings.value
+                                    ? Text(
+                                        '4.9 ★',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 24.sp,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                      )
+                                    : Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(6.r),
+                                            ),
+                                            child: Text(
+                                              'OFF',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w800,
+                                                color: const Color(0xFF64748B),
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 3.h),
+                                          Text(
+                                            'Disabled',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10.5.sp,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF94A3B8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                               ),
                             ),
                           ),
@@ -498,7 +531,109 @@ class PoliceProfileView extends GetView<PoliceProfileController> {
                         ],
                       ),
 
-                      SizedBox(height: 24.h),
+                      SizedBox(height: 20.h),
+
+                      // Citizen Ratings & Reviews Toggle Card
+                      Obx(
+                        () => Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: controller.isUpdatingRatingSetting.value
+                                ? null
+                                : () => controller.toggleCitizenRatings(!controller.allowCitizenRatings.value),
+                            borderRadius: BorderRadius.circular(16.r),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16.r),
+                                border: Border.all(
+                                  color: controller.allowCitizenRatings.value
+                                      ? const Color(0xFFE2E8F0)
+                                      : const Color(0xFFCBD5E1),
+                                  width: 1.w,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(10.r),
+                                    decoration: BoxDecoration(
+                                      color: controller.allowCitizenRatings.value
+                                          ? const Color(0xFFEFF6FF)
+                                          : const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: Icon(
+                                      controller.allowCitizenRatings.value
+                                          ? Icons.star_rounded
+                                          : Icons.star_border_rounded,
+                                      color: controller.allowCitizenRatings.value
+                                          ? const Color(0xFF1550A6)
+                                          : const Color(0xFF64748B),
+                                      size: 22.sp,
+                                    ),
+                                  ),
+                                  SizedBox(width: 14.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Citizen Ratings & Reviews',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14.5.sp,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        SizedBox(height: 2.h),
+                                        Text(
+                                          controller.allowCitizenRatings.value
+                                              ? 'Public ratings & reviews are enabled'
+                                              : 'Ratings & reviews disabled for your account',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12.sp,
+                                            color: controller.allowCitizenRatings.value
+                                                ? const Color(0xFF64748B)
+                                                : const Color(0xFFDC2626),
+                                            fontWeight: controller.allowCitizenRatings.value
+                                                ? FontWeight.w400
+                                                : FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Transform.scale(
+                                    scale: 0.88,
+                                    child: Switch(
+                                      value: controller.allowCitizenRatings.value,
+                                      onChanged: controller.isUpdatingRatingSetting.value
+                                          ? null
+                                          : (val) => controller.toggleCitizenRatings(val),
+                                      activeThumbColor: Colors.white,
+                                      activeTrackColor: const Color(0xFF1550A6),
+                                      inactiveThumbColor: Colors.white,
+                                      inactiveTrackColor: const Color(0xFF94A3B8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: 20.h),
 
                       // Profile Options list
                       _buildOptionItem(

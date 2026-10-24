@@ -78,6 +78,7 @@ const userSchema = new Schema<IUser, UserModal>(
     didCarNumberChange: { type: String },
     newCarNumber: { type: String },
     licenseNumber: { type: String },
+    allowCitizenRatings: { type: Boolean, default: true },
     serviceFee: { type: Number, default: 0 },
     monthlyServiceFee: { type: Number, default: 0 },
     shortDescription: { type: String, default: '' },
