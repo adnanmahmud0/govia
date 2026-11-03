@@ -17,6 +17,112 @@ class SettingsController extends GetxController {
     Get.toNamed(AppRoutes.termsAndConditions);
   }
 
+  void showGovernmentDisclaimerDialog() {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: EdgeInsets.all(20.w),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8.r),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEFF6FF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.account_balance_outlined,
+                        color: const Color(0xFF1550A6),
+                        size: 24.sp,
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Text(
+                        'Government Disclaimer & Sources',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 14.h),
+                Text(
+                  'Non-Affiliation Notice:',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  'GoVia is an independent private platform and does NOT represent, endorse, or have any official affiliation with any government entity, court, or law enforcement agency.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5.sp,
+                    color: const Color(0xFF475569),
+                    height: 1.45,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  'Official Government Sources (.gov):',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  'Educational content, constitutional rights, and roadside stop procedures are sourced from public government publications:\n'
+                  '• U.S. Constitution (National Archives):\nhttps://www.archives.gov/founding-docs/bill-of-rights\n'
+                  '• National Highway Traffic Safety Administration:\nhttps://www.nhtsa.gov\n'
+                  '• U.S. Department of Justice (DOJ):\nhttps://www.justice.gov\n'
+                  '• Federal Bureau of Investigation (FBI):\nhttps://www.fbi.gov\n'
+                  '• USA.gov Legal Information:\nhttps://www.usa.gov',
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5.sp,
+                    color: const Color(0xFF475569),
+                    height: 1.4,
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Get.back(),
+                    child: Text(
+                      'Close',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1550A6),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
   void showDeleteAccountDialog() {
     Get.dialog(
       Dialog(

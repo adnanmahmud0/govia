@@ -33,6 +33,38 @@ class CitizenCommunityView extends GetView<CitizenCommunityController> {
                 ),
               ),
 
+              // Government Entity Non-Affiliation Disclaimer Banner
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: const Color(0xFFBFDBFE), width: 1.w),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: const Color(0xFF1D4ED8),
+                      size: 18.sp,
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        'GoVia is an independent private platform and does NOT represent any government entity or agency. Official government directories (.gov) are linked solely for public informational assistance.',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5.sp,
+                          color: const Color(0xFF1E40AF),
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // Grid Content
               Expanded(
                 child: Obx(

@@ -541,11 +541,16 @@ class GoviaAiView extends GetView<GoviaAiController> {
             ),
           ),
           SizedBox(height: 6.h),
-          Text(
-            'GoVia AI provides informational guidance. Not legal counsel.',
-            style: GoogleFonts.inter(
-              fontSize: 10.sp,
-              color: const Color(0xFF94A3B8),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            child: Text(
+              'GoVia AI is an informational tool and does not represent any government entity. Guidance is sourced from public US government archives (.gov). Not official legal counsel.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 9.5.sp,
+                color: const Color(0xFF94A3B8),
+                height: 1.3,
+              ),
             ),
           ),
         ],

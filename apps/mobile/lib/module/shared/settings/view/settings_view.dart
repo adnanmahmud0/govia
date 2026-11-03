@@ -79,6 +79,11 @@ class SettingsView extends GetView<SettingsController> {
                         onTap: controller.showTermsAndConditions,
                       ),
                       _buildSettingItem(
+                        icon: Icons.account_balance_outlined,
+                        title: 'Government Disclaimer & Sources',
+                        onTap: controller.showGovernmentDisclaimerDialog,
+                      ),
+                      _buildSettingItem(
                         icon: Icons.delete_outline_rounded,
                         title: 'Delete Account',
                         isDestructive: true,

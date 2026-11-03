@@ -91,7 +91,7 @@ class TermsConditionsView extends StatelessWidget {
                         
                         _buildSection(
                           '1. Acceptance of Agreement',
-                          'By accessing or using the GSABINO365 mobile application, you agree to comply with and be bound by all the terms and conditions outlined in this Agreement. If you do not agree, you must immediately terminate use of the app.',
+                          'By accessing or using the GoVia mobile application, you agree to comply with and be bound by all the terms and conditions outlined in this Agreement. If you do not agree, you must immediately terminate use of the app.',
                         ),
                         _buildSection(
                           '2. User Conduct & Security',
@@ -99,11 +99,24 @@ class TermsConditionsView extends StatelessWidget {
                         ),
                         _buildSection(
                           '3. Intellectual Property Rights',
-                          'All organization details, compiles, layouts, designs, graphics, and codebase elements related to GSABINO365 are protected under applicable copyrights and trademark regulations. Any reproduction or distribution without explicit consent is strictly prohibited.',
+                          'All organization details, compiles, layouts, designs, graphics, and codebase elements related to GoVia are protected under applicable copyrights and trademark regulations. Any reproduction or distribution without explicit consent is strictly prohibited.',
                         ),
                         _buildSection(
                           '4. Disclaimer & Limitations',
-                          'GSABINO365 is provided on an "as-is" basis. We do not represent or warrant that the application will be uninterrupted, error-free, or entirely free of diagnostic delays, and we reject all representations and warranties.',
+                          'GoVia is provided on an "as-is" basis. We do not represent or warrant that the application will be uninterrupted, error-free, or entirely free of diagnostic delays, and we reject all representations and warranties.',
+                        ),
+                        _buildSection(
+                          '5. Government Entity Non-Affiliation Disclaimer',
+                          'GoVia is an independent private technology platform and DOES NOT represent, endorse, affiliate with, or operate on behalf of any government entity, federal/state law enforcement agency, court system, or municipality. GoVia is not a law firm and does not provide legal advice.',
+                        ),
+                        _buildSection(
+                          '6. Government & Legal Information Sources',
+                          'Any educational references, constitutional rights summaries, and roadside encounter guidelines within this app are sourced directly from official, publicly accessible United States government databases:\n\n'
+                          '• U.S. Constitution & Bill of Rights (National Archives):\nhttps://www.archives.gov/founding-docs/bill-of-rights\n\n'
+                          '• National Highway Traffic Safety Administration (NHTSA):\nhttps://www.nhtsa.gov\n\n'
+                          '• U.S. Department of Justice (DOJ):\nhttps://www.justice.gov\n\n'
+                          '• Federal Bureau of Investigation (FBI):\nhttps://www.fbi.gov\n\n'
+                          '• USA.gov Official Government Resources:\nhttps://www.usa.gov',
                         ),
                       ],
                     ),
