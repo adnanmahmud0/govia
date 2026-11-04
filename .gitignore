@@ -43,3 +43,5 @@ Govia-admin-dashboard/**
 **/gsabino365/.dart_tool
 **/gsabino365/build
 **/.git_backup
+
+.DS_Store
